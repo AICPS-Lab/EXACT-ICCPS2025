@@ -1,0 +1,13 @@
+task: "classification"
+model: "transformer"
+data_window_len: null
+max_seq_len: 100
+d_model: 512
+num_heads: 8
+num_layers: 6
+dim_feedforward: 2048
+dropout: 0.1
+pos_encoding: "learnable"
+activation: "relu"
+normalization_layer: "layer_norm"
+freeze: false
