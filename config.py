@@ -33,4 +33,4 @@ class Config(object):
         
 if __name__ == "__main__":
     config = Config("config.yaml")
-    print
+    print(config._data)
