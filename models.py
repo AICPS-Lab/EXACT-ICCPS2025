@@ -43,7 +43,7 @@ class TransformerModel(nn.Transformer):
         self.input_emb = nn.Linear(ntoken, ninp)
         self.ninp = ninp
         self.decoder = nn.Linear(ninp, 1)
-
+        # self.psi = nn.Linear(100, 5)
         self.init_weights()
 
     def _generate_square_subsequent_mask(self, sz):
@@ -69,4 +69,8 @@ class TransformerModel(nn.Transformer):
         output = self.encoder(src, mask=self.src_mask) # transformer encoder
         output = self.decoder(output)
         
+        # additional for classifi:
+        # output = self.psi(output.squeeze(-1))
+        # return F.log_softmax(output, dim=-1)
+    
         return F.sigmoid(output).squeeze(-1) # return F.log_softmax(output, dim=-1)

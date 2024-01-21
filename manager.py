@@ -64,6 +64,7 @@ class Manager:
                 label = label.to(self.device).int()
                 optimizer.zero_grad()
                 output = self.model(data, has_mask=False)
+                # print(output.shape, label.shape)
                 loss = criterion(output, label)
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), 0.5)
@@ -73,17 +74,22 @@ class Manager:
                     cur_loss = train_loss / 100
                     print(f'Epoch {epoch}, iter {i}, loss {cur_loss}')
                     train_loss = 0
-                if i % 1000 == 0 and i > 0:
-                    fig = plt.figure()
-                    ax = fig.add_subplot(111)
-                    ax.plot(data[0, :, 0].cpu().detach().numpy())
-                    # output is sigmoid, use 0.5 as threshold to get binary prediction
-                    ax.plot((output[0, :].cpu().detach().numpy() > 0.5).astype(int), label='prediction')
-                    ax.plot(label[0, :].cpu().detach().numpy(), label='ground truth')
-                    plt.legend()
-                    plt.draw()
-                    plt.pause(2)
-                    plt.close()
+                    # check the accuracy of the model in this batch (classification):
+                    preds = torch.argmax(output, dim=-1)
+                    acc = (preds == label).float().mean()
+                    print(f'Epoch {epoch}, iter {i}, acc {acc}')
+                    
+                # if i % 1000 == 0 and i > 0:
+                #     fig = plt.figure()
+                #     ax = fig.add_subplot(111)
+                #     ax.plot(data[0, :, 0].cpu().detach().numpy())
+                #     # output is sigmoid, use 0.5 as threshold to get binary prediction
+                #     ax.plot((output[0, :].cpu().detach().numpy() > 0.5).astype(int), label='prediction')
+                #     ax.plot(label[0, :].cpu().detach().numpy(), label='ground truth')
+                #     plt.legend()
+                #     plt.draw()
+                #     plt.pause(2)
+                #     plt.close()
 
     
     def _get_optimizer(self):
@@ -103,6 +109,8 @@ class Manager:
             return DiceLoss()
         elif self.config['train']['criterion'] == 'bce':
             return torch.nn.BCELoss()
+        elif self.config['train']['criterion'] == 'ce':
+            return torch.nn.CrossEntropyLoss()
         else:
             raise NotImplementedError
 

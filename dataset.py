@@ -53,6 +53,8 @@ def default_splitter(folder_name, config: dict, split=False):
         dataset = partial(DefaultDataset, width=width, step=step)
     elif method == 'noise-both-end':
         dataset = partial(NoiseDataset, width=width, step=step)
+    elif method == 'classification':
+        dataset = partial(ClassificationDataset, width=width, step=step)
     else:
         raise NotImplementedError
 
@@ -123,7 +125,6 @@ class NoiseDataset(Dataset):
         self.width = width
         self.step = step
         self.x, self.y = self._load_all_data()
-
     def __len__(self):
         return len(self.x)
     
@@ -170,9 +171,65 @@ class NoiseDataset(Dataset):
             x.append(data)
             y.append(label)
         return torch.cat(x), torch.cat(y)
+
+
+
+class ClassificationDataset:
+    def __init__(self, file_names, scaler=None, width=50, step=25):
+        self.file_names = file_names
+        self.width = width
+        self.step = step
+        self.x, self.y = self._load_all_data()
+        
+        
+    def __len__(self):
+        return len(self.x)
     
+    def __getitem__(self, idx):
+        return self.x[idx], self.y[idx]
+    
+    def _load_all_data(self):
+        # load into memory and do sliding windows:
+        sw = sliding_windows(self.width, self.step)
+        # load data into numpy:
+        x = []
+        y = []
+        for file in self.file_names:
+            class_label = int(file.split('/')[-1].split('_')[1][1]) -1
+            data = pd.read_csv(file)
+            data = data.values
+            data = torch.from_numpy(data)[:, 1::].float()
+            # create label length_0 = 0, length_-1 = 0, length_1:n-1 = 1
+            if data.shape[0] <= self.width:
+                data = self._interpolate(data)
+            label = torch.zeros(data.shape[0])
+            label[1:-1] = 1
+            # do sliding windows:
+            data, label = sw(data, label)
+            # append to the list
+            x.append(data)
+            # y.append(label)
+            y.extend([class_label] * data.shape[0])
+        return torch.cat(x), torch.tensor(y) # torch.cat(y)
+    def _interpolate(self, data):
+        from scipy import interpolate
+        # interpolate the data to the same length:
+        # randomly select a length:
+        length = self.width
+        # interpolate using nummpy:
+        original_indices = np.arange(data.shape[0])
+        new_indices = np.linspace(0, data.shape[0]-1 , length)
+
+        # Interpolated array
+        interpolated_array = np.zeros((length, 6))
+
+        for i in range(6):
+            interp_func = interpolate.interp1d(original_indices, data[:, i])
+            interpolated_array[:, i] = interp_func(new_indices)
+        return torch.tensor(interpolated_array).float()
 if __name__ == '__main__':
     # Usage example
     folder_name = './datasets/spar'
-    train_dataset, test_dataset = default_splitter(folder_name, split=False, method='noise-both-end')
+    config = {'preprocess': {'method': 'noise-both-end', 'width': 50, 'step': 25}, 'model': 'lstm'}
+    train_dataset, test_dataset = default_splitter(folder_name, config, split=False)
     len(train_dataset)
