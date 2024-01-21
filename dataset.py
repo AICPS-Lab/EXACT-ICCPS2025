@@ -1,3 +1,4 @@
+from functools import partial
 import os
 import numpy as np
 import pandas as pd
@@ -5,10 +6,9 @@ from torch.utils.data import Dataset
 import torch
 
 class sliding_windows(torch.nn.Module):
-    def __init__(self, total_length, width, step):
+    def __init__(self, width, step):
         # https://stackoverflow.com/questions/53972159/how-does-pytorchs-fold-and-unfold-work
         super(sliding_windows, self).__init__()
-        self.total_length = total_length
         self.width = width
         self.step = step
 
@@ -18,10 +18,10 @@ class sliding_windows(torch.nn.Module):
         labels_transformed = labels.unfold(0, self.width, self.step)
         return input_transformed, labels_transformed
 
-    def get_num_sliding_windows(self):
-        return round((self.total_length - (self.width - self.step)) / self.step)
+    def get_num_sliding_windows(self, total_length):
+        return round((total_length - (self.width - self.step)) / self.step)
 
-def default_splitter(folder_name, split=False, method='default'):
+def default_splitter(folder_name, config: dict, split=False):
     """This is a custom dataset class for time series data.
     Specifically, it is using the typical way to load all the data into memory and 
     return data and label in __getitem__ method.
@@ -34,6 +34,11 @@ def default_splitter(folder_name, split=False, method='default'):
     Returns:
         [Datasets]: _description_
     """
+    method = config['preprocess']['method']
+
+    width = config['preprocess']['width']
+    step = config['preprocess']['step']
+
     file_names = []
     for file in os.listdir(folder_name):
         if os.path.isfile(os.path.join(folder_name, file)) and file.endswith('.csv'):
@@ -43,10 +48,11 @@ def default_splitter(folder_name, split=False, method='default'):
     # permute the order:
     file_names = np.random.permutation(file_names)
     
+    # partial insertion of variables:
     if method == 'default':
-        dataset = DefaultDataset
+        dataset = partial(DefaultDataset, width=width, step=step)
     elif method == 'noise-both-end':
-        dataset = NoiseDataset
+        dataset = partial(NoiseDataset, width=width, step=step)
     else:
         raise NotImplementedError
 
@@ -71,9 +77,12 @@ class DefaultDataset(Dataset):
     Args:
         Dataset (_type_): _description_
     """
-    def __init__(self, file_names):
+    def __init__(self, file_names, scaler=None, width=50, step=25):
         self.file_names = file_names
+        self.width = width
+        self.step = step
         self.x, self.y = self._load_all_data()
+        
         
     def __len__(self):
         return len(self.x)
@@ -83,7 +92,7 @@ class DefaultDataset(Dataset):
     
     def _load_all_data(self):
         # load into memory and do sliding windows:
-        sw = sliding_windows(50, 25, 20)
+        sw = sliding_windows(self.width, self.step)
         # load data into numpy:
         x = []
         y = []
@@ -103,16 +112,18 @@ class DefaultDataset(Dataset):
             
 
 class NoiseDataset(Dataset):
-    """
+    """  
     This is a custom dataset class for time series data.
     Specifically, it is using the typical way to load all the data into memory and 
     return data and label in __getitem__ method. 
     The difference is that it adds noise to the data.
     """
-    def __init__(self, file_names):
+    def __init__(self, file_names, scaler=None, width=50, step=25):
         self.file_names = file_names
+        self.width = width
+        self.step = step
         self.x, self.y = self._load_all_data()
-        
+
     def __len__(self):
         return len(self.x)
     
@@ -121,24 +132,26 @@ class NoiseDataset(Dataset):
     def _add_noise(self, data):
         # add noise on both end [50-100] + [data] + [50-100]
         # length is between 50 and 100 randomly selected:
-        begin_noise = torch.zeros((np.random.randint(50, 100), data.shape[1]))
+        begin_length = np.random.randint(50, 100)
+        begin_noise = torch.zeros((begin_length, data.shape[1]))
         # the noise is simliar to the data[0] or data[-1] based on the side:
         begin_noise += data[0, :]
         # add some noise to it:
         begin_noise = begin_noise + torch.randn(begin_noise.shape) * 0.1
-
-        end_noise = torch.zeros((np.random.randint(50, 100), data.shape[1]))
+        
+        end_length = np.random.randint(50, 100)
+        end_noise = torch.zeros((end_length, data.shape[1]))
         end_noise += data[-1, :]
         end_noise = end_noise + torch.randn(end_noise.shape) * 0.1
         # concatenate:
         data = torch.cat([begin_noise, data, end_noise])
-        return data
+        return data, (begin_length, end_length)
             
 
 
     def _load_all_data(self):
         # load into memory and do sliding windows:
-        sw = sliding_windows(50, 25, 20)
+        sw = sliding_windows(self.width, self.step)
         # load data into numpy:
         x = []
         y = []
@@ -147,10 +160,10 @@ class NoiseDataset(Dataset):
             data = data.values
             data = torch.from_numpy(data)[:, 1::].float()
             # add noise:
-            data = self._add_noise(data)
+            data, (begin_length, end_length) = self._add_noise(data)
             # create label length_0 = 0, length_-1 = 0, length_1:n-1 = 1
             label = torch.zeros(data.shape[0])
-            label[1:-1] = 1
+            label[begin_length:-end_length] = 1
             # do sliding windows:
             data, label = sw(data, label)
             # append to the list

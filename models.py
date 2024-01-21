@@ -42,7 +42,7 @@ class TransformerModel(nn.Transformer):
 
         self.input_emb = nn.Linear(ntoken, ninp)
         self.ninp = ninp
-        self.decoder = nn.Linear(ninp, 2)
+        self.decoder = nn.Linear(ninp, 1)
 
         self.init_weights()
 
@@ -69,4 +69,4 @@ class TransformerModel(nn.Transformer):
         output = self.encoder(src, mask=self.src_mask) # transformer encoder
         output = self.decoder(output)
         
-        return F.log_softmax(output, dim=-1)
+        return F.sigmoid(output).squeeze(-1) # return F.log_softmax(output, dim=-1)

@@ -1,8 +1,10 @@
+from matplotlib import pyplot as plt
 import torch
 from config import Config
 from dataset import default_splitter
 from models import TransformerModel
 from utilities import get_device
+
 class DiceLoss(torch.nn.Module):
     def __init__(self):
         super(DiceLoss, self).__init__()
@@ -10,7 +12,7 @@ class DiceLoss(torch.nn.Module):
     def forward(self, predicted, ground_truth):
         # Flatten the tensors
         # For predicted, we need to select the probabilities for the '1' class (last channel)
-        predicted_flat = predicted[:, :, 1].contiguous().view(-1)
+        predicted_flat = predicted.contiguous().view(-1)
         ground_truth_flat = ground_truth.contiguous().view(-1)
 
         # Compute intersection and union
@@ -59,9 +61,9 @@ class Manager:
             for i in range(0, len(train_dataset), batch_size):
                 data, label = train_dataset[i:i + batch_size]
                 data = data.to(self.device)
-                label = label.to(self.device)
+                label = label.to(self.device).int()
                 optimizer.zero_grad()
-                output = self.model(data, has_mask=False).squeeze(-1)
+                output = self.model(data, has_mask=False)
                 loss = criterion(output, label)
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), 0.5)
@@ -72,8 +74,16 @@ class Manager:
                     print(f'Epoch {epoch}, iter {i}, loss {cur_loss}')
                     train_loss = 0
                 if i % 1000 == 0 and i > 0:
-                    # Visualization code here...
-                    pass
+                    fig = plt.figure()
+                    ax = fig.add_subplot(111)
+                    ax.plot(data[0, :, 0].cpu().detach().numpy())
+                    # output is sigmoid, use 0.5 as threshold to get binary prediction
+                    ax.plot((output[0, :].cpu().detach().numpy() > 0.5).astype(int), label='prediction')
+                    ax.plot(label[0, :].cpu().detach().numpy(), label='ground truth')
+                    plt.legend()
+                    plt.draw()
+                    plt.pause(2)
+                    plt.close()
 
     
     def _get_optimizer(self):
@@ -91,6 +101,8 @@ class Manager:
             return torch.nn.CrossEntropyLoss()
         elif self.config['train']['criterion'] == 'dice':
             return DiceLoss()
+        elif self.config['train']['criterion'] == 'bce':
+            return torch.nn.BCELoss()
         else:
             raise NotImplementedError
 
@@ -101,5 +113,5 @@ if __name__ == "__main__":
     m = Manager(config)
 
     folder_name = './datasets/spar'
-    train_dataset, test_dataset = default_splitter(folder_name, split=False)
+    train_dataset, test_dataset = default_splitter(folder_name, config, split=False,)
     m.train(train_dataset)
