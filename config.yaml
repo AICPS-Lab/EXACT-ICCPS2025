@@ -5,6 +5,9 @@ pos_encoding: "learnable"
 activation: "relu"
 normalization_layer: "layer_norm"
 freeze: false
+seed: 73054772
+preprocess:
+  method: "default" # "noise-both-end", "noise-both-end-concat"
 model:
   input_dim: 6 # time series data
   max_seq_len: 100
