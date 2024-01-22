@@ -1,5 +1,4 @@
 task: "classification"
-model: "transformer"
 data_window_len: null
 pos_encoding: "learnable"
 activation: "relu"
@@ -11,6 +10,7 @@ preprocess:
   width: 100
   step: 50
 model:
+  name: "cnn"
   input_dim: 6 # time series data
   max_seq_len: 100
   dim_inp: 512

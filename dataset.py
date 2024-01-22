@@ -4,22 +4,8 @@ import numpy as np
 import pandas as pd
 from torch.utils.data import Dataset
 import torch
+from utilities import * 
 
-class sliding_windows(torch.nn.Module):
-    def __init__(self, width, step):
-        # https://stackoverflow.com/questions/53972159/how-does-pytorchs-fold-and-unfold-work
-        super(sliding_windows, self).__init__()
-        self.width = width
-        self.step = step
-
-    def forward(self, input_time_series, labels):
-        input_transformed = torch.swapaxes(input_time_series.unfold(-2, size=self.width, step=self.step), -2, -1)
-        # For labels, we only have one dimension, so we unfold along that dimension
-        labels_transformed = labels.unfold(0, self.width, self.step)
-        return input_transformed, labels_transformed
-
-    def get_num_sliding_windows(self, total_length):
-        return round((total_length - (self.width - self.step)) / self.step)
 
 def default_splitter(folder_name, config: dict, split=False):
     """This is a custom dataset class for time series data.

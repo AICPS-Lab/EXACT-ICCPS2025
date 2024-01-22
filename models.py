@@ -55,7 +55,7 @@ class TransformerModel(nn.Transformer):
         nn.init.zeros_(self.decoder.bias)
         nn.init.uniform_(self.decoder.weight, -initrange, initrange)
 
-    def forward(self, src, has_mask=True):
+    def forward(self, src, has_mask=False):
         if has_mask:
             device = src.device
             if self.src_mask is None or self.src_mask.size(0) != len(src):
@@ -74,3 +74,44 @@ class TransformerModel(nn.Transformer):
         # return F.log_softmax(output, dim=-1)
     
         return F.sigmoid(output).squeeze(-1) # return F.log_softmax(output, dim=-1)
+    
+    
+    
+class CNNModel(nn.Module):
+    """ classification model"""
+    def __init__(self, ntoken=6, ninp=512, nhead=8, nhid=2048, nlayers=6, dropout=0.5):
+        super(CNNModel, self).__init__()
+        self.model_type = 'CNN'
+        self.input_emb = nn.Linear(ntoken, ninp)
+        self.ninp = ninp
+        self.conv1 = nn.Conv1d(ninp, 64, 3)
+        self.conv2 = nn.Conv1d(64, 128, 3)
+        self.conv3 = nn.Conv1d(128, 256, 3)
+        self.conv4 = nn.Conv1d(256, 512, 3)
+        self.conv5 = nn.Conv1d(512, 1024, 3)
+        self.pool = nn.MaxPool1d(2, 2)
+        self.fc1 = nn.Linear(1024, 512)
+        self.fc2 = nn.Linear(512, 1)
+        self.dropout = nn.Dropout(dropout)
+        self.init_weights()
+
+    def init_weights(self):
+        initrange = 0.1
+        nn.init.uniform_(self.input_emb.weight, -initrange, initrange)
+        nn.init.zeros_(self.fc2.bias)
+        nn.init.uniform_(self.fc2.weight, -initrange, initrange)
+
+    def forward(self, src):
+        src = self.input_emb(src) # embedding
+        src = src.transpose(1, 2)
+        src = self.pool(F.relu(self.conv1(src)))
+        src = self.pool(F.relu(self.conv2(src)))
+        src = self.pool(F.relu(self.conv3(src)))
+        src = self.pool(F.relu(self.conv4(src)))
+        src = self.pool(F.relu(self.conv5(src)))
+        src = src.view(-1, 1024)
+        src = F.relu(self.fc1(src))
+        src = self.dropout(src)
+        output = self.fc2(src)
+        return F.sigmoid(output).squeeze(-1)
+    

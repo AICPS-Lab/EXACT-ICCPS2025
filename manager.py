@@ -2,7 +2,7 @@ from matplotlib import pyplot as plt
 import torch
 from config import Config
 from dataset import default_splitter
-from models import TransformerModel
+from models import CNNModel, TransformerModel
 from utilities import get_device
 
 class DiceLoss(torch.nn.Module):
@@ -32,12 +32,7 @@ class Manager:
         self.config = config  # yaml file of config
         self.device = get_device()
         #  ntoken=6, ninp=512, nhead=8, nhid=2048, nlayers=6, dropout=0.5
-        self.model = TransformerModel(ntoken=6, 
-                                      ninp=config['model']['dim_inp'],
-                                      nhead=config['model']['num_heads'],
-                                      nhid=config['model']['dim_model'],
-                                      nlayers=config['model']['num_layers'],
-                                      dropout=config['model']['dropout']).to(self.device)
+        self.model = self._get_model()
                                       
         # Assume config contains other necessary components like optimizer, scheduler, etc.
 
@@ -61,9 +56,9 @@ class Manager:
             for i in range(0, len(train_dataset), batch_size):
                 data, label = train_dataset[i:i + batch_size]
                 data = data.to(self.device)
-                label = label.to(self.device).int()
+                label = label.to(self.device).float()
                 optimizer.zero_grad()
-                output = self.model(data, has_mask=False)
+                output = self.model(data)
                 # print(output.shape, label.shape)
                 loss = criterion(output, label)
                 loss.backward()
@@ -91,6 +86,23 @@ class Manager:
                 #     plt.pause(2)
                 #     plt.close()
 
+    def _get_model(self):
+        if self.config['model']['name'] == 'transformer':
+            return TransformerModel(ntoken=6, 
+                                      ninp=config['model']['dim_inp'],
+                                      nhead=config['model']['num_heads'],
+                                      nhid=config['model']['dim_model'],
+                                      nlayers=config['model']['num_layers'],
+                                      dropout=config['model']['dropout']).to(self.device)
+        elif self.config['model']['name'] == 'cnn':
+            return CNNModel(ntoken=6,
+                            ninp=config['model']['dim_inp'],
+                            nhead=config['model']['num_heads'],
+                            nhid=config['model']['dim_model'],
+                            nlayers=config['model']['num_layers'],
+                            dropout=config['model']['dropout']).to(self.device)
+        else:
+            raise NotImplementedError
     
     def _get_optimizer(self):
         if self.config['train']['optimizer'] == 'adam':
