@@ -7,7 +7,7 @@ import torch
 from utilities import * 
 
 
-def default_splitter(folder_name, config: dict, split=False):
+def default_splitter(folder_name, config: dict, split=False, transform=None):
     """This is a custom dataset class for time series data.
     Specifically, it is using the typical way to load all the data into memory and 
     return data and label in __getitem__ method.
@@ -36,11 +36,20 @@ def default_splitter(folder_name, config: dict, split=False):
     
     # partial insertion of variables:
     if method == 'default':
-        dataset = partial(DefaultDataset, width=width, step=step)
+        dataset = partial(DefaultDataset, width=width, step=step, transform=transform)
     elif method == 'noise-both-end':
-        dataset = partial(NoiseDataset, width=width, step=step)
+        dataset = partial(NoiseDataset, width=width, step=step, transform=transform)
     elif method == 'classification':
-        dataset = partial(ClassificationDataset, width=width, step=step)
+        classes = []
+        # re-organize the class label as it does not follow the convention: 0 to N-1
+        for file in file_names:
+            class_label = int(file.split('/')[-1].split('_')[1][1]) #NOTE: assuming '1' is the class label
+            if class_label not in classes:
+                classes.append(class_label)
+        classes = sorted(classes)
+        # print in red:
+        printc(f'Total of Classes: {classes}', 'red')
+        dataset = partial(ClassificationDataset, classes=classes, width=width, step=step, transform=transform)
     else:
         raise NotImplementedError
 
@@ -65,17 +74,20 @@ class DefaultDataset(Dataset):
     Args:
         Dataset (_type_): _description_
     """
-    def __init__(self, file_names, scaler=None, width=50, step=25):
+    def __init__(self, file_names, scaler=None, width=50, step=25, transform=None):
         self.file_names = file_names
         self.width = width
         self.step = step
         self.x, self.y = self._load_all_data()
+        self.transform = transform
         
         
     def __len__(self):
         return len(self.x)
     
     def __getitem__(self, idx):
+        if self.transform:
+            return self.transform(self.x[idx]), self.y[idx]
         return self.x[idx], self.y[idx]
     
     def _load_all_data(self):
@@ -106,15 +118,18 @@ class NoiseDataset(Dataset):
     return data and label in __getitem__ method. 
     The difference is that it adds noise to the data.
     """
-    def __init__(self, file_names, scaler=None, width=50, step=25):
+    def __init__(self, file_names, scaler=None, width=50, step=25, transform=None):
         self.file_names = file_names
         self.width = width
         self.step = step
         self.x, self.y = self._load_all_data()
+        self.transform = transform
     def __len__(self):
         return len(self.x)
     
     def __getitem__(self, idx):
+        if self.transform:
+            return self.transform(self.x[idx]), self.y[idx]
         return self.x[idx], self.y[idx]
     def _add_noise(self, data):
         # add noise on both end [50-100] + [data] + [50-100]
@@ -161,17 +176,22 @@ class NoiseDataset(Dataset):
 
 
 class ClassificationDataset:
-    def __init__(self, file_names, scaler=None, width=50, step=25):
+    def __init__(self, file_names, classes, width=50, step=25, transform=None,):
         self.file_names = file_names
         self.width = width
         self.step = step
+        self.transform = transform
+        self.classes = classes
         self.x, self.y = self._load_all_data()
+        
         
         
     def __len__(self):
         return len(self.x)
     
     def __getitem__(self, idx):
+        if self.transform:
+            return self.transform(self.x[idx]), self.y[idx]
         return self.x[idx], self.y[idx]
     
     def _load_all_data(self):
@@ -181,22 +201,23 @@ class ClassificationDataset:
         x = []
         y = []
         for file in self.file_names:
-            class_label = int(file.split('/')[-1].split('_')[1][1]) -1
+            class_label = int(file.split('/')[-1].split('_')[1][1])
             data = pd.read_csv(file)
             data = data.values
             data = torch.from_numpy(data)[:, 1::].float()
-            # create label length_0 = 0, length_-1 = 0, length_1:n-1 = 1
             if data.shape[0] <= self.width:
-                data = self._interpolate(data)
-            label = torch.zeros(data.shape[0])
-            label[1:-1] = 1
+                data = self._interpolate(data) #NOTE: interpolate the data to the same length otherwise it will be a problem
+            placeholder_label = torch.zeros(data.shape[0]) #NOTE: placeholder in case of classification
             # do sliding windows:
-            data, label = sw(data, label)
+            data, _ = sw(data, placeholder_label)
             # append to the list
             x.append(data)
             # y.append(label)
-            y.extend([class_label] * data.shape[0])
+            # use its index as the label:
+            class_label_idx = self.classes.index(class_label)
+            y.extend([class_label_idx] * data.shape[0])
         return torch.cat(x), torch.tensor(y) # torch.cat(y)
+    
     def _interpolate(self, data):
         from scipy import interpolate
         # interpolate the data to the same length:
@@ -215,7 +236,7 @@ class ClassificationDataset:
         return torch.tensor(interpolated_array).float()
 if __name__ == '__main__':
     # Usage example
-    folder_name = './datasets/spar'
-    config = {'preprocess': {'method': 'noise-both-end', 'width': 50, 'step': 25}, 'model': 'lstm'}
+    folder_name = './datasets/spar9x'
+    config = {'preprocess': {'method': 'classification', 'width': 50, 'step': 25}, 'model': 'lstm'}
     train_dataset, test_dataset = default_splitter(folder_name, config, split=False)
     len(train_dataset)

@@ -5,6 +5,7 @@ activation: "relu"
 normalization_layer: "layer_norm"
 freeze: false
 seed: 73054772
+dataset: "spar"
 preprocess:
   method: "classification" # "default" 'classification', "noise-both-end", "noise-both-end-concat"
   width: 100

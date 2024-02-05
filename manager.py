@@ -4,6 +4,7 @@ from config import Config
 from dataset import default_splitter
 from models import CNNModel, TransformerModel
 from utilities import get_device
+import torchvision.transforms as transforms
 
 class DiceLoss(torch.nn.Module):
     def __init__(self):
@@ -33,7 +34,7 @@ class Manager:
         self.device = get_device()
         #  ntoken=6, ninp=512, nhead=8, nhid=2048, nlayers=6, dropout=0.5
         self.model = self._get_model()
-                                      
+        self.train_dl, self.test_dl = self._get_dataloader()     
         # Assume config contains other necessary components like optimizer, scheduler, etc.
 
     def __str__(self):
@@ -44,7 +45,7 @@ class Manager:
     
     
 
-    def train(self, train_dataset):
+    def train(self):
         self.model.train()
         train_loss = 0
         optimizer = self._get_optimizer()
@@ -53,8 +54,7 @@ class Manager:
         epochs = self.config['train']['epochs']
 
         for epoch in range(epochs):
-            for i in range(0, len(train_dataset), batch_size):
-                data, label = train_dataset[i:i + batch_size]
+            for i, (data, label) in enumerate(self.train_dl):
                 data = data.to(self.device)
                 label = label.to(self.device).float()
                 optimizer.zero_grad()
@@ -126,12 +126,36 @@ class Manager:
         else:
             raise NotImplementedError
 
+    def _get_dataloader(self):
+        # get current directory:
+        import os
+        abs_path = os.path.abspath(__file__)
+        datasets_folder = os.path.join(abs_path, 'datasets')
+        if self.config['dataset'] == 'spar':
+            folder_name = os.path.join(datasets_folder, 'spar')
+        else:
+            raise NotImplementedError
+        mean = (0.5)
+        std = (0.5)
+        transform = transforms.Compose(
+            [
+                transforms.ToTensor(),
+                transforms.Normalize(mean, std)
+            ])
+        train_dataset, test_dataset = default_splitter(folder_name, config, split=False,)
+        train_dl = torch.utils.data.DataLoader(train_dataset, batch_size=self.config['train']['batch_size'], shuffle=True,)
+        test_dl = torch.utils.data.DataLoader(test_dataset, batch_size=self.config['train']['batch_size'], shuffle=True)
+        
+        
+        
+        
+        
+        
 
 
 if __name__ == "__main__":
     config = Config("config.yaml")
     m = Manager(config)
 
-    folder_name = './datasets/spar'
-    train_dataset, test_dataset = default_splitter(folder_name, config, split=False,)
-    m.train(train_dataset)
+    
+    # m.train(train_dataset)

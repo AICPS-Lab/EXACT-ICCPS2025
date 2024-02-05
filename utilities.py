@@ -41,3 +41,19 @@ class sliding_windows(torch.nn.Module):
 
     def get_num_sliding_windows(self, total_length):
         return round((total_length - (self.width - self.step)) / self.step)
+    
+    
+def printc(text, color):
+    colors = {
+        "red": '\033[91m',
+        "green": '\033[92m',
+        "yellow": '\033[93m',
+        "blue": '\033[94m',
+        "magenta": '\033[95m',
+        "cyan": '\033[96m',
+        "white": '\033[97m',
+        "black": '\033[30m',
+    }
+    RESET = '\033[0m'
+    color_code = colors.get(color.lower(), '\033[97m')  # Default to white if color not found
+    print(color_code + text + RESET)
