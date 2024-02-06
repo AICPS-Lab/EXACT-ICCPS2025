@@ -3,7 +3,7 @@ import torch
 from config import Config
 from dataset import default_splitter
 from models import CNNModel, TransformerModel
-from utilities import get_device
+from utilities import Normalize, get_device
 import torchvision.transforms as transforms
 
 class DiceLoss(torch.nn.Module):
@@ -65,14 +65,14 @@ class Manager:
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), 0.5)
                 optimizer.step()
                 train_loss += loss.item()
-                if i % 100 == 0 and i > 0:
+                if i % 30 == 0 and i > 0:
                     cur_loss = train_loss / 100
                     print(f'Epoch {epoch}, iter {i}, loss {cur_loss}')
                     train_loss = 0
                     # check the accuracy of the model in this batch (classification):
                     preds = torch.argmax(output, dim=-1)
                     acc = (preds == label).float().mean()
-                    print(f'Epoch {epoch}, iter {i}, acc {acc}')
+                    # print(f'Epoch {epoch}, iter {i}, acc {acc}')
                     
                 # if i % 1000 == 0 and i > 0:
                 #     fig = plt.figure()
@@ -130,21 +130,22 @@ class Manager:
         # get current directory:
         import os
         abs_path = os.path.abspath(__file__)
-        datasets_folder = os.path.join(abs_path, 'datasets')
+        abs = os.path.dirname(abs_path)
+        datasets_folder = os.path.join(abs, 'datasets')
         if self.config['dataset'] == 'spar':
             folder_name = os.path.join(datasets_folder, 'spar')
         else:
             raise NotImplementedError
-        mean = (0.5)
-        std = (0.5)
+        mean = (0)
+        std = (1)
         transform = transforms.Compose(
             [
-                transforms.ToTensor(),
-                transforms.Normalize(mean, std)
+                Normalize(mean, std)
             ])
-        train_dataset, test_dataset = default_splitter(folder_name, config, split=False,)
+        train_dataset, test_dataset = default_splitter(folder_name, config, split=False, transform=transform)
         train_dl = torch.utils.data.DataLoader(train_dataset, batch_size=self.config['train']['batch_size'], shuffle=True,)
         test_dl = torch.utils.data.DataLoader(test_dataset, batch_size=self.config['train']['batch_size'], shuffle=True)
+        return train_dl, test_dl
         
         
         
@@ -158,4 +159,4 @@ if __name__ == "__main__":
     m = Manager(config)
 
     
-    # m.train(train_dataset)
+    m.train()

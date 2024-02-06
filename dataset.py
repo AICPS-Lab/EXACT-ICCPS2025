@@ -5,7 +5,7 @@ import pandas as pd
 from torch.utils.data import Dataset
 import torch
 from utilities import * 
-
+import torchvision
 
 def default_splitter(folder_name, config: dict, split=False, transform=None):
     """This is a custom dataset class for time series data.
@@ -99,7 +99,7 @@ class DefaultDataset(Dataset):
         for file in self.file_names:
             data = pd.read_csv(file)
             data = data.values
-            data = torch.from_numpy(data)[:, 1::].float()
+            data = torch.from_numpy(data)[:, 1:7].float()
             # create label length_0 = 0, length_-1 = 0, length_1:n-1 = 1
             label = torch.zeros(data.shape[0])
             label[1:-1] = 1
@@ -160,7 +160,7 @@ class NoiseDataset(Dataset):
         for file in self.file_names:
             data = pd.read_csv(file)
             data = data.values
-            data = torch.from_numpy(data)[:, 1::].float()
+            data = torch.from_numpy(data)[:, 1:7].float()
             # add noise:
             data, (begin_length, end_length) = self._add_noise(data)
             # create label length_0 = 0, length_-1 = 0, length_1:n-1 = 1
@@ -204,7 +204,7 @@ class ClassificationDataset:
             class_label = int(file.split('/')[-1].split('_')[1][1])
             data = pd.read_csv(file)
             data = data.values
-            data = torch.from_numpy(data)[:, 1::].float()
+            data = torch.from_numpy(data)[:, 1:7].float()
             if data.shape[0] <= self.width:
                 data = self._interpolate(data) #NOTE: interpolate the data to the same length otherwise it will be a problem
             placeholder_label = torch.zeros(data.shape[0]) #NOTE: placeholder in case of classification
@@ -238,5 +238,8 @@ if __name__ == '__main__':
     # Usage example
     folder_name = './datasets/spar9x'
     config = {'preprocess': {'method': 'classification', 'width': 50, 'step': 25}, 'model': 'lstm'}
-    train_dataset, test_dataset = default_splitter(folder_name, config, split=False)
-    len(train_dataset)
+    train_dataset, test_dataset = default_splitter(folder_name, config, split=False, transform=Normalize(mean=0, std=1))
+    
+    # check mean of the train:
+    print(train_dataset[0][0].mean(dim=0))
+    

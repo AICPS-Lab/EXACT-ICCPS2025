@@ -1,3 +1,5 @@
+import numpy as np
+from sklearn.discriminant_analysis import StandardScaler
 import torch
 
 
@@ -57,3 +59,44 @@ def printc(text, color):
     RESET = '\033[0m'
     color_code = colors.get(color.lower(), '\033[97m')  # Default to white if color not found
     print(color_code + text + RESET)
+
+
+class Normalize(torch.nn.Module):
+    def __init__(self, mean, std):
+        raise NotImplementedError
+        super(Normalize, self).__init__()
+        # Convert mean and std to tensors and reshape them to align with the last axis
+        self.mean = torch.tensor(mean).view(-1, 1)
+        self.std = torch.tensor(std).view(-1, 1)
+
+    def forward(self, input):
+        # check if the input has the same number of channels as the mean and std, or if mean and std is just one channel:
+        if self.mean.shape[-1] != 1 and input.shape[-1] != self.mean.shape[-1]:
+            raise ValueError(f"Input has {input.shape[-1]} channels, but mean has {self.mean.shape[-1]} channels.")
+        # std:
+        if self.std.shape[-1] != 1 and input.shape[-1] != self.std.shape[-1]:
+            raise ValueError(f"Input has {input.shape[-1]} channels, but std has {self.std.shape[-1]} channels.")
+        
+        
+        # Normalize each channel
+        return (input - self.mean) / self.std
+    
+    
+class StandardTransform(torch.nn.Module):
+    def __init__(self, scaler='standard'):
+        super(StandardTransform, self).__init__()
+        if scaler == 'standard':
+            self.scaler = StandardScaler()
+        else:
+            raise NotImplementedError('Only standard scaler is implemented')
+        
+    def __call__(self, data):
+        data = self.scaler.transform(data)
+        return data
+    
+    def fit(self, data):
+        n_samples, n_time_steps, n_features = data.shape
+        data_reshaped = data.reshape(-1, n_features)  # The shape becomes (n_samples * n_time_steps, n_features)
+        self.scaler.fit(data_reshaped)
+        printc('Fitted with mean: {}, and std: {}'.format(self.scaler.mean_, np.sqrt(self.scaler.var_)), color='red')
+        return self
