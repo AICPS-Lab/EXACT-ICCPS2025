@@ -1,7 +1,8 @@
+import os
 import numpy as np
 from sklearn.discriminant_analysis import StandardScaler
 import torch
-
+import pandas as pd
 
 def get_device():
     """
@@ -91,12 +92,26 @@ class StandardTransform(torch.nn.Module):
             raise NotImplementedError('Only standard scaler is implemented')
         
     def __call__(self, data):
-        data = self.scaler.transform(data)
-        return data
+        if data.ndim == 2:
+            data = self.scaler.transform(data)
+        else:
+            raise NotImplementedError('Only 2D data is supported')
+        return torch.tensor(data, dtype=torch.float32)
     
-    def fit(self, data):
+    def fit(self, data: torch.Tensor):
         n_samples, n_time_steps, n_features = data.shape
         data_reshaped = data.reshape(-1, n_features)  # The shape becomes (n_samples * n_time_steps, n_features)
         self.scaler.fit(data_reshaped)
         printc('Fitted with mean: {}, and std: {}'.format(self.scaler.mean_, np.sqrt(self.scaler.var_)), color='red')
         return self
+    
+    def fit(self, files: [str]):
+        # walk through the folder and load all the data into memory
+        data = []
+        for file in files:
+            data.append(pd.read_csv(file).to_numpy()[:, 1:7])
+        data = np.concatenate(data, axis=0)
+        self.scaler.fit(data)
+        printc('Fitted with mean: {}, and std: {}'.format(self.scaler.mean_, np.sqrt(self.scaler.var_)), color='red')
+        return self
+        

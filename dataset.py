@@ -7,7 +7,7 @@ import torch
 from utilities import * 
 import torchvision
 
-def default_splitter(folder_name, config: dict, split=False, transform=None):
+def default_splitter(folder_name, config: dict, split=False):
     """This is a custom dataset class for time series data.
     Specifically, it is using the typical way to load all the data into memory and 
     return data and label in __getitem__ method.
@@ -36,9 +36,9 @@ def default_splitter(folder_name, config: dict, split=False, transform=None):
     
     # partial insertion of variables:
     if method == 'default':
-        dataset = partial(DefaultDataset, width=width, step=step, transform=transform)
+        dataset = partial(DefaultDataset, width=width, step=step)
     elif method == 'noise-both-end':
-        dataset = partial(NoiseDataset, width=width, step=step, transform=transform)
+        dataset = partial(NoiseDataset, width=width, step=step)
     elif method == 'classification':
         classes = []
         # re-organize the class label as it does not follow the convention: 0 to N-1
@@ -49,7 +49,7 @@ def default_splitter(folder_name, config: dict, split=False, transform=None):
         classes = sorted(classes)
         # print in red:
         printc(f'Total of Classes: {classes}', 'red')
-        dataset = partial(ClassificationDataset, classes=classes, width=width, step=step, transform=transform)
+        dataset = partial(ClassificationDataset, classes=classes, width=width, step=step)
     else:
         raise NotImplementedError
 
@@ -57,12 +57,14 @@ def default_splitter(folder_name, config: dict, split=False, transform=None):
         train_file_names = file_names[:int(len(file_names)*0.8)]
         val_file_names = file_names[int(len(file_names)*0.8):int(len(file_names)*0.9)]
         test_file_names = file_names[int(len(file_names)*0.9):]
-        return dataset(train_file_names), dataset(val_file_names), dataset(test_file_names)
+        transform = StandardTransform().fit(train_file_names)
+        return dataset(train_file_names, transform=transform), dataset(val_file_names, transform=transform), dataset(test_file_names, transform=transform)
     else:
         # 2 ways split
         train_file_names = file_names[:int(len(file_names)*0.8)]
         test_file_names = file_names[int(len(file_names)*0.8):]
-        return dataset(train_file_names), dataset(test_file_names)
+        transform = StandardTransform().fit(train_file_names)
+        return dataset(train_file_names, transform=transform), dataset(test_file_names, transform=transform)
 
 class DefaultDataset(Dataset):
     """
@@ -238,7 +240,7 @@ if __name__ == '__main__':
     # Usage example
     folder_name = './datasets/spar9x'
     config = {'preprocess': {'method': 'classification', 'width': 50, 'step': 25}, 'model': 'lstm'}
-    train_dataset, test_dataset = default_splitter(folder_name, config, split=False, transform=Normalize(mean=0, std=1))
+    train_dataset, test_dataset = default_splitter(folder_name, config, split=False)
     
     # check mean of the train:
     print(train_dataset[0][0].mean(dim=0))

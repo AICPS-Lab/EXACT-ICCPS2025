@@ -56,13 +56,13 @@ class Manager:
         for epoch in range(epochs):
             for i, (data, label) in enumerate(self.train_dl):
                 data = data.to(self.device)
-                label = label.to(self.device).float()
+                label = label.to(self.device).long()
                 optimizer.zero_grad()
                 output = self.model(data)
                 # print(output.shape, label.shape)
                 loss = criterion(output, label)
                 loss.backward()
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), 0.5)
+                # torch.nn.utils.clip_grad_norm_(self.model.parameters(), 0.5)
                 optimizer.step()
                 train_loss += loss.item()
                 if i % 30 == 0 and i > 0:
@@ -136,13 +136,7 @@ class Manager:
             folder_name = os.path.join(datasets_folder, 'spar')
         else:
             raise NotImplementedError
-        mean = (0)
-        std = (1)
-        transform = transforms.Compose(
-            [
-                Normalize(mean, std)
-            ])
-        train_dataset, test_dataset = default_splitter(folder_name, config, split=False, transform=transform)
+        train_dataset, test_dataset = default_splitter(folder_name, config, split=False)
         train_dl = torch.utils.data.DataLoader(train_dataset, batch_size=self.config['train']['batch_size'], shuffle=True,)
         test_dl = torch.utils.data.DataLoader(test_dataset, batch_size=self.config['train']['batch_size'], shuffle=True)
         return train_dl, test_dl
