@@ -39,7 +39,10 @@ class sliding_windows(torch.nn.Module):
     def forward(self, input_time_series, labels):
         input_transformed = torch.swapaxes(input_time_series.unfold(-2, size=self.width, step=self.step), -2, -1)
         # For labels, we only have one dimension, so we unfold along that dimension
-        labels_transformed = labels.unfold(0, self.width, self.step)
+        if labels != None:
+            labels_transformed = labels.unfold(0, self.width, self.step)
+        else:
+            labels_transformed = None
         return input_transformed, labels_transformed
 
     def get_num_sliding_windows(self, total_length):
