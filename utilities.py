@@ -1,8 +1,17 @@
 import os
+import random
 import numpy as np
 from sklearn.discriminant_analysis import StandardScaler
 import torch
 import pandas as pd
+def seed(sd=0, cudnn=False, deterministic=False):
+    np.random.seed(sd)
+    random.seed(sd)
+    torch.manual_seed(sd)
+    torch.backends.cudnn.benchmark = cudnn
+    torch.cuda.manual_seed(sd)
+    torch.use_deterministic_algorithms(deterministic)
+
 
 def get_device():
     """
@@ -17,7 +26,7 @@ def get_device():
     # Check for CUDA availability
     if torch.cuda.is_available():
         print("CUDA is available.")
-        return torch.device("cuda:1")
+        return torch.device("cuda:1") # Use the second GPU
 
     
     # Check the reasons for MPS unavailability
