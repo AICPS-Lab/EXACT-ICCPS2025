@@ -2,3 +2,4 @@
 **.DS_Store
 .DS_Store
 datasets/OpportunityUCIDataset/loco_2.npy
+datasets/OpportunityUCIDataset/loco_2_mask.npy

@@ -97,7 +97,7 @@ def reset_label(dataCollection, locomotion):
             dataCollection.loc[dataCollection.HL_Activity == j, 'HL_Activity'] = mapping[j]
     return dataCollection
 
-def segment_locomotion(dataCollection, window_size): # segment the data and create a dataset with locomotion classes as labels
+def segment_locomotion(dataCollection, window_size, step_size): # segment the data and create a dataset with locomotion classes as labels
     #remove locomotions with 0
     dataCollection = dataCollection.drop(dataCollection[dataCollection.Locomotion == 0].index)
     # reset labels
@@ -117,7 +117,7 @@ def segment_locomotion(dataCollection, window_size): # segment the data and crea
         if data[start][loco_i] == data[end][loco_i] and data[start][-1] == data[end][-1] : # if the frame contains the same activity and from the file
             X.append(data[start:(end+1),0:loco_i])
             y.append(data[start][loco_i])
-            start += window_size//2 # 50% overlap
+            start += step_size # 50% overlap
         else: # if the frame contains different activities or from different objects, find the next start point
             while start + window_size-1 < n:
                 if data[start][loco_i] != data[start+1][loco_i]:
@@ -126,6 +126,22 @@ def segment_locomotion(dataCollection, window_size): # segment the data and crea
             start += 1
     print(np.asarray(X).shape, np.asarray(y).shape)
     return {'inputs' : np.asarray(X), 'labels': np.asarray(y,dtype=int)}
+
+def locomotion_mask(dataCollection: pd.DataFrame): # segment the data and create a dataset with locomotion classes as labels
+    #remove locomotions with 0
+    dataCollection = dataCollection.drop(dataCollection[dataCollection.Locomotion == 0].index)
+    # reset labels
+    dataCollection= reset_label(dataCollection,True)
+    #print(dataCollection.columns)
+    loco_i = dataCollection.columns.get_loc("Locomotion")
+    #convert the data frame to numpy array
+    data = dataCollection.to_numpy()
+    inputs = data[:,0:loco_i]
+    label = data[:,loco_i]
+    #segment the data
+
+    print('data shape:', inputs.shape, 'locomotion index:', loco_i, 'label shape:', label.shape)
+    return {'inputs' : np.asarray(inputs), 'labels': np.asarray(label,dtype=int)}
 
 def segment_high_level(dataCollection, window_size, step_size): # segment the data and create a dataset with high level activities as labels
     #remove locomotions with 0
@@ -198,7 +214,7 @@ def save_data(data,file_name): # save the data in h5 format
     print('Done.')    
 
 if __name__ == "__main__":   
-    window_size = 50   
+    window_size = 100   
     df = read_files()
     df = dataCleaning(df)
     print(len(df.columns))
@@ -206,8 +222,12 @@ if __name__ == "__main__":
     # plot_series(df, "Acc-RKN^-accX", 4, 2, 100, 150)
     
     # loco_filename = "loco_2.h5" # "loco.h5" is to save locomotion dataset. 
-    data_loco = segment_locomotion(df, window_size, step_size=window_size//2)
-    np.save('loco_2.npy', data_loco)
+    # data_loco = segment_locomotion(df, window_size, step_size=window_size//2)
+    # np.save('./datasets/OpportunityUCIDataset/loco_2.npy', data_loco)
+    
+    data_loco = locomotion_mask(df)
+    # np.save('./datasets/OpportunityUCIDataset/loco_2_mask.npy', data_loco)
+    
     # save_data(data_loco,loco_filename)
     
     # hl_filename = "hl_2.h5" #"hl.h5" is to save high level dataset
