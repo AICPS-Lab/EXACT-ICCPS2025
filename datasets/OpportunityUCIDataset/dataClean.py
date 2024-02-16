@@ -226,7 +226,7 @@ if __name__ == "__main__":
     # np.save('./datasets/OpportunityUCIDataset/loco_2.npy', data_loco)
     
     data_loco = locomotion_mask(df)
-    # np.save('./datasets/OpportunityUCIDataset/loco_2_mask.npy', data_loco)
+    np.save('./datasets/OpportunityUCIDataset/loco_2_mask.npy', data_loco)
     
     # save_data(data_loco,loco_filename)
     
