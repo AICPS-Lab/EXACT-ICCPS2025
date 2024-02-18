@@ -63,8 +63,8 @@ class Segmenter(nn.Module):
             x = layer(x)
         x = self.decoder_norm(x)
 
-        patches = self.patch_proj(x[:, :-self.num_classes]) # shape 128, 75, 64
-        cls_seg_feat = self.classes_proj(x[:, -self.num_classes:])
+        patches = self.patch_proj(x[:, :-self.num_classes]) # shape 128, 75, 64 (B, Time_length, embedding)
+        cls_seg_feat = self.classes_proj(x[:, -self.num_classes:]) # shape 128, 7, 64 (B, num_classes, embedding)
         # cls_seg_feat = nn.functional.dropout(cls_seg_feat, p=0.5, training=self.training)
         patches = F.normalize(patches, dim=2, p=2)
         cls_seg_feat = F.normalize(cls_seg_feat, dim=2, p=2)
@@ -73,6 +73,23 @@ class Segmenter(nn.Module):
         masks = self.mask_norm(masks).contiguous().view(b, h, -1)
 
         return masks
+    def get_embedding(self, inputs):
+        x = inputs.permute(0, 2, 1) # b h c
+        b, c, h = x.shape
+        x = x.view(b, c, -1).permute(0, 2, 1)
+
+        x = self.dec_proj(x)
+        cls_emb = self.cls_emb.expand(x.size(0), -1, -1)
+        x = torch.cat((x, cls_emb), 1)
+        for layer in self.layers: 
+            # layer norm:
+            x = self.att_norm(x)
+            x = layer(x)
+        x = self.decoder_norm(x)
+
+        patches = self.patch_proj(x[:, :-self.num_classes]) # shape 128, 75, 64 (B, Time_length, embedding)
+        cls_seg_feat = self.classes_proj(x[:, -self.num_classes:])
+        return patches, cls_seg_feat 
 
     def forward_pred(self, inputs):
         masks = self.forward(inputs)
