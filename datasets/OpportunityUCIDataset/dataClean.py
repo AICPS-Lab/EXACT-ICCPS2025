@@ -48,11 +48,17 @@ def read_files():
                      './datasets/OpportunityUCIDataset/dataset/S4-Drill.dat',
                      ]
     col_names = []
-    with open('./datasets/OpportunityUCIDataset/col_names','r') as f:# a file with all column names was created
+    with open('./datasets/OpportunityUCIDataset/col_names_original','r') as f:# a file with all column names was created
         lines = f.read().splitlines()
         for line in lines:
             col_names.append(line)
     print(len(col_names))
+    kept_col_names = []
+    with open('./datasets/OpportunityUCIDataset/col_names','r') as f:# a file with only kept column names was created
+        lines = f.read().splitlines()
+        for line in lines:
+            kept_col_names.append(line)
+    print('kept col name:', len(kept_col_names))
        
     dataCollection = pd.DataFrame()
     for i, file in enumerate(list_of_files):
@@ -64,7 +70,7 @@ def read_files():
         #break; # for testing short version, need to delete later       
     dataCollection.reset_index(drop=True, inplace=True)
     
-    return dataCollection
+    return dataCollection[kept_col_names]
 
 
 def dataCleaning(dataCollection):
@@ -88,9 +94,9 @@ def dataCleaning(dataCollection):
 
 def reset_label(dataCollection, locomotion): 
     # Convert original labels {1, 2, 4, 5, 101, 102, 103, 104, 105} to new labels. 
-    mapping = {1:1, 2:2, 5:0, 4:3, 101: 0, 102:1, 103:2, 104:3, 105:4} # old activity id to new activity Id 
+    mapping = {1:1, 2:2, 5:4, 4:3, 101: 0, 102:1, 103:2, 104:3, 105:4} # old activity id to new activity Id 
     if locomotion: #new labels [0,1,2,3]
-        for i in [5,4]: # reset ids in Locomotion column
+        for i in [1,2,4,5]: # reset ids in Locomotion column
             dataCollection.loc[dataCollection.Locomotion == i, 'Locomotion'] = mapping[i]
     else: # reset the high level activities ; new labels [0,1,2,3,4]
         for j in [101,102,103,104,105]:# reset ids in HL_activity column
@@ -128,12 +134,11 @@ def segment_locomotion(dataCollection, window_size, step_size): # segment the da
     return {'inputs' : np.asarray(X), 'labels': np.asarray(y,dtype=int)}
 
 def locomotion_mask(dataCollection: pd.DataFrame): # segment the data and create a dataset with locomotion classes as labels
-    #remove locomotions with 0
-    dataCollection = dataCollection.drop(dataCollection[dataCollection.Locomotion == 0].index)
     # reset labels
     dataCollection= reset_label(dataCollection,True)
     #print(dataCollection.columns)
     loco_i = dataCollection.columns.get_loc("Locomotion")
+    print(df['Locomotion'].value_counts().to_dict())
     #convert the data frame to numpy array
     data = dataCollection.to_numpy()
     inputs = data[:,0:loco_i]
@@ -141,6 +146,21 @@ def locomotion_mask(dataCollection: pd.DataFrame): # segment the data and create
     #segment the data
 
     print('data shape:', inputs.shape, 'locomotion index:', loco_i, 'label shape:', label.shape)
+    return {'inputs' : np.asarray(inputs), 'labels': np.asarray(label,dtype=int)}
+
+def hl_activity_mask(dataCollection: pd.DataFrame): # segment the data and create a dataset with locomotion classes as labels
+    dataCollection= reset_label(dataCollection,False)
+    #print(dataCollection.columns)
+    HL_Activity_i = dataCollection.columns.get_loc("HL_Activity")
+    print(df['HL_Activity'].value_counts().to_dict())
+    #convert the data frame to numpy array
+    data = dataCollection.to_numpy()
+    inputs = data[:,0:(HL_Activity_i-1)]
+    label = data[:,HL_Activity_i]
+    print(label)
+    #segment the data
+
+    print('data shape:', inputs.shape, 'HL_Activity index:', HL_Activity_i, 'label shape:', label.shape)
     return {'inputs' : np.asarray(inputs), 'labels': np.asarray(label,dtype=int)}
 
 def segment_high_level(dataCollection, window_size, step_size): # segment the data and create a dataset with high level activities as labels
@@ -216,6 +236,8 @@ def save_data(data,file_name): # save the data in h5 format
 if __name__ == "__main__":   
     window_size = 100   
     df = read_files()
+    # figure out how much each HL_Activity has {0: 0, 1: 0, 2: 0, 3: 0, 4: 0} 
+    print(df['HL_Activity'].value_counts().to_dict())
     df = dataCleaning(df)
     print(len(df.columns))
     #plot_series(df, colname, act, file_index, start, end)
@@ -226,6 +248,13 @@ if __name__ == "__main__":
     # np.save('./datasets/OpportunityUCIDataset/loco_2.npy', data_loco)
     
     data_loco = locomotion_mask(df)
+    # two subplots, one for inputs, one for labels: sharing x:
+    fig, axs = plt.subplots(2)
+    axs[0].plot(data_loco['inputs'])
+    axs[0].set_title('inputs')
+    axs[1].plot(data_loco['labels'])
+    axs[1].set_title('labels')
+    plt.show()
     np.save('./datasets/OpportunityUCIDataset/loco_2_mask.npy', data_loco)
     
     # save_data(data_loco,loco_filename)
