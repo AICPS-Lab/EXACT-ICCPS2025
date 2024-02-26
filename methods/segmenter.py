@@ -68,7 +68,6 @@ class Segmenter(nn.Module):
         # cls_seg_feat = nn.functional.dropout(cls_seg_feat, p=0.5, training=self.training)
         patches = F.normalize(patches, dim=2, p=2)
         cls_seg_feat = F.normalize(cls_seg_feat, dim=2, p=2)
-        # print(patches.shape)
         masks = patches @ cls_seg_feat.transpose(1, 2)
         masks = self.mask_norm(masks).contiguous().view(b, h, -1)
 

@@ -47,12 +47,10 @@ class time_FewShotSeg(nn.Module):
         assert type(supp_imgs) in (list, torch.Tensor) and type(supp_imgs[0]) in (list, torch.Tensor) and type(supp_imgs[0][0]) == torch.Tensor, \
             "The support images should be a list of lists of tensors, but got supp_imgs: {}, supp_imgs[0]: {}, supp_imgs[0][0]: {}".format(
                 type(supp_imgs), type(supp_imgs[0]), type(supp_imgs[0][0]))
-        printc('n_ways:', n_ways, 'n_shots:', n_shots, 'n_queries:', n_queries, 'batch_size:', batch_size, 'img_size:', img_size)
         ###### Extract features ######
         imgs_concat = torch.cat([torch.cat(way, dim=0) for way in supp_imgs]
                                 + [torch.cat(qry_imgs, dim=0),], dim=0)
-        printc('imgs_concat shape:', imgs_concat.shape)
-        temp = self.encoder.get_embedding(imgs_concat.float().to(self.device))
+        temp = self.encoder.get_embedding(imgs_concat.transpose(1,2).float().to(self.device))
         img_fts = temp[0]
         fts_size = img_fts.shape[-1:] # this is the length, aka 100 (Time series length)
         
@@ -73,19 +71,18 @@ class time_FewShotSeg(nn.Module):
             ###### Extract prototype ######
             supp_fg_fts = [[self.getFeatures(supp_fts[way, shot, [epi]],
                                              fore_mask[way, shot, [epi]])
+            
                             for shot in range(n_shots)] for way in range(n_ways)] # 1 x C (channel embedding)
             supp_bg_fts = [[self.getFeatures(supp_fts[way, shot, [epi]],
                                              back_mask[way, shot, [epi]])
                             for shot in range(n_shots)] for way in range(n_ways)] # 1 x C (channel embedding)
             ###### Obtain the prototypes######
             fg_prototypes, bg_prototype = self.getPrototype(supp_fg_fts, supp_bg_fts) 
-
             ###### Compute the distance ######
             prototypes = [bg_prototype,] + fg_prototypes
             dist = [self.calDist(qry_fts[:, epi], prototype) for prototype in prototypes]
             pred = torch.stack(dist, dim=1)
             outputs.append(F.interpolate(pred, size=img_size, mode='linear'))
-
             ###### Prototype alignment loss ######
             if self.config['align']:
                 align_loss_epi = self.alignLoss(qry_fts[:, epi], pred, supp_fts[:, :, epi],
@@ -93,7 +90,6 @@ class time_FewShotSeg(nn.Module):
                 align_loss += align_loss_epi
         output = torch.stack(outputs, dim=1)  # N x B x (1 + Wa) x H x W
         output = output.view(-1, *output.shape[2:])
-        print(output.shape)
         return output, align_loss / batch_size
         
     def calDist(self, fts, prototype, scaler=20):
@@ -106,7 +102,6 @@ class time_FewShotSeg(nn.Module):
             prototype: prototype of one semantic class
                 expect shape: 1 x C
         """
-        print('CALDIST fts shape:', fts.shape, 'prototype shape:', prototype.shape)
         dist = F.cosine_similarity(fts, prototype[..., None], dim=1) * scaler
         return dist
         
@@ -127,10 +122,6 @@ class time_FewShotSeg(nn.Module):
         """
         # interpolate on three dim data:
         fts = F.interpolate(fts, size=mask.shape[-1:], mode='linear')
-        # print(mask.shape[-1:])
-        # fts = fts
-        # print(fts.shape)
-        # print('fts shape:', fts.shape)x
         masked_fts = torch.sum(fts * mask[None, ...], dim=(2)) \
             / (mask[None, ...].sum(dim=(2)) + 1e-5)
         return masked_fts
@@ -173,10 +164,8 @@ class time_FewShotSeg(nn.Module):
         binary_masks = [pred_mask == i for i in range(1 + n_ways)]
         skip_ways = [i for i in range(n_ways) if binary_masks[i + 1].sum() == 0]
         pred_mask = torch.stack(binary_masks, dim=1).float()
-        # print(pred_mask.shape, qry_fts.shape, (qry_fts.unsqueeze(1) * pred_mask).shape)
         qry_prototypes = torch.sum(qry_fts.unsqueeze(1) * pred_mask, dim=(0, 3))
         qry_prototypes = qry_prototypes / (pred_mask.sum((0, 3)) + 1e-5)
-        # print('qry_prototypes shape:', qry_prototypes.shape)
         # Compute the support loss
         loss = 0
         for way in range(n_ways):

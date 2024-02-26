@@ -69,17 +69,14 @@ class Segmenter(nn.Module):
         # cls_seg_feat = nn.functional.dropout(cls_seg_feat, p=0.5, training=self.training)
         patches = F.normalize(patches, dim=2, p=2)
         cls_seg_feat = F.normalize(cls_seg_feat, dim=2, p=2)
-        # print(patches.shape)
         masks = patches @ cls_seg_feat.transpose(1, 2)
         masks = self.mask_norm(masks).contiguous().view(b, h, -1)
 
         return masks
     def get_embedding(self, inputs):
         x = inputs.permute(0, 2, 1) # b h c
-        printc('x shape:', x.shape)
         b, c, h = x.shape
         x = x.view(b, c, -1).permute(0, 2, 1)
-        printc('x shape:', x.shape)
         x = self.dec_proj(x)
         cls_emb = self.cls_emb.expand(x.size(0), -1, -1)
         x = torch.cat((x, cls_emb), 1)
