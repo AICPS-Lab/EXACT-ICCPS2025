@@ -58,7 +58,7 @@ class sliding_windows(torch.nn.Module):
         return round((total_length - (self.width - self.step)) / self.step)
     
     
-def printc(text, color):
+def printc(*args, color='red'):
     colors = {
         "red": '\033[91m',
         "green": '\033[92m',
@@ -71,6 +71,9 @@ def printc(text, color):
     }
     RESET = '\033[0m'
     color_code = colors.get(color.lower(), '\033[97m')  # Default to white if color not found
+    
+    # Convert all arguments to string and join them with a space
+    text = ' '.join(map(str, args))
     print(color_code + text + RESET)
 
 
