@@ -30,9 +30,13 @@ def main():
     model.train()
     for i_iter, sample_batch in enumerate(train_loader):
         support_images, support_mask, support_labels, query_images, query_mask, query_labels, classes = sample_batch
-        fg_mask = support_mask
-        bg_mask = torch.where(fg_mask == 0, 1, 0)
         
+        support_images = support_images.float().to(device)
+        support_mask = support_mask.float().to(device)
+        query_images = query_images.float().to(device)
+        query_mask = query_mask.float().to(device)
+        fg_mask = support_mask
+        bg_mask = torch.where(fg_mask == 0, 1, 0).to(device)
         optimizer.zero_grad()
         query_pred, align_loss = model(support_images, fg_mask, bg_mask, query_images)
         query_mask = query_mask.reshape(-1, *query_mask.shape[-1:]).long()
