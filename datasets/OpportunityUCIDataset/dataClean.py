@@ -141,7 +141,9 @@ def locomotion_mask(dataCollection: pd.DataFrame): # segment the data and create
     print(df['Locomotion'].value_counts().to_dict())
     #convert the data frame to numpy array
     data = dataCollection.to_numpy()
-    inputs = data[:,0:loco_i]
+    inputs = data[:,0:loco_i] / 1000
+    # acc = acc / 9.81 # convert to g
+    inputs[:,0:3] = inputs[:,0:3] 
     label = data[:,loco_i]
     #segment the data
 
@@ -249,11 +251,13 @@ if __name__ == "__main__":
     
     data_loco = locomotion_mask(df)
     # two subplots, one for inputs, one for labels: sharing x:
-    fig, axs = plt.subplots(2)
-    axs[0].plot(data_loco['inputs'])
-    axs[0].set_title('inputs')
-    axs[1].plot(data_loco['labels'])
-    axs[1].set_title('labels')
+    fig, axs = plt.subplots(3)
+    axs[0].plot(data_loco['inputs'][:, 0:3])
+    axs[0].set_title('inputs a')
+    axs[1].plot(data_loco['inputs'][:, 3:6])
+    axs[1].set_title('inputs g')
+    axs[2].plot(data_loco['labels'])
+    axs[2].set_title('labels')
     plt.show()
     np.save('./datasets/OpportunityUCIDataset/loco_2_mask.npy', data_loco)
     
