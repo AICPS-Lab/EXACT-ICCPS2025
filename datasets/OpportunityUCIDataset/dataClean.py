@@ -60,15 +60,17 @@ def read_files():
             kept_col_names.append(line)
     print('kept col name:', len(kept_col_names))
        
-    dataCollection = pd.DataFrame()
+    dataCollectionList = []  # A list to collect all the DataFrames
+
     for i, file in enumerate(list_of_files):
-        print(file," is reading...")
+        print(file, " is reading...")
         procData = pd.read_table(file, header=None, sep='\s+')
         procData.columns = col_names
-        procData['file_index'] = i # put the file index at the end of the row
-        dataCollection = dataCollection.append(procData, ignore_index=True)       
-        #break; # for testing short version, need to delete later       
-    dataCollection.reset_index(drop=True, inplace=True)
+        procData['file_index'] = i  # Add the file index at the end of the row
+        dataCollectionList.append(procData)  # Append DataFrame to the list
+        
+    # Concatenate all DataFrames in the list
+    dataCollection = pd.concat(dataCollectionList, ignore_index=True)
     
     return dataCollection[kept_col_names]
 
