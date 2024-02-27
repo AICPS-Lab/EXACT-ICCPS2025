@@ -48,8 +48,8 @@ class time_FewShotSeg(nn.Module):
             "The support images should be a list of lists of tensors, but got supp_imgs: {}, supp_imgs[0]: {}, supp_imgs[0][0]: {}".format(
                 type(supp_imgs), type(supp_imgs[0]), type(supp_imgs[0][0]))
         ###### Extract features ######
-        imgs_concat = torch.cat([supp_imgs.reshape(-1, *supp_imgs.shape[-2:]), 
-                                 qry_imgs.reshape(-1, *qry_imgs.shape[-2:])], dim=0)
+        imgs_concat = torch.cat([supp_imgs.view(-1, *supp_imgs.shape[-2:]), 
+                                 qry_imgs.view(-1, *qry_imgs.shape[-2:])], dim=0)
         temp = self.encoder.get_embedding(imgs_concat.float().to(self.device))
         img_fts = temp[0]
         fts_size = img_fts.shape[-1:] # this is the length, aka 100 (Time series length)
