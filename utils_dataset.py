@@ -28,7 +28,7 @@ class CustomDataset(Dataset):
             raise NotImplementedError
             return self.transform(self.data[idx]), self.label[idx]
         cur_label = self.label[idx]
-        cur_label = np.where(cur_label == 0, 0, 1)
+        # cur_label = np.where(cur_label == 0, 0, 1)
         return torch.tensor(np.concatenate((self.data[idx], cur_label[np.newaxis].T), axis=1)), torch.tensor(self.class_labels[idx], dtype=torch.int16)
     def get_labels(self):
         return self.class_labels

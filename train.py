@@ -10,8 +10,11 @@ from utils_loader import get_dataloaders
 
 def main():
     config = {
-        'n_way': 1,
+        'allowed_label': [1, 2,3,4],
+        'n_way': 3,
         'n_shot': 4,
+        'batch_size': 2,
+        
         'n_query': 2,
         'n_tasks_per_epoch': 500,
         'align': True,
@@ -28,12 +31,12 @@ def main():
     for i_iter, sample_batch in enumerate(train_loader):
         support_images, support_mask, support_labels, query_images, query_mask, query_labels, classes = sample_batch
         fg_mask = support_mask
-        bg_mask = [[torch.where(support_mask[i][j] ==1, 0, 1) for j in range(len(support_mask[0]))] for i in range(len(support_mask))]
+        bg_mask = torch.where(fg_mask == 0, 1, 0)
         
         optimizer.zero_grad()
         query_pred, align_loss = model(support_images, fg_mask, bg_mask, query_images)
-
-        query_loss = criterion(query_pred, torch.stack(query_mask).long())
+        query_mask = query_mask.reshape(-1, *query_mask.shape[-1:]).long()
+        query_loss = criterion(query_pred, query_mask)
         loss = query_loss + align_loss * 1
         loss.backward()
         optimizer.step()

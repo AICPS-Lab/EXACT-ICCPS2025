@@ -35,27 +35,15 @@ def get_dataloaders(config):
     n_shot = config['n_shot']
     n_query = config['n_query']
     n_tasks_per_epoch = config['n_tasks_per_epoch']
-    train_sampler = TaskSampler(train_set, n_way, n_shot, n_query, n_tasks_per_epoch)
-    def wrapped_collate_fn(batch):
-        # 5 -> 7 of tuples:
-        # (support_set, query_set, support_labels, query_labels, classes)
-        original_output = train_sampler.episodic_collate_fn(batch)
-        (example_support_images, example_support_labels, example_query_images, example_query_labels, example_class_ids )= original_output
-        example_support_images, example_support_images_labels = example_support_images[:, :, :-1], example_support_images[:, :, -1]
-        example_query_images, example_query_images_labels = example_query_images[:, :, :-1], example_query_images[:, :, -1]
-        example_support_images = [ [example_support_images[i+j, :, :].transpose(0, 1).unsqueeze(0) for j in range(n_shot)] for i in range(n_way)]
-        example_support_images_labels = [ [example_support_images_labels[i+j, :].unsqueeze(0) for j in range(n_shot)] for i in range(n_way)]
-        example_support_labels = [example_support_labels[i].unsqueeze(0) for i in range(n_way)]
-        example_query_images = [example_query_images[i, :, :].transpose(0, 1).unsqueeze(0) for i in range(n_query)]
-        example_query_images_labels = [example_query_images_labels[i, :] for i in range(n_query)]
-        example_query_labels = [example_query_labels[i] for i in range(n_query)]
-        return (example_support_images, example_support_images_labels, example_support_labels, example_query_images, example_query_images_labels, example_query_labels, example_class_ids)
+    allowed_label = config['allowed_label']
+    batch_size = config['batch_size']
+    train_sampler = TaskSampler(train_set, allowed_label, n_way, n_shot, batch_size, n_query, n_tasks_per_epoch)
     train_loader = DataLoader(
         train_set,
         batch_sampler=train_sampler,
         num_workers=0,
         pin_memory=True,
-        collate_fn=wrapped_collate_fn,
+        collate_fn=train_sampler.episodic_collate_fn,
     )
     # val_loader = DataLoader(
     #     val_set,
@@ -69,7 +57,7 @@ def get_dataloaders(config):
         batch_sampler=train_sampler,
         num_workers=0,
         pin_memory=True,
-        collate_fn=wrapped_collate_fn,
+        collate_fn=train_sampler.episodic_collate_fn,
     )
     return train_loader, test_loader
 

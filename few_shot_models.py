@@ -41,27 +41,25 @@ class time_FewShotSeg(nn.Module):
         """
         n_ways = len(supp_imgs)
         n_shots = len(supp_imgs[0])
-        n_queries = len(qry_imgs)
+        n_queries = len(qry_imgs[0])
         batch_size = supp_imgs[0][0].shape[0]
-        img_size = supp_imgs[0][0].shape[-1:]
+        mts_size = supp_imgs[0][0].shape[-2]
         assert type(supp_imgs) in (list, torch.Tensor) and type(supp_imgs[0]) in (list, torch.Tensor) and type(supp_imgs[0][0]) == torch.Tensor, \
             "The support images should be a list of lists of tensors, but got supp_imgs: {}, supp_imgs[0]: {}, supp_imgs[0][0]: {}".format(
                 type(supp_imgs), type(supp_imgs[0]), type(supp_imgs[0][0]))
         ###### Extract features ######
-        imgs_concat = torch.cat([torch.cat(way, dim=0) for way in supp_imgs]
-                                + [torch.cat(qry_imgs, dim=0),], dim=0)
-        temp = self.encoder.get_embedding(imgs_concat.transpose(1,2).float().to(self.device))
+        imgs_concat = torch.cat([supp_imgs.reshape(-1, *supp_imgs.shape[-2:]), 
+                                 qry_imgs.reshape(-1, *qry_imgs.shape[-2:])], dim=0)
+        temp = self.encoder.get_embedding(imgs_concat.float().to(self.device))
         img_fts = temp[0]
         fts_size = img_fts.shape[-1:] # this is the length, aka 100 (Time series length)
         
         supp_fts = img_fts[:n_ways * n_shots * batch_size].view(
             n_ways, n_shots, batch_size, -1, *fts_size)
         qry_fts = img_fts[n_ways * n_shots * batch_size:].view(
-            n_queries, batch_size, -1, *fts_size)
-        fore_mask = torch.stack([torch.stack(way, dim=0)
-                                 for way in fore_mask], dim=0)
-        back_mask = torch.stack([torch.stack(way, dim=0)
-                                 for way in back_mask], dim=0)
+            n_ways* n_queries, batch_size, -1, *fts_size)
+        # fore_mask = fore_mask.reshape(-1, *fore_mask.shape[-1:])
+        # back_mask = back_mask.reshape(-1, *back_mask.shape[-1:])
         
 
         ###### Compute loss ######
@@ -82,7 +80,7 @@ class time_FewShotSeg(nn.Module):
             prototypes = [bg_prototype,] + fg_prototypes
             dist = [self.calDist(qry_fts[:, epi], prototype) for prototype in prototypes]
             pred = torch.stack(dist, dim=1)
-            outputs.append(F.interpolate(pred, size=img_size, mode='linear'))
+            outputs.append(F.interpolate(pred, size=mts_size, mode='linear'))
             ###### Prototype alignment loss ######
             if self.config['align']:
                 align_loss_epi = self.alignLoss(qry_fts[:, epi], pred, supp_fts[:, :, epi],
