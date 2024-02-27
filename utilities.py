@@ -26,7 +26,7 @@ def get_device():
     # Check for CUDA availability
     if torch.cuda.is_available():
         print("CUDA is available.")
-        return torch.device("cuda:1") # Use the second GPU
+        return torch.device("cuda")
 
     
     # Check the reasons for MPS unavailability
