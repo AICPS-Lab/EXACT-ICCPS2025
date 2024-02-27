@@ -1,7 +1,7 @@
 import numpy as np
 from sklearn.model_selection import train_test_split
 import torch
-from task_sampler import TaskSampler
+from TaskSampler import TaskSampler
 
 from utilities import sliding_windows
 from utils_dataset import CustomDataset
