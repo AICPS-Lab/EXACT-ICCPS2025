@@ -21,7 +21,7 @@ def main():
     }
     train_loader, test_loader = get_dataloaders(config)
     device = torch.device('cpu')
-    segmenter = Segmenter(embed_dims=64, num_classes=2).float().to(device)
+    segmenter = Segmenter(embed_dims=64, num_classes=config['n_way']).float().to(device)
     model = time_FewShotSeg(segmenter, device=device, cfg=config).float().to(device)
     
     # train the model

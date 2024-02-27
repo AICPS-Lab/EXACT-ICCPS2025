@@ -180,7 +180,7 @@ class time_FewShotSeg(nn.Module):
                 # Construct the support Ground-Truth segmentation
                 supp_label = torch.full_like(fore_mask[way, shot], -1,
                                              device=img_fts.device).long() # not fore or back?
-                supp_label[fore_mask[way, shot] == 1] = 1
+                supp_label[fore_mask[way, shot] >= 1] = 1
                 supp_label[back_mask[way, shot] == 1] = 0
                 # Compute Loss
                 loss = loss + F.cross_entropy(
