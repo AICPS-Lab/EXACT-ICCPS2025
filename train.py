@@ -18,6 +18,8 @@ def main():
         'n_query': 2,
         'n_tasks_per_epoch': 500,
         'align': True,
+        
+        'epochs':10
     }
     train_loader, test_loader = get_dataloaders(config)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -28,29 +30,31 @@ def main():
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
     model.train()
-    for i_iter, sample_batch in enumerate(train_loader):
-        support_images, support_mask, support_labels, query_images, query_mask, query_labels, classes = sample_batch
-        
-        support_images = support_images.float().to(device)
-        support_mask = support_mask.float().to(device)
-        query_images = query_images.float().to(device)
-        query_mask = query_mask.float().to(device)
-        fg_mask = support_mask
-        bg_mask = torch.where(fg_mask == 0, 1, 0).to(device)
-        optimizer.zero_grad()
-        query_pred, align_loss = model(support_images, fg_mask, bg_mask, query_images)
-        query_mask = query_mask.reshape(-1, *query_mask.shape[-1:]).long()
-        query_loss = criterion(query_pred, query_mask)
-        loss = query_loss + align_loss * 1
-        loss.backward()
-        optimizer.step()
-        # scheduler.step()
-        if i_iter % 50 == 0:
-            query_indx = torch.argmax(query_pred, dim=1)
-            printc(f'Iter {i_iter}, Loss: {loss.item()}, query_loss: {query_loss.item()}, align_loss: {align_loss.item()}')
-            plt.plot(query_indx[0].detach().cpu().numpy(), color='r')
-            plt.plot(query_mask[0].detach().cpu().numpy(), color='b')
-            plt.show()
+    for i in range(config['epochs']):
+        for i_iter, sample_batch in enumerate(train_loader):
+            support_images, support_mask, support_labels, query_images, query_mask, query_labels, classes = sample_batch
+            
+            support_images = support_images.float().to(device)
+            support_mask = support_mask.float().to(device)
+            query_images = query_images.float().to(device)
+            query_mask = query_mask.float().to(device)
+            fg_mask = support_mask
+            bg_mask = torch.where(fg_mask == 0, 1, 0).to(device)
+            optimizer.zero_grad()
+            query_pred, align_loss = model(support_images, fg_mask, bg_mask, query_images)
+            query_mask = query_mask.reshape(-1, *query_mask.shape[-1:]).long()
+            query_loss = criterion(query_pred, query_mask)
+            loss = query_loss + align_loss * 1
+            loss.backward()
+            optimizer.step()
+            # scheduler.step()
+            if i_iter % 50 == 0:
+                query_indx = torch.argmax(query_pred, dim=1)
+                printc(f'Iter {i_iter}, Loss: {loss.item()}, query_loss: {query_loss.item()}, align_loss: {align_loss.item()}')
+                
+    plt.plot(query_indx[0].detach().cpu().numpy(), color='r')
+    plt.plot(query_mask[0].detach().cpu().numpy(), color='b')
+    plt.show()
     
     
     
