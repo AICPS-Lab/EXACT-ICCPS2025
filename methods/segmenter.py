@@ -9,14 +9,14 @@ from utilities import printc
 
 
 class Segmenter(nn.Module):
-    def __init__(self, in_channels=6, num_layers=2, num_heads=4, embed_dims=256, num_classes=7, **kwargs):
+    def __init__(self, in_channels=6, num_layers=2, num_heads=4, embed_dims=256, num_classes=7, init_std=.02, **kwargs):
         super(Segmenter, self).__init__(**kwargs)
 
         # Fixed parameters for simplicity
         mlp_ratio = 4
         # norm_cfg = dict(type='LN')
         # act_cfg = dict(type='GELU')
-        self.init_std = 0.02
+        self.init_std = init_std
         self.num_classes = num_classes
         self.layers = nn.ModuleList()
         for _ in range(num_layers):

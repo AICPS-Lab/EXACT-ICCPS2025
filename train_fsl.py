@@ -7,10 +7,6 @@ from utilities import printc
 from utils_loader import get_dataloaders
 from torch.optim.lr_scheduler import MultiStepLR
 
-# custom Dataset:
-
-    
-
 def main():
     config = {
         'allowed_label': [1, 2,3,4],
@@ -21,7 +17,7 @@ def main():
         'n_query': 2,
         'n_tasks_per_epoch': 500,
         'align': True,
-        
+        'fsl': True,
         'epochs':10
     }
     train_loader, test_loader = get_dataloaders(config)

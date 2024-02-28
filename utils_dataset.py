@@ -13,6 +13,23 @@ def majority_vote(series):
     counts = np.bincount(series)
     return np.argmax(counts)
 
+class NormalDataset(Dataset):
+    def __init__(self, data, label, transform=None):
+        self.data = data
+        self.label = label
+        self.transform = transform
+        assert len(self.data) == len(self.label)
+    def __len__(self):
+        return len(self.data)
+    def __getitem__(self, idx):
+        if self.transform:
+            raise NotImplementedError
+            return self.transform(self.data[idx]), self.label[idx]
+        cur_label = self.label[idx]
+        return torch.tensor(self.data[idx]), torch.tensor(cur_label, dtype=torch.int16)
+    def get_labels(self):
+        return self.class_labels
+
 
 class CustomDataset(Dataset):
     def __init__(self, data, label, transform=None):
