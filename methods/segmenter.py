@@ -52,7 +52,9 @@ class Segmenter(nn.Module):
                     nn.init.xavier_uniform_(param)
 
     def forward(self, inputs):
-        x = inputs
+        x = inputs.permute(0, 2, 1) # b h c
+        b, c, h = x.shape
+        x = x.view(b, c, -1).permute(0, 2, 1)
         b, h, c = x.shape
         x = self.dec_proj(x)
         cls_emb = self.cls_emb.expand(x.size(0), -1, -1)
@@ -73,7 +75,9 @@ class Segmenter(nn.Module):
 
         return masks
     def get_embedding(self, inputs):
-        x = inputs
+        x = inputs.permute(0, 2, 1) # b h c
+        b, c, h = x.shape
+        x = x.view(b, c, -1).permute(0, 2, 1)
         x = self.dec_proj(x)
         cls_emb = self.cls_emb.expand(x.size(0), -1, -1)
         x = torch.cat((x, cls_emb), 1)

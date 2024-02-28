@@ -8,7 +8,7 @@ from utils_loader import get_dataloaders
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from utils_metrics import mean_iou
-
+from torch.nn import functional as F
 def main():
     config = {
         
@@ -38,13 +38,15 @@ def main():
             images = images.float().to(device)
             labels = labels.to(device)
             outputs = model(images)
-            outputs = outputs.transpose(1, 2)
+            outputs = outputs.permute(0, 2, 1)
             # printc(outputs.shape, labels.shape)
+            outputs = F.softmax(outputs, dim=1)
             loss= criterion(outputs, labels.long())
             
             # Backward and optimize
             optimizer.zero_grad()
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1., norm_type=2)
             optimizer.step()
             scheduler.step(loss)
             # train loss and accuracy check:
@@ -58,7 +60,7 @@ def main():
             images = images.float().to(device)
             labels = labels.to(device)
             outputs = model(images)
-            outputs = outputs.transpose(1, 2)
+            outputs = outputs.permute(0, 2, 1)
             loss = criterion(outputs, labels.long())
             val_losses.append(loss.item())
             mean_ious.append(mean_iou(model.forward_pred(images), labels.long(),num_classes=5))
