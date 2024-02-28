@@ -1,6 +1,6 @@
 import math
 import os
-from methods import Segmenter, TransformerModel, LSTM
+from methods import Segmenter, TransformerModel, LSTM, CRNN
 from matplotlib import pyplot as plt
 import torch
 from utilities import printc
@@ -19,7 +19,7 @@ def main():
     
     train_loader, val_loader, test_loader = get_dataloaders(config)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = LSTM(embed_dims=256, num_classes=5).float().to(device)
+    model = CRNN(embed_dims=256, num_classes=5).float().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     # scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, verbose=True, threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-08)
 
@@ -40,7 +40,6 @@ def main():
             labels = labels.to(device)
             outputs = model(images)
             outputs = outputs.permute(0, 2, 1)
-            # printc(outputs.shape, labels.shape)
             probs = F.softmax(outputs, dim=1)
             loss= criterion(probs, labels.long())
             
@@ -70,7 +69,7 @@ def main():
         print(f'Epoch [{epoch+1}/{config["epochs"]}], Val Loss: {val_loss}, Mean IoU: {miou}')
         if val_loss < best_loss:
             best_loss = val_loss
-            torch.save(model.state_dict(), f'./saved_model/opportunity_LSTM.pth')
+            torch.save(model.state_dict(), f'./saved_model/opportunity_CRNN.pth')
         counter_i += 1
     # Test the model
     model.eval()
