@@ -38,7 +38,7 @@ def main():
             images = images.float().to(device)
             labels = labels.to(device)
             outputs = model(images)
-            outputs = outputs.transpose(1, 2).contiguous(
+            outputs = outputs.transpose(1, 2)
             # printc(outputs.shape, labels.shape)
             loss= criterion(outputs, labels.long())
             
@@ -58,7 +58,7 @@ def main():
             images = images.float().to(device)
             labels = labels.to(device)
             outputs = model(images)
-            outputs = outputs.view(b, -1, h)
+            outputs = outputs.transpose(1, 2)
             loss = criterion(outputs, labels.long())
             val_losses.append(loss.item())
             mean_ious.append(mean_iou(model.forward_pred(images), labels.long(),num_classes=5))
