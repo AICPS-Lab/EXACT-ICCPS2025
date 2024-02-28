@@ -13,7 +13,7 @@ def main():
     config = {
         
         'batch_size': 128,
-        'epochs':100,
+        'epochs':200,
         'fsl': False
     }
     
@@ -32,6 +32,7 @@ def main():
     best_loss = math.inf
     counter_i = 0
     for epoch in range(config['epochs']):
+        model.train()
         for images, labels in train_loader:
             b, h, c = images.shape
             # Forward pass
@@ -40,15 +41,15 @@ def main():
             outputs = model(images)
             outputs = outputs.permute(0, 2, 1)
             # printc(outputs.shape, labels.shape)
-            outputs = F.softmax(outputs, dim=1)
-            loss= criterion(outputs, labels.long())
+            probs = F.softmax(outputs, dim=1)
+            loss= criterion(probs, labels.long())
             
             # Backward and optimize
             optimizer.zero_grad()
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1., norm_type=2)
             optimizer.step()
-            scheduler.step(loss)
+            # scheduler.step(loss)
             # train loss and accuracy check:
             if counter_i % 1000 == 0 and counter_i != 0:
                 print('Epoch [{}/{}], Loss: {:.4f}'.format(epoch+1, config['epochs'], loss.item()))
@@ -73,9 +74,11 @@ def main():
         counter_i += 1
     # Test the model
     model.eval()
+
     with torch.no_grad():
         correct = 0
         total = 0
+        m_ious = []
         for images, labels in test_loader:
             images = images.float().to(device)
             labels = labels.to(device)
@@ -84,9 +87,9 @@ def main():
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0) * labels.size(1)
             correct += (predicted == labels).sum().item()
+            m_ious.append(mean_iou(model.forward_pred(images), labels.long(), num_classes=5))
 
-        print('Test Accuracy of the model on the 10000 test images: {} %'.format(100 * correct / total))
-                
+        print('Test Accuracy of the model on the 10000 test images: {} %, Mean IoU: {}'.format(100 * correct / total, sum(m_ious) / len(m_ious)))
 
 if __name__ == "__main__":
     main()

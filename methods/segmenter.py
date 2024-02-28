@@ -9,14 +9,14 @@ from utilities import printc
 
 
 class Segmenter(nn.Module):
-    def __init__(self, in_channels=6, num_layers=2, num_heads=4, embed_dims=256, num_classes=7, init_std=.02, **kwargs):
+    def __init__(self, in_channels=6, num_layers=2, num_heads=4, embed_dims=256, num_classes=7, **kwargs):
         super(Segmenter, self).__init__(**kwargs)
 
         # Fixed parameters for simplicity
         mlp_ratio = 4
         # norm_cfg = dict(type='LN')
         # act_cfg = dict(type='GELU')
-        self.init_std = init_std
+        self.init_std = 0.02
         self.num_classes = num_classes
         self.layers = nn.ModuleList()
         for _ in range(num_layers):
@@ -55,7 +55,6 @@ class Segmenter(nn.Module):
         x = inputs.permute(0, 2, 1) # b h c
         b, c, h = x.shape
         x = x.view(b, c, -1).permute(0, 2, 1)
-        b, h, c = x.shape
         x = self.dec_proj(x)
         cls_emb = self.cls_emb.expand(x.size(0), -1, -1)
         x = torch.cat((x, cls_emb), 1)
@@ -75,9 +74,7 @@ class Segmenter(nn.Module):
 
         return masks
     def get_embedding(self, inputs):
-        x = inputs.permute(0, 2, 1) # b h c
-        b, c, h = x.shape
-        x = x.view(b, c, -1).permute(0, 2, 1)
+        x = inputs
         x = self.dec_proj(x)
         cls_emb = self.cls_emb.expand(x.size(0), -1, -1)
         x = torch.cat((x, cls_emb), 1)
