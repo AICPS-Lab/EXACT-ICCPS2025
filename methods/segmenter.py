@@ -5,6 +5,8 @@ from torch.nn import ModuleList
 
 from torch.nn.modules.transformer import TransformerEncoder, TransformerEncoderLayer
 
+from utilities import printc
+
 
 class Segmenter(nn.Module):
     def __init__(self, in_channels=6, num_layers=2, num_heads=4, embed_dims=256, num_classes=7, **kwargs):
@@ -50,10 +52,8 @@ class Segmenter(nn.Module):
                     nn.init.xavier_uniform_(param)
 
     def forward(self, inputs):
-        x = inputs.permute(0, 2, 1) # b h c
-        b, c, h = x.shape
-        x = x.view(b, c, -1).permute(0, 2, 1)
-
+        x = inputs
+        b, h, c = x.shape
         x = self.dec_proj(x)
         cls_emb = self.cls_emb.expand(x.size(0), -1, -1)
         x = torch.cat((x, cls_emb), 1)
@@ -73,10 +73,7 @@ class Segmenter(nn.Module):
 
         return masks
     def get_embedding(self, inputs):
-        x = inputs.permute(0, 2, 1) # b h c
-        b, c, h = x.shape
-        x = x.view(b, c, -1).permute(0, 2, 1)
-
+        x = inputs
         x = self.dec_proj(x)
         cls_emb = self.cls_emb.expand(x.size(0), -1, -1)
         x = torch.cat((x, cls_emb), 1)
