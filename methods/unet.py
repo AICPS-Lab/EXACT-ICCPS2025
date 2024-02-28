@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class UNet(nn.Module):
-    def __init__(self, in_channels=6, embed_dims=256, num_layers=3, num_classes=5, dropout_prob=.5):
+    def __init__(self, in_channels=6, embed_dims=256, num_layers=2, num_classes=5, dropout_prob=.5):
         super(UNet, self).__init__()
         self.down_blocks = nn.ModuleList()
         self.up_blocks = nn.ModuleList()

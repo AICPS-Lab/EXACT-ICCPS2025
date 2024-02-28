@@ -19,7 +19,7 @@ def main():
     
     train_loader, val_loader, test_loader = get_dataloaders(config)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = UNet(embed_dims=256, num_classes=5).float().to(device)
+    model = UNet(embed_dims=64, num_classes=5).float().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     # scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, verbose=True, threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-08)
     # print number of trainable parameters:
