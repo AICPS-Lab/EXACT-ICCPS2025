@@ -55,3 +55,10 @@ class CRNN(nn.Module):
         x = F.interpolate(x, size=h, mode='linear')
         x = x.permute(0, 2, 1)
         return x
+    
+    def forward_pred(self, x):
+        masks = self.forward(x)
+        masks = masks.permute(0, 2, 1)
+        probabilities = F.softmax(masks, dim=1)
+        pred = torch.argmax(probabilities, dim=1)
+        return pred
