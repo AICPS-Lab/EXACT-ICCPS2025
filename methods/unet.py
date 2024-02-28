@@ -28,6 +28,9 @@ class UNet(nn.Module):
         # Final convolution
         self.final_conv = nn.Conv1d(current_channels, num_classes, kernel_size=1)
 
+        # weight init:
+        self.init_weights()
+
     def forward(self, x):
         x = x.permute(0, 2, 1)  # (B, C, L) -> (B, L, C)
         enc_features = []
@@ -50,6 +53,21 @@ class UNet(nn.Module):
         x = self.final_conv(x)
         x = x.permute(0, 2, 1)
         return x
+    def init_weights(self):
+        for module in self.modules():
+            if isinstance(module, nn.Conv1d) or isinstance(module, nn.Linear):
+                nn.init.kaiming_normal_(module.weight)
+                nn.init.constant_(module.bias, 0)
+            elif isinstance(module, nn.BatchNorm1d):
+                nn.init.constant_(module.weight, 1)
+                nn.init.constant_(module.bias, 0)
+
+    def forward_pred(self, x):
+        masks = self.forward(x)
+        masks = masks.permute(0, 2, 1)
+        probabilities = F.softmax(masks, dim=1)
+        pred = torch.argmax(probabilities, dim=1)
+        return pred
 
 class ConvBlock(nn.Module):
     def __init__(self, in_channels, out_channels, dropout_prob):

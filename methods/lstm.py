@@ -11,6 +11,7 @@ class LSTM(nn.Module):
         self.lstm = nn.LSTM(input_size=in_channels, hidden_size=embed_dims, num_layers=num_layers, dropout=dropout, batch_first=True)
         self.decoder = nn.Linear(embed_dims, num_classes)
         self.init_std = init_std
+        self.init_weights()
         
     def init_weights(self):
         nn.init.trunc_normal_(self.decoder.weight, std=self.init_std)
