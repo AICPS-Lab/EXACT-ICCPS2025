@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 import torch
 import torch.nn.functional as F
 
-class LSTM(nn.modules):
+class LSTM(nn.Module):
     def __init__(self, num_classes=5, in_channels=6, embed_dims=64, num_layers=2, dropout=0.1, init_std=.02):
         super(LSTM, self).__init__()
         self.lstm = nn.LSTM(input_size=in_channels, hidden_size=embed_dims, num_layers=num_layers, dropout=dropout, batch_first=True)
