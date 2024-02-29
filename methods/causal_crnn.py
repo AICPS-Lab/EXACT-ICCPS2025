@@ -2,19 +2,27 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 class CausalConv1D(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, dilation=1):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, dilation=1):
         super(CausalConv1D, self).__init__()
-        self.padding = (kernel_size - 1) * dilation
+        self.kernel_size = kernel_size
+        self.dilation = dilation
+        self.stride = stride
+
+        # Compute the required padding to ensure causality
+        self.padding = (kernel_size - 1) * dilation  # Padding on one side to ensure causality
+
         self.conv1d = nn.Conv1d(in_channels, out_channels, kernel_size,
-                                padding=self.padding, dilation=dilation)
+                                stride=stride, padding=0, dilation=dilation)  # No built-in padding
 
     def forward(self, x):
-        # Apply convolution
-        x = self.conv1d(x)
-        # Remove padding from the end to make the output causally aligned
-        if self.padding > 0:
-            x = x[:, :, :-self.padding]
-        return x
+        # Manually pad the sequence on the left to ensure causality
+        x_padded = nn.functional.pad(x, (self.padding, 0))  # Padding format (left, right)
+        
+        # Apply convolution to the padded input
+        conv = self.conv1d(x_padded)
+        
+        return conv
+
 
 
 class CCRNN(nn.Module):

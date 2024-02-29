@@ -124,3 +124,12 @@ class UNet(nn.Module):
         #out = nn.functional.softmax(out,dim=2)
         
         return out
+    
+    
+# print how many parameters are in the model
+print('Number of trainable parameters:', sum(p.numel() for p in UNet().parameters() if p.requires_grad))
+unet = UNet()
+
+inp = torch.rand(32, 300, 6)
+
+unet(inp)
