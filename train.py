@@ -19,7 +19,7 @@ def main():
     
     train_loader, val_loader, test_loader = get_dataloaders(config)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = UNet(embed_dims=64, num_classes=5).float().to(device)
+    model = CCRNN(embed_dims=64, num_classes=5).float().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     # scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, verbose=True, threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-08)
     # print number of trainable parameters:
@@ -70,7 +70,7 @@ def main():
         print(f'Epoch [{epoch+1}/{config["epochs"]}], Val Loss: {val_loss}, Mean IoU: {miou}')
         if val_loss < best_loss:
             best_loss = val_loss
-            torch.save(model.state_dict(), f'./saved_model/opportunity_UNet.pth')
+            torch.save(model.state_dict(), f'./saved_model/opportunity_CCRNN.pth')
         counter_i += 1
     # Test the model
     model.eval()
