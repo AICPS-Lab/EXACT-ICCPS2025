@@ -120,5 +120,6 @@ if __name__ == "__main__":
         'fsl': False,
         'model': 'patchtst',
         'seed': 73054772,
+        'dataset': 'physiq'
     }
     main(config)

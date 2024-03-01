@@ -20,7 +20,7 @@ def non_fsl_dataloaders(config):
     Args:
         config (_type_): NA
     """
-    inputs, labels = _load_opportunity()
+    inputs, labels = _load(config)
     sw = sliding_windows(300, 50)
     segmented_samples, segmented_labels = sw(torch.tensor(inputs), torch.tensor(labels))
     # Split the dataset into train, val and test:
@@ -50,7 +50,7 @@ def non_fsl_dataloaders(config):
     return train_loader, val_loader, test_loader
         
     
-    
+
     
     
 
@@ -66,7 +66,7 @@ def fsl_dataloaders(config):
     :return: A tuple of (train_loader, test_loader)
     """
     # Load the dataset
-    inputs, labels = _load_opportunity()
+    inputs, labels = _load(config)
     sw = sliding_windows(300, 50)
     segmented_samples, segmented_labels = sw(torch.tensor(inputs), torch.tensor(labels))
     # Split the dataset into train, val and test:
@@ -107,6 +107,19 @@ def fsl_dataloaders(config):
     )
     return train_loader, test_loader
 
+
+def _load(config):
+    if config['dataset'].lower() == 'physiq':
+        return _load_physiq()
+    elif config['dataset'].lower() == 'opportunity':
+        return _load_opportunity()
+    else:
+        raise ValueError(f'Unknown dataset: {config["dataset"]}')
+    
+def _load_physiq():
+    inp = np.load('./datasets/physiq/physiq_permute_all.npy', allow_pickle=True)
+    inputs, labels = inp.item()['inputs'], inp.item()['labels']
+    return inputs, labels
 
 def _load_opportunity():
     inp = np.load('./datasets/OpportunityUCIDataset/loco_2_mask.npy', allow_pickle=True)
