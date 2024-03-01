@@ -116,9 +116,9 @@ def main(config):
 if __name__ == "__main__":
     config = {
         'batch_size': 128,
-        'epochs':500,
+        'epochs':200,
         'fsl': False,
-        'model': 'patchtst',
+        'model': 'unet2',
         'seed': 73054772,
         'dataset': 'physiq'
     }

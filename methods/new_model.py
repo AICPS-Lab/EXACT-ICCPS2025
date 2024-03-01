@@ -62,8 +62,6 @@ class UNet2(nn.Module):
         x2 = self.conv2(p1)
         p2 = self.pool2(x2)
         x3 = self.conv3(p2)
-        print(x3.shape)
-        print(self.transformer_encoder(x3).shape)
         # lstm_out, _ = self.lstm(x3.permute(0, 2, 1))
         # lstm_out = lstm_out.permute(0, 2, 1)
         x = self.up1(x3, x2)
