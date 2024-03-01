@@ -1,12 +1,12 @@
 from train import main
-config = {
-    'batch_size': 128,
-    'epochs':200,
-    'fsl': False,
-    'model': 'segmenter',
-    'seed': 73054772,
-}
-main(config)
+# config = {
+#     'batch_size': 128,
+#     'epochs':200,
+#     'fsl': False,
+#     'model': 'segmenter',
+#     'seed': 73054772,
+# }
+# main(config)
 
 # config = {
 #     'batch_size': 128,
@@ -26,23 +26,23 @@ main(config)
 # }
 # main(config)
 
-# config = {
-#     'batch_size': 128,
-#     'epochs':200,
-#     'fsl': False,
-#     'model': 'CRNN',
-#     'seed': 73054772,
-# }
-# main(config)
+config = {
+    'batch_size': 128,
+    'epochs':200,
+    'fsl': False,
+    'model': 'CRNN',
+    'seed': 73054772,
+}
+main(config)
 
-# config = {
-#     'batch_size': 128,
-#     'epochs':200,
-#     'fsl': False,
-#     'model': 'CCRNN',
-#     'seed': 73054772,
-# }
-# main(config)
+config = {
+    'batch_size': 128,
+    'epochs':200,
+    'fsl': False,
+    'model': 'CCRNN',
+    'seed': 73054772,
+}
+main(config)
 
 # config = {
 #     'batch_size': 128,
