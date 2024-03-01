@@ -55,7 +55,6 @@ class PatchTST(nn.Module):
         x = self.patch_embed(x)
         x = self.pos_encoder(x)
         x = self.transformer_encoder(x)
-        print(x.shape)
         x = x.view(b, c, -1) # flatten the patches
         
         x = self.output_layer(x)
