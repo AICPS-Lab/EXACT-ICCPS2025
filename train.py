@@ -116,7 +116,7 @@ def main(config):
 if __name__ == "__main__":
     config = {
         'batch_size': 128,
-        'epochs':200,
+        'epochs':500,
         'fsl': False,
         'model': 'patchtst',
         'seed': 73054772,
