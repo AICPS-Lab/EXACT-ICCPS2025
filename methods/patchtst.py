@@ -43,7 +43,7 @@ class PatchTST(nn.Module):
         super().__init__()
         self.patch_embed = PatchEmbedding(patch_size, embed_dims, in_channels)
         self.pos_encoder = PositionalEncoding(embed_dims)
-        encoder_layers = nn.TransformerEncoderLayer(embed_dims, num_heads, embed_dims * 4, dropout)
+        encoder_layers = nn.TransformerEncoderLayer(embed_dims, num_heads, embed_dims * 4, dropout, batch_first=True, activation='relu')
         self.transformer_encoder = nn.TransformerEncoder(encoder_layers, num_layers, norm=nn.LayerNorm(embed_dims))
         num_patches = input_length // patch_size
         self.output_layer = nn.Linear(num_patches * embed_dims, input_length)
@@ -55,7 +55,9 @@ class PatchTST(nn.Module):
         x = self.patch_embed(x)
         x = self.pos_encoder(x)
         x = self.transformer_encoder(x)
-        x = x.view(b, c, -1)
+        print(x.shape)
+        x = x.view(b, c, -1) # flatten the patches
+        
         x = self.output_layer(x)
         x = x.permute(0, 2, 1)
         x = self.num_classes_proj(x)

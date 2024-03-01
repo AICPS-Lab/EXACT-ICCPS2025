@@ -6,7 +6,7 @@ import torch
 from torch.nn.modules.transformer import TransformerEncoder, TransformerEncoderLayer
 import torch.nn.functional as F
 
-from utilities import printc
+# from utilities import printc
 class TransformerModel(nn.Module):
     """Container module with an encoder, a recurrent or transformer module, and a decoder."""
 
@@ -36,8 +36,11 @@ class TransformerModel(nn.Module):
     def forward(self, src):
         src = self.input_emb(src)
         src = self.relu(src)
+        print(src.shape)
         output = self.transformer_encoder(src)
+        print(output.shape)
         output = self.decoder(output)
+        print(output.shape)
         return output
     
     def forward_pred(self, inputs):
@@ -46,3 +49,10 @@ class TransformerModel(nn.Module):
         probabilities = F.softmax(masks, dim=1)
         pred = torch.argmax(probabilities, dim=1)
         return pred
+
+if __name__ == '__main__':
+    # print how many parameters are in the model
+    transformer = TransformerModel(in_channels=6, embed_dims=256)
+    print('Number of trainable parameters:', sum(p.numel() for p in transformer.parameters() if p.requires_grad))
+    inp = torch.rand(32, 300, 6)
+    out = transformer(inp)
