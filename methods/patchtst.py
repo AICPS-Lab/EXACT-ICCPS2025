@@ -16,8 +16,9 @@ class PatchEmbedding(nn.Module):
         seq_len = x.shape[1]
         num_patches = seq_len // self.patch_size
         x = x.unfold(1, self.patch_size, self.patch_size).contiguous()
-        x = x.view(-1, *x.shape[-2:])
+        x = x.view(-1, x.shape[1], x.shape[-1])
         # Project patches to embed_dim
+        
         x = self.proj(x)
         return x
 
@@ -38,7 +39,7 @@ class PositionalEncoding(nn.Module):
 
 
 class PatchTST(nn.Module):
-    def __init__(self, patch_size=50, embed_dims=64, num_heads=2, num_layers=2, num_classes=5, in_channels=6, dropout=0.5, input_length=300):
+    def __init__(self, patch_size=20, embed_dims=64, num_heads=2, num_layers=2, num_classes=5, in_channels=6, dropout=0.5, input_length=300):
         super().__init__()
         self.patch_embed = PatchEmbedding(patch_size, embed_dims, in_channels)
         self.pos_encoder = PositionalEncoding(embed_dims)
