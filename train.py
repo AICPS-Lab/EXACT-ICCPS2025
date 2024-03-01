@@ -3,23 +3,36 @@ import os
 from methods import Segmenter, TransformerModel, LSTM, CRNN, UNet,CCRNN
 from matplotlib import pyplot as plt
 import torch
-from utilities import printc
+from utilities import printc, seed
 from utils_loader import get_dataloaders
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-
+from tqdm import tqdm
 from utils_metrics import mean_iou
 from torch.nn import functional as F
-def main():
-    config = {
-        
-        'batch_size': 128,
-        'epochs':200,
-        'fsl': False
-    }
+
+def get_model(config):
+    if config['model'].lower() == 'crnn':
+        return CRNN(in_channels=6, embed_dims=256)
+    elif config['model'].lower() == 'lstm':
+        return LSTM(num_classes=5, in_channels=6, embed_dims=64)
+    elif config['model'].lower() == 'unet':
+        return UNet(in_channels=6, out_channels=5)
+    elif config['model'].lower() == 'ccrnn':
+        return CCRNN(in_channels=6, embed_dims=256)
+    elif config['model'].lower() == 'transformer':
+        return TransformerModel(in_channels=6,embed_dims=256)
+    elif config['model'].lower() == 'segmenter':
+        return Segmenter(in_channels=6, embed_dims=256)
+    else:
+        raise NotImplementedError
+
+def main(config):
     
+    seed(config['seed'])
     train_loader, val_loader, test_loader = get_dataloaders(config)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = CCRNN(embed_dims=64, num_classes=5).float().to(device)
+    model = get_model(config).float().to(device)
+    # model = UNet(in_channels=6, out_channels=5).float().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     # scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, verbose=True, threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-08)
     # print number of trainable parameters:
@@ -32,7 +45,8 @@ def main():
     # change the plt size:
     best_loss = math.inf
     counter_i = 0
-    for epoch in range(config['epochs']):
+    pbar = tqdm(range(config['epochs']), postfix={'loss': 0.0, 'miou': 0.0})
+    for epoch in pbar:
         model.train()
         for images, labels in train_loader:
             b, h, c = images.shape
@@ -41,9 +55,8 @@ def main():
             labels = labels.to(device)
             outputs = model(images)
             outputs = outputs.permute(0, 2, 1)
-            probs = F.softmax(outputs, dim=1)
-            loss= criterion(probs, labels.long())
-            
+            # probs = F.softmax(outputs, dim=1)
+            loss= criterion(outputs, labels.long())
             # Backward and optimize
             optimizer.zero_grad()
             loss.backward()
@@ -51,13 +64,12 @@ def main():
             optimizer.step()
             # scheduler.step(loss)
             # train loss and accuracy check:
-            if counter_i % 1000 == 0 and counter_i != 0:
-                print('Epoch [{}/{}], Loss: {:.4f}'.format(epoch+1, config['epochs'], loss.item()))
+            # if counter_i % 1000 == 0 and counter_i != 0:
+            #     print('Epoch [{}/{}], Loss: {:.4f}'.format(epoch+1, config['epochs'], loss.item()))
         val_losses = []
         mean_ious = []
         model.eval()
         for images, labels in val_loader:
-            b, h, c = images.shape
             images = images.float().to(device)
             labels = labels.to(device)
             outputs = model(images)
@@ -67,10 +79,17 @@ def main():
             mean_ious.append(mean_iou(model.forward_pred(images), labels.long(),num_classes=5))
         val_loss = sum(val_losses) / len(val_losses)
         miou = sum(mean_ious) / len(mean_ious)
-        print(f'Epoch [{epoch+1}/{config["epochs"]}], Val Loss: {val_loss}, Mean IoU: {miou}')
+        # print(f'Epoch [{epoch+1}/{config["epochs"]}], Val Loss: {val_loss}, Mean IoU: {miou}')
+        pbar.set_postfix({'loss': val_loss, 'miou': miou.item()})
         if val_loss < best_loss:
             best_loss = val_loss
-            torch.save(model.state_dict(), f'./saved_model/opportunity_CCRNN.pth')
+            torch.save(model.state_dict(), f'./saved_model/opportunity_{config["model"]}.pth')
+        # visualize the predictions:
+        # plt.plot(images[0, :].cpu().detach().numpy(), color='black')
+        # plt.plot(model.forward_pred(images)[0, :].cpu().detach().numpy(), label='Prediction')
+        # plt.plot(labels[0, :].cpu().detach().numpy(), label='Ground Truth')
+        # plt.legend()
+        # plt.show()
         counter_i += 1
     # Test the model
     model.eval()
@@ -89,7 +108,16 @@ def main():
             correct += (predicted == labels).sum().item()
             m_ious.append(mean_iou(model.forward_pred(images), labels.long(), num_classes=5))
 
-        print('Test Accuracy of the model on the 10000 test images: {} %, Mean IoU: {}'.format(100 * correct / total, sum(m_ious) / len(m_ious)))
+        print('Test Accuracy of the model {} on the test images: {} %, Mean IoU: {}'.format(config['model'].upper(), 
+                                                                                            100 * correct / total, 
+                                                                                            sum(m_ious) / len(m_ious)))
 
 if __name__ == "__main__":
-    main()
+    config = {
+        'batch_size': 128,
+        'epochs':200,
+        'fsl': False,
+        'model': 'ccrnn',
+        'seed': 73054772,
+    }
+    main(config)

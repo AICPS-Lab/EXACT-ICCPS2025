@@ -26,7 +26,9 @@ class NormalDataset(Dataset):
             raise NotImplementedError
             return self.transform(self.data[idx]), self.label[idx]
         cur_label = self.label[idx]
-        return torch.tensor(self.data[idx]), torch.tensor(cur_label, dtype=torch.int16)
+        if not isinstance(cur_label, torch.Tensor):
+            cur_label = torch.tensor(cur_label, dtype=torch.int16)
+        return self.data[idx], cur_label
     def get_labels(self):
         return self.class_labels
 
