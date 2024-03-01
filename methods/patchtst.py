@@ -60,6 +60,12 @@ class PatchTST(nn.Module):
         x = self.num_classes_proj(x)
         return x
     
+    def forward_pred(self, inputs):
+        masks = self.forward(inputs)
+        masks = masks.permute(0, 2, 1)
+        probabilities = F.softmax(masks, dim=1)
+        pred = torch.argmax(probabilities, dim=1)
+        return pred
     
 if __name__ == '__main__':
     model = PatchTST()
