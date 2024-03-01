@@ -36,11 +36,8 @@ class TransformerModel(nn.Module):
     def forward(self, src):
         src = self.input_emb(src)
         src = self.relu(src)
-        print(src.shape)
         output = self.transformer_encoder(src)
-        print(output.shape)
         output = self.decoder(output)
-        print(output.shape)
         return output
     
     def forward_pred(self, inputs):

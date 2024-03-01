@@ -3,7 +3,8 @@ import torch.nn as nn
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+import torch
+from torch.nn.modules.transformer import TransformerEncoder, TransformerEncoderLayer
 class ConvBlock(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(ConvBlock, self).__init__()
@@ -46,33 +47,23 @@ class UNet2(nn.Module):
         self.pool2 = nn.MaxPool1d(kernel_size=2, stride=2)
         self.conv3 = ConvBlock(128, 256)
         # self.lstm = nn.LSTM(input_size=256, hidden_size=64, batch_first=True)
+        # transformer:
+        encoder_layer = nn.TransformerEncoderLayer(d_model=75, nhead=5, dim_feedforward=256, dropout=.5, activation='relu', batch_first=True)
+        encoder_norm = nn.LayerNorm(75)   
+        self.transformer_encoder = TransformerEncoder(encoder_layer, 2, norm=encoder_norm)
         self.up1 = UpConv(256, 128)
         self.up2 = UpConv(128, 64)
         self.final_conv = nn.Conv1d(64, out_channels, kernel_size=1)
-        module_list = []
-        cnn_embed_dims = [64, 64]
-        dilations = [1, 2, 4]
-        for i, out_channels in enumerate(cnn_embed_dims):
-            if i == 0:
-                in_channels = in_channels
-            else:
-                in_channels = cnn_embed_dims[i - 1]
-            module_list.append(
-                CausalConv1D(in_channels, out_channels, kernel_size=3, dilation=dilations[i])
-            )
-            module_list.append(nn.BatchNorm1d(out_channels))
-            module_list.append(nn.ReLU())
-            module_list.append(nn.MaxPool1d(2))
-        self.moduless = nn.Sequential(*module_list)
 
     def forward(self, x):
         x = x.permute(0, 2, 1)
-        print(self.moduless(x).shape)
         x1 = self.conv1(x)
         p1 = self.pool1(x1)
         x2 = self.conv2(p1)
         p2 = self.pool2(x2)
         x3 = self.conv3(p2)
+        print(x3.shape)
+        print(self.transformer_encoder(x3).shape)
         # lstm_out, _ = self.lstm(x3.permute(0, 2, 1))
         # lstm_out = lstm_out.permute(0, 2, 1)
         x = self.up1(x3, x2)
