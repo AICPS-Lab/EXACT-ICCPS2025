@@ -27,7 +27,7 @@ class CausalConv1D(nn.Module):
 
 class CCRNN(nn.Module):
     # causal CRNN with dilated convolutions:
-    def __init__(self, in_channels=6, num_classes=5, cnn_embed_dims=[64, 64, 64, 64], embed_dims=50, dilations=[1, 2, 4, 8]):
+    def __init__(self, in_channels=6, num_classes=5, cnn_embed_dims=[64, 64], embed_dims=50, dilations=[1, 2]):
         super(CCRNN, self).__init__()
         if isinstance(cnn_embed_dims, int):
             cnn_embed_dims = [cnn_embed_dims]

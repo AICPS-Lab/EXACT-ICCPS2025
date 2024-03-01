@@ -1,6 +1,6 @@
 import math
 import os
-from methods import Segmenter, TransformerModel, LSTM, CRNN, UNet,CCRNN, UNet2
+from methods import Segmenter, TransformerModel, LSTM, CRNN, UNet,CCRNN, UNet2, PatchTST
 from matplotlib import pyplot as plt
 import torch
 from utilities import printc, seed
@@ -25,6 +25,8 @@ def get_model(config):
         return Segmenter(in_channels=6, embed_dims=128)
     elif config['model'].lower() == 'unet2':
         return UNet2(in_channels=6, out_channels=5)
+    elif config['model'].lower() == 'patchtst':
+        return PatchTST(in_channels=6, embed_dims=64)
     else:
         raise NotImplementedError
 
@@ -116,7 +118,7 @@ if __name__ == "__main__":
         'batch_size': 128,
         'epochs':200,
         'fsl': False,
-        'model': 'UNet2',
+        'model': 'patchtst',
         'seed': 73054772,
     }
     main(config)
