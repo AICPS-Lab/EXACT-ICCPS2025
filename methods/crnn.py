@@ -7,7 +7,7 @@ import torch.nn.functional as F
 
 
 class CRNN(nn.Module):
-    def __init__(self, in_channels=6, num_classes=5, cnn_embed_dims=[64, 64], embed_dims=50):
+    def __init__(self, in_channels=6, num_classes=5, cnn_embed_dims=[64, 64, 64, 64], embed_dims=50):
         super(CRNN, self).__init__()
         if isinstance(cnn_embed_dims, int):
             cnn_embed_dims = [cnn_embed_dims]
