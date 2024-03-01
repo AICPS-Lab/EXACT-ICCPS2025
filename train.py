@@ -1,6 +1,6 @@
 import math
 import os
-from methods import Segmenter, TransformerModel, LSTM, CRNN, UNet,CCRNN
+from methods import Segmenter, TransformerModel, LSTM, CRNN, UNet,CCRNN, UNet2
 from matplotlib import pyplot as plt
 import torch
 from utilities import printc, seed
@@ -22,7 +22,9 @@ def get_model(config):
     elif config['model'].lower() == 'transformer':
         return TransformerModel(in_channels=6,embed_dims=256)
     elif config['model'].lower() == 'segmenter':
-        return Segmenter(in_channels=6, embed_dims=256)
+        return Segmenter(in_channels=6, embed_dims=128)
+    elif config['model'].lower() == 'unet2':
+        return UNet2(in_channels=6, out_channels=5)
     else:
         raise NotImplementedError
 
@@ -39,10 +41,7 @@ def main(config):
     printc('Number of trainable parameters:', sum(p.numel() for p in model.parameters() if p.requires_grad))
     
     criterion = torch.nn.CrossEntropyLoss()
-    
-    # Iterate over the training data
-    logs = {}
-    # change the plt size:
+
     best_loss = math.inf
     counter_i = 0
     pbar = tqdm(range(config['epochs']), postfix={'loss': 0.0, 'miou': 0.0})
@@ -117,7 +116,7 @@ if __name__ == "__main__":
         'batch_size': 128,
         'epochs':200,
         'fsl': False,
-        'model': 'ccrnn',
+        'model': 'UNet2',
         'seed': 73054772,
     }
     main(config)

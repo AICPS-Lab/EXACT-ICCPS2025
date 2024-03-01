@@ -9,7 +9,7 @@ from utilities import printc
 
 
 class Segmenter(nn.Module):
-    def __init__(self, in_channels=6, num_layers=2, num_heads=4, embed_dims=256, num_classes=7, **kwargs):
+    def __init__(self, in_channels=6, num_layers=2, num_heads=4, embed_dims=128, num_classes=7, **kwargs):
         super(Segmenter, self).__init__(**kwargs)
 
         # Fixed parameters for simplicity
