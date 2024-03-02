@@ -57,4 +57,13 @@ config = {
     'seed': 73054772,
     'dataset': 'physiq'
 }
+
+# config = {
+#     'batch_size': 128,
+#     'epochs':200,
+#     'fsl': False,
+#     'model': 'UNet2',
+#     'seed': 73054772,
+#     'dataset': 'physiq'
+# }
 main(config)
