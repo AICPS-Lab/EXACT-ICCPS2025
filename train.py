@@ -26,7 +26,7 @@ def get_model(config):
     elif config['model'].lower() == 'unet2':
         return UNet2(in_channels=6, out_channels=5)
     elif config['model'].lower() == 'patchtst':
-        return PatchTST(in_channels=6, embed_dims=64)
+        return PatchTST()
     else:
         raise NotImplementedError
 
@@ -118,7 +118,7 @@ if __name__ == "__main__":
         'batch_size': 128,
         'epochs':200,
         'fsl': False,
-        'model': 'unet2',
+        'model': 'patchtst',
         'seed': 73054772,
         'dataset': 'physiq'
     }

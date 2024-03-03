@@ -641,7 +641,7 @@ import numpy as np
 
 
 class PatchTST(nn.Module):
-    def __init__(self, configs, max_seq_len:Optional[int]=1024, d_k:Optional[int]=None, d_v:Optional[int]=None, norm:str='BatchNorm', attn_dropout:float=0., 
+    def __init__(self, max_seq_len:Optional[int]=1024, d_k:Optional[int]=None, d_v:Optional[int]=None, norm:str='BatchNorm', attn_dropout:float=0., 
                  act:str="gelu", key_padding_mask:bool='auto',padding_var:Optional[int]=None, attn_mask:Optional[Tensor]=None, res_attention:bool=True, 
                  pre_norm:bool=False, store_attn:bool=False, pe:str='zeros', learn_pe:bool=True, pretrain_head:bool=False, head_type = 'flatten', verbose:bool=False, **kwargs):
         
@@ -649,8 +649,8 @@ class PatchTST(nn.Module):
         
         # load parameters
         c_in = 6
-        context_window = 100
-        target_window = 100
+        context_window = 300
+        target_window = 300
         
         n_layers = 2
         n_heads = 4
@@ -660,7 +660,7 @@ class PatchTST(nn.Module):
         fc_dropout = .5
         head_dropout = .5
         
-        individual = 0 # 0: individual head
+        individual = 1 # 0: individual head
     
         patch_len = 16
         stride = 8
@@ -718,9 +718,16 @@ class PatchTST(nn.Module):
             x = self.model(x)
             x = x.permute(0,2,1)    # x: [Batch, Input length, Channel]
         return x
+    
+    def forward_pred(self, inputs):
+        masks = self.forward(inputs)
+        masks = masks.permute(0, 2, 1)
+        probabilities = F.softmax(masks, dim=1)
+        pred = torch.argmax(probabilities, dim=1)
+        return pred
 if __name__ == '__main__':
     config = {}
-    model = PatchTST(config)
+    model = PatchTST()
     print(sum(p.numel() for p in model.parameters()))
     x = torch.randn(32, 100, 6)
     print(model(x).shape)
