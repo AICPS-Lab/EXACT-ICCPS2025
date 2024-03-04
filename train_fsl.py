@@ -3,6 +3,7 @@ from few_shot_models import time_FewShotSeg
 from methods import Segmenter
 from matplotlib import pyplot as plt
 import torch
+from train import get_model
 from utilities import printc
 from utils_loader import get_dataloaders
 from torch.optim.lr_scheduler import MultiStepLR
@@ -22,9 +23,8 @@ def main():
     }
     train_loader, test_loader = get_dataloaders(config)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    segmenter = Segmenter(embed_dims=256, num_classes=5).float().to(device)
-    segmenter.load_state_dict(torch.load('./saved_model/best_transformer_oppo.pth'))
-    model = time_FewShotSeg(segmenter, device=device, cfg=config).float().to(device)
+    backbone = get_model(config).float().to(device)
+    model = time_FewShotSeg(backbone, device=device, cfg=config).float().to(device)
     
     # train the model
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
