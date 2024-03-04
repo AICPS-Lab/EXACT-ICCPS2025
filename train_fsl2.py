@@ -1,3 +1,4 @@
+import copy
 import os
 from few_shot_models import time_FewShotSeg
 from methods import Segmenter
@@ -55,6 +56,41 @@ def main(config):
             accuracy = (preds == query_mask.long()).sum().item() / (query_mask.shape[0] * query_mask.shape[1])
             if i_iter % 50 == 0:
                 printc(f"Iter {i_iter}, Train Loss: {loss.item()}, Train Query mIoU: {miou.item()}, accuracy: {accuracy}")
+        
+        # test the model
+        temp_model = copy.deepcopy(model)
+        optimizer = torch.optim.Adam(model.parameters(), lr=5e-2) # inference for FSL
+        # model.eval() # it is eval mode but requires inductive training 
+        mious = []
+        accus = []
+        for i_iter, sample_batch in enumerate(test_loader):
+            
+            support_images, support_mask, support_labels, query_images, query_mask, query_labels, classes = sample_batch
+            support_images = support_images.float().to(device)
+            support_mask = support_mask.float().to(device)
+            query_images = query_images.float().to(device)
+            query_mask = query_mask.float().to(device)
+            for _ in range(5):
+                optimizer.zero_grad()
+                support_images = support_images.view(-1, support_images.shape[-2], support_images.shape[-1])
+                support_mask = support_mask.view(-1, support_mask.shape[-1])
+                support_pred = temp_model(support_images)
+                support_pred = support_pred.permute(0, 2, 1)
+                loss = criterion(support_pred, support_mask.long())
+                loss.backward()
+                optimizer.step()
+            query_images = query_images.view(-1, query_images.shape[-2], query_images.shape[-1])
+            query_mask = query_mask.view(-1, query_mask.shape[-1])
+            miou = mean_iou(temp_model.forward_pred(query_images), query_mask.long(), num_classes=config['n_way'])
+            outputs = temp_model(query_images)
+            outputs = outputs.permute(0, 2, 1)
+            probs = torch.nn.functional.softmax(outputs, dim=1)
+            _, preds = torch.max(probs, 1)
+            accuracy = (preds == query_mask.long()).sum().item() / (query_mask.shape[0] * query_mask.shape[1])
+            mious.append(miou.item())
+            accus.append(accuracy)
+        print(f"Test mIoU: {sum(mious) / len(mious)}, Test accuracy: {sum(accus) / len(accus)}")
+
 
         # plt.plot(query_indx[0].detach().cpu().numpy(), color='r')
         # plt.plot(query_mask[0].detach().cpu().numpy(), color='b')
