@@ -25,7 +25,7 @@ class UpConv(nn.Module):
     def forward(self, x1, x2):
         x1 = self.up(x1)
         # Input is BxCxD, thus, you need to concatenate along dimension 2
-        # print(x1.shape, x2.shape)
+        x1 = F.interpolate(x1, size=x2.size()[2], mode='linear', align_corners=False)
         x = torch.cat([x2, x1], dim=1)
         # print(x.shape)
         return self.conv(x)
