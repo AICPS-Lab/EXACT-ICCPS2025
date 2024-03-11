@@ -61,16 +61,39 @@ class UNet(nn.Module):
         pred = torch.argmax(probabilities, dim=1)
         return pred
 
+class UNet_encoder(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(UNet_encoder, self).__init__()
+        self.conv1 = ConvBlock(in_channels, 64)
+        self.pool1 = nn.MaxPool1d(kernel_size=2, stride=2)
+        self.conv2 = ConvBlock(64, 128)
+        self.pool2 = nn.MaxPool1d(kernel_size=2, stride=2)
+        self.conv3 = ConvBlock(128, 256)
+        self.final_conv = nn.Linear(256, out_channels)
 
-# Example
-
+    def forward(self, x):
+        x = x.permute(0, 2, 1)
+        x1 = self.conv1(x)
+        p1 = self.pool1(x1)
+        x2 = self.conv2(p1)
+        p2 = self.pool2(x2)
+        x3 = self.conv3(p2)
+        x3_maxpooled = F.max_pool1d(x3, kernel_size=x3.size(2)).squeeze()
+        out = self.final_conv(x3_maxpooled)
+        return out
+    
+    def forward_pred(self, x):
+        masks = self.forward(x)
+        probabilities = F.softmax(masks, dim=1)
+        pred = torch.argmax(probabilities, dim=1)
+        return pred
     
 if __name__ == '__main__':
     # print how many parameters are in the model
     
-    unet = UNet(in_channels=6, out_channels=5)
+    unet = UNet_encoder(in_channels=6, out_channels=5)
     print('Number of trainable parameters:', sum(p.numel() for p in unet.parameters() if p.requires_grad))
-    inp = torch.rand(32, 300, 6)
+    inp = torch.rand(32, 50, 6)
 
     res = unet(inp)
     print(res.shape)

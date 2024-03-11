@@ -32,6 +32,26 @@ class NormalDataset(Dataset):
     def get_labels(self):
         return self.class_labels
 
+class ClassificationDataset(Dataset):
+    def __init__(self, data, label, transform=None):
+        self.data = data
+        self.label = label
+        self.transform = transform
+        self.class_labels = [majority_vote(self.label[idx]) for idx in range(len(self.label))]
+        assert len(self.data) == len(self.label)
+    def __len__(self):
+        return len(self.data)
+    def __getitem__(self, idx):
+        if self.transform:
+            raise NotImplementedError
+            return self.transform(self.data[idx]), self.label[idx]
+        cur_label = self.label[idx]
+        if not isinstance(cur_label, torch.Tensor):
+            cur_label = torch.tensor(cur_label, dtype=torch.int16)
+        return self.data[idx], self.class_labels[idx]
+    def get_labels(self):
+        return self.class_labels
+
 
 class CustomDataset(Dataset):
     def __init__(self, data, label, transform=None):
