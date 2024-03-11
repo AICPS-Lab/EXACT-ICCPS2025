@@ -62,23 +62,32 @@ class UNet(nn.Module):
         return pred
 
 class UNet_encoder(nn.Module):
-    def __init__(self, in_channels, out_channels):
+    def __init__(self, in_channels, out_channels, cnn_embed_dims=[64, 128, 256]):
         super(UNet_encoder, self).__init__()
-        self.conv1 = ConvBlock(in_channels, 64)
-        self.pool1 = nn.MaxPool1d(kernel_size=2, stride=2)
-        self.conv2 = ConvBlock(64, 128)
-        self.pool2 = nn.MaxPool1d(kernel_size=2, stride=2)
-        self.conv3 = ConvBlock(128, 256)
-        self.final_conv = nn.Linear(256, out_channels)
+        # self.conv1 = ConvBlock(in_channels, 64)
+        # self.pool1 = nn.MaxPool1d(kernel_size=2, stride=2)
+        # self.conv2 = ConvBlock(64, 128)
+        # self.pool2 = nn.MaxPool1d(kernel_size=2, stride=2)
+        # self.conv3 = ConvBlock(128, 256)
+        # self.final_conv = nn.Linear(256, out_channels)
+        self.modules = []
+
+        for i in range(len(cnn_embed_dims)):
+            if i == 0:
+                self.modules.append(ConvBlock(in_channels, cnn_embed_dims[i]))
+            else:
+                self.modules.append(ConvBlock(cnn_embed_dims[i-1], cnn_embed_dims[i]))
+            self.modules.append(nn.MaxPool1d(kernel_size=2, stride=2))
+        self.final_conv = nn.Linear(cnn_embed_dims[-1], out_channels)
+
+        self.backbone = nn.Sequential(*self.modules)
+        
+
 
     def forward(self, x):
         x = x.permute(0, 2, 1)
-        x1 = self.conv1(x)
-        p1 = self.pool1(x1)
-        x2 = self.conv2(p1)
-        p2 = self.pool2(x2)
-        x3 = self.conv3(p2)
-        x3_maxpooled = F.max_pool1d(x3, kernel_size=x3.size(2)).squeeze()
+        x1 = self.backbone(x)
+        x3_maxpooled = F.max_pool1d(x1, kernel_size=x1.size(2)).squeeze()
         out = self.final_conv(x3_maxpooled)
         return out
     
@@ -89,6 +98,7 @@ class UNet_encoder(nn.Module):
         return pred
     
 if __name__ == '__main__':
+
     # print how many parameters are in the model
     
     unet = UNet_encoder(in_channels=6, out_channels=5)
