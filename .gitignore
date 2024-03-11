@@ -4,5 +4,4 @@
 datasets/OpportunityUCIDataset/loco_2.npy
 datasets/OpportunityUCIDataset/loco_2_mask.npy
 *.png
-saved_model/opportunity_UNet.pth
 datasets/physiq/physiq_permute_all.npy
