@@ -1,4 +1,4 @@
-from train import main
+from train_dense_labeling import main
 config = {
     'batch_size': 128,
     'epochs':200,

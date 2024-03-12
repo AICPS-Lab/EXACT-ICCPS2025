@@ -1,11 +1,162 @@
+import os
 import numpy as np
 from sklearn.model_selection import train_test_split
 import torch
 from TaskSampler import TaskSampler
-
+import pandas as pd
 from utilities import sliding_windows
-from utils_dataset import CustomDataset, NormalDataset
+from utils_dataset import ClassificationDataset, CustomDataset, NormalDataset
 from torch.utils.data import Dataset, DataLoader
+
+def get_e2_e4():
+    folder = './datasets/physiq/segment_sessions_one_repetition_data_E2'
+    files = []
+    dict_mapping = dict()
+    for file in os.listdir(folder):
+        if '.csv' not in file:
+            continue
+        if '120' not in file:
+            continue
+        files.append(file)
+        subject = file.split('_')[1]
+        if subject not in dict_mapping:
+            dict_mapping[subject] = [file]
+        else:
+            dict_mapping[subject].append(file)
+            
+    inputs = []
+    labels = []
+    for k, v in dict_mapping.items():
+        v = sorted(v)
+        v_concat = []
+        for i in v:
+            path_file = os.path.join(folder, i)
+            df = pd.read_csv(path_file)
+            v_concat.append(df.iloc[:, 1:7].values)
+        e2 = np.concatenate(v_concat, axis=0)
+        inputs.append(e2)
+        labels.append([0] * e2.shape[0]) # e2
+    
+    folder = './datasets/physiq/segment_sessions_one_repetition_data_E4'
+    files = []
+    dict_mapping = dict()
+    for file in os.listdir(folder):
+        if '.csv' not in file:
+            continue
+        if '120' not in file:
+            continue
+        files.append(file)
+        subject = file.split('_')[1]
+        if subject not in dict_mapping:
+            dict_mapping[subject] = [file]
+        else:
+            dict_mapping[subject].append(file)
+    
+    for k, v in dict_mapping.items():
+        v = sorted(v)
+        v_concat = []
+        for i in v:
+            path_file = os.path.join(folder, i)
+            df = pd.read_csv(path_file)
+            v_concat.append(df.iloc[:, 1:7].values)
+        e4 = np.concatenate(v_concat, axis=0)
+        inputs.append(e4)
+        labels.append([1] * e4.shape[0])
+    inputs = np.concatenate(inputs, axis=0)
+    labels = np.concatenate(labels, axis=0)
+    return inputs, labels
+    
+
+
+def get_e2_e2prime():
+    # e2 is regulr exercise: [0, 200], [200, 400] for example
+    # e2 prime is the starting at half and ending at the next half: [100, 300], [300, 0-100]
+    folder = './datasets/physiq/segment_sessions_one_repetition_data_E2'
+    files = []
+    dict_mapping = dict()
+    for file in os.listdir(folder):
+        if '.csv' not in file:
+            continue
+        if '120' not in file:
+            continue
+        files.append(file)
+        subject = file.split('_')[1]
+        if subject not in dict_mapping:
+            dict_mapping[subject] = [file]
+        else:
+            dict_mapping[subject].append(file)
+            
+    # permute the order:
+    # np.random.shuffle(files)
+    inputs = []
+    labels = []
+        
+    # e2 prime:
+    for k, v in dict_mapping.items():
+        v = sorted(v)
+        v_concat = []
+        for i in v:
+            path_file = os.path.join(folder, i)
+            df = pd.read_csv(path_file)
+            v_concat.append(df.iloc[:, 1:7].values)
+        e2 = np.concatenate(v_concat, axis=0)
+        # move v_concat[0][:len(v_concat[0])//2] to the end:
+        v_concat.insert(len(v_concat), v_concat[0][:len(v_concat[0])//2])
+        v_concat[0] = v_concat[0][len(v_concat[0])//2:]
+        e2_prime = np.concatenate(v_concat, axis=0)
+        inputs.append(e2_prime)
+        labels.append([1] * e2_prime.shape[0]) # e2 prime
+        
+        inputs.append(e2)
+        labels.append([0] * e2.shape[0]) # e2
+        
+    inputs = np.concatenate(inputs, axis=0)
+    labels = np.concatenate(labels, axis=0)
+    return inputs, labels
+
+def test_idea_dataloader_e2(config):
+    
+    inputs, labels = get_e2_e4()
+    sw = sliding_windows(50, 15)
+    segmented_samples, segmented_labels = sw(torch.tensor(inputs), torch.tensor(labels))
+    # Split the dataset into train, val and test:
+    train_samples, test_samples, train_labels, test_labels = train_test_split(segmented_samples, segmented_labels, test_size=0.5, random_state=42)
+    # val split:
+    train_samples, val_samples, train_labels, val_labels = train_test_split(train_samples, train_labels, test_size=0.2, random_state=42)
+    train_set = ClassificationDataset(train_samples, train_labels)
+    val_set = ClassificationDataset(val_samples, val_labels)
+    test_set = ClassificationDataset(test_samples, test_labels)
+    train_loader = DataLoader(
+        train_set,
+        batch_size=config['batch_size'],
+        shuffle=True,
+        num_workers=0,
+        pin_memory=True,)
+    val_loader = DataLoader(
+        val_set,
+        batch_size=config['batch_size'],
+        shuffle=True,
+        num_workers=0,
+        pin_memory=True,)
+    test_loader = DataLoader(
+        test_set,
+        batch_size=config['batch_size'],
+        shuffle=True,
+        num_workers=0,
+        pin_memory=True,)
+    return train_loader, val_loader, test_loader
+    
+    
+        
+        
+
+            
+            
+            
+    
+    
+    
+
 
 def get_dataloaders(config):
     if config['fsl']:

@@ -4,7 +4,7 @@ from prototypical   import PrototypicalNetworks
 from methods import Segmenter
 from matplotlib import pyplot as plt
 import torch
-from train import get_model
+from train_dense_labeling import get_model
 from utilities import printc, seed
 from utils_loader import get_dataloaders
 from torch.optim.lr_scheduler import MultiStepLR
