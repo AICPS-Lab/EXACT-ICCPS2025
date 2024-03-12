@@ -42,6 +42,6 @@ def parser_folder_permuting(folder):
 
             
 if __name__ == "__main__":
-    i, l = parser_folder_permuting('./datasets/physiq/segment_sessions_one_repetition_data_E1')
-    np.save('./datasets/physiq/physiq_permute_all.npy', {'inputs': i, 'labels': l})
+    i, l = parser_folder_permuting('./datasets/physiq/segment_sessions_one_repetition_data_E3')
+    np.save('./datasets/physiq/physiq_permute_e3.npy', {'inputs': i, 'labels': l})
     

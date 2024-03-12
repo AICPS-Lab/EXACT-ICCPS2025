@@ -109,17 +109,32 @@ def fsl_dataloaders(config):
 
 
 def _load(config):
-    if config['dataset'].lower() == 'physiq':
-        return _load_physiq()
+    if config['dataset'].lower() == 'physiq_e1':
+        return _load_physiq_e1()
+    elif config['dataset'].lower() == 'physiq_e2':
+        return _load_physiq_e2()
+    elif config['dataset'].lower() == 'physiq_e3':
+        return _load_physiq_e3()
     elif config['dataset'].lower() == 'opportunity':
         return _load_opportunity()
     else:
         raise ValueError(f'Unknown dataset: {config["dataset"]}')
     
-def _load_physiq():
-    inp = np.load('./datasets/physiq/physiq_permute_all.npy', allow_pickle=True)
+def _load_physiq_e1():
+    inp = np.load('./datasets/physiq/physiq_permute_e1.npy', allow_pickle=True)
     inputs, labels = inp.item()['inputs'], inp.item()['labels']
     return inputs, labels
+
+def _load_physiq_e2():
+    inp = np.load('./datasets/physiq/physiq_permute_e2.npy', allow_pickle=True)
+    inputs, labels = inp.item()['inputs'], inp.item()['labels']
+    return inputs, labels
+
+def _load_physiq_e3():
+    inp = np.load('./datasets/physiq/physiq_permute_e3.npy', allow_pickle=True)
+    inputs, labels = inp.item()['inputs'], inp.item()['labels']
+    return inputs, labels
+
 
 def _load_opportunity():
     inp = np.load('./datasets/OpportunityUCIDataset/loco_2_mask.npy', allow_pickle=True)
