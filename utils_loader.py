@@ -120,7 +120,7 @@ def get_e2_e4prime():
         for i in v:
             path_file = os.path.join(folder, i)
             df = pd.read_csv(path_file)
-            v_concat.append(df.iloc[:, 1:7].values)
+            v_concat.append(df.iloc[:, 2:7].values)
         e2 = np.concatenate(v_concat, axis=0)
         inputs.append(e2)
         labels.append([0] * e2.shape[0]) # e2
