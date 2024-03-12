@@ -116,7 +116,7 @@ def get_e2_e2prime():
 
 def test_idea_dataloader_e2(config):
     
-    inputs, labels = get_e2_e4()
+    inputs, labels = get_e2_e2prime()
     sw = sliding_windows(50, 15)
     segmented_samples, segmented_labels = sw(torch.tensor(inputs), torch.tensor(labels))
     # Split the dataset into train, val and test:
