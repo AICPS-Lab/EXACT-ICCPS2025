@@ -18,7 +18,7 @@ def main(config):
     train_loader, val_loader, test_loader = test_idea_dataloader_e2(config)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    model = UNet_encoder(in_channels=6, out_channels=2, cnn_embed_dims=[64]).float().to(device)
+    model = UNet_encoder(in_channels=5, out_channels=2, cnn_embed_dims=[64]).float().to(device)
     # model = UNet(in_channels=6, out_channels=5).float().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     # scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, verbose=True, threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-08)

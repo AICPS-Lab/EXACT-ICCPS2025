@@ -147,7 +147,7 @@ def get_e2_e4prime():
         for i in v:
             path_file = os.path.join(folder, i)
             df = pd.read_csv(path_file)
-            v_concat.append(df.iloc[:, 1:7].values)
+            v_concat.append(df.iloc[:, 2:7].values)
         v_concat.insert(len(v_concat), v_concat[0][:len(v_concat[0])//2])
         v_concat[0] = v_concat[0][len(v_concat[0])//2:]
         e4_prime = np.concatenate(v_concat, axis=0)
@@ -213,7 +213,7 @@ from torch.utils.data import SubsetRandomSampler
 def test_idea_dataloader_e2(config):
     
     inputs, labels = get_e2_e4prime()
-    sw = sliding_windows(50, 50)
+    sw = sliding_windows(50, 15)
     segmented_samples, segmented_labels = sw(torch.tensor(inputs), torch.tensor(labels))
     # Split the dataset into train, val and test:
     train_samples, test_samples, train_labels, test_labels = train_test_split(segmented_samples, segmented_labels, test_size=0.5, random_state=42)
