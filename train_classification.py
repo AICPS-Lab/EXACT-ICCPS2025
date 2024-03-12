@@ -11,7 +11,7 @@ from utils_metrics import mean_iou
 from torch.nn import functional as F
 from train_dense_labeling import get_model
 from methods.unet import UNet_encoder
-
+from sklearn.metrics import f1_score 
 def main(config):
     
     seed(config['seed'])
@@ -29,7 +29,7 @@ def main(config):
 
     best_loss = math.inf
     counter_i = 0
-    pbar = tqdm(range(config['epochs']), postfix={'loss': 0.0, 'acc': 0.0})
+    pbar = tqdm(range(config['epochs']), postfix={'loss': 0.0, 'acc': 0.0, 'f1': 0.0})
     for epoch in pbar:
         model.train()
         for images, labels in train_loader:
@@ -51,6 +51,7 @@ def main(config):
             #     print('Epoch [{}/{}], Loss: {:.4f}'.format(epoch+1, config['epochs'], loss.item()))
         val_losses = []
         accs = []
+        f1s =[]
         model.eval()
         for images, labels in val_loader:
             images = images.float().to(device)
@@ -62,12 +63,15 @@ def main(config):
             # accuracy against labels:
             predicted = model.forward_pred(images)
             # predicted == labels
+            f1 = f1_score(predicted.cpu().detach().numpy(), labels.cpu().detach().numpy(), average='weighted')
+            f1s.append(f1)
             acc = (predicted == labels).sum().item() / predicted.shape[0]
             accs.append(acc)
+        f1s = sum(f1s) / len(f1s)
         val_loss = sum(val_losses) / len(val_losses)
         accs = sum(accs) / len(accs)
         # print(f'Epoch [{epoch+1}/{config["epochs"]}], Val Loss: {val_loss}, Mean IoU: {miou}')
-        pbar.set_postfix({'loss': val_loss, 'acc': accs})
+        pbar.set_postfix({'loss': val_loss, 'acc': accs, 'f1': f1s})
         if val_loss < best_loss:
             best_loss = val_loss
             torch.save(model.state_dict(), f'./saved_model/opportunity_{config["model"]}_test_EXP2_B.pth')
