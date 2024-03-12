@@ -34,8 +34,9 @@ def low_pass_filter(data, cutoff, fs, order=5):
     filtered_data = np.zeros_like(data)
     for i in range(data.shape[1]):  # Assuming data shape is (N, 6)
         filtered_data[:, i] = lfilter(b, a, data[:, i])
-    
+        filtered_data[:, i] = np.convolve(filtered_data, np.ones(10)/10, mode='same')
     return filtered_data
+
 def get_e2_e4():
     folder = './datasets/physiq/segment_sessions_one_repetition_data_E2'
     files = []
@@ -141,6 +142,7 @@ def get_e2_e4prime():
     
     for k, v in dict_mapping.items():
         v = sorted(v)
+        print(v)
         v_concat = []
         for i in v:
             path_file = os.path.join(folder, i)
@@ -153,12 +155,9 @@ def get_e2_e4prime():
         labels.append([1] * e4_prime.shape[0])
     inputs = np.concatenate(inputs, axis=0)
     labels = np.concatenate(labels, axis=0)
-    print(inputs.shape)
-    plt.plot(inputs[:, 4])
     # low pass filter:
     inputs = low_pass_filter(inputs, 10, 50)
-    plt.plot(inputs[:, 4])
-    plt.show()
+
     
 
     return inputs, labels
