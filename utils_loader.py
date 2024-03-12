@@ -67,6 +67,66 @@ def get_e2_e4():
     return inputs, labels
     
 
+def get_e2_e4prime():
+    folder = './datasets/physiq/segment_sessions_one_repetition_data_E2'
+    files = []
+    dict_mapping = dict()
+    for file in os.listdir(folder):
+        if '.csv' not in file:
+            continue
+        if '120' not in file:
+            continue
+        files.append(file)
+        subject = file.split('_')[1]
+        if subject not in dict_mapping:
+            dict_mapping[subject] = [file]
+        else:
+            dict_mapping[subject].append(file)
+            
+    inputs = []
+    labels = []
+    for k, v in dict_mapping.items():
+        v = sorted(v)
+        v_concat = []
+        for i in v:
+            path_file = os.path.join(folder, i)
+            df = pd.read_csv(path_file)
+            v_concat.append(df.iloc[:, 1:7].values)
+        e2 = np.concatenate(v_concat, axis=0)
+        inputs.append(e2)
+        labels.append([0] * e2.shape[0]) # e2
+    
+    folder = './datasets/physiq/segment_sessions_one_repetition_data_E4'
+    files = []
+    dict_mapping = dict()
+    for file in os.listdir(folder):
+        if '.csv' not in file:
+            continue
+        if '120' not in file:
+            continue
+        files.append(file)
+        subject = file.split('_')[1]
+        if subject not in dict_mapping:
+            dict_mapping[subject] = [file]
+        else:
+            dict_mapping[subject].append(file)
+    
+    for k, v in dict_mapping.items():
+        v = sorted(v)
+        v_concat = []
+        for i in v:
+            path_file = os.path.join(folder, i)
+            df = pd.read_csv(path_file)
+            v_concat.append(df.iloc[:, 1:7].values)
+        v_concat.insert(len(v_concat), v_concat[0][:len(v_concat[0])//2])
+        v_concat[0] = v_concat[0][len(v_concat[0])//2:]
+        e4_prime = np.concatenate(v_concat, axis=0)
+        inputs.append(e4_prime)
+        labels.append([1] * e4_prime.shape[0])
+    inputs = np.concatenate(inputs, axis=0)
+    labels = np.concatenate(labels, axis=0)
+    return inputs, labels
+    
 
 def get_e2_e2prime():
     # e2 is regulr exercise: [0, 200], [200, 400] for example
@@ -116,7 +176,7 @@ def get_e2_e2prime():
 
 def test_idea_dataloader_e2(config):
     
-    inputs, labels = get_e2_e2prime()
+    inputs, labels = get_e2_e4prime()
     sw = sliding_windows(50, 15)
     segmented_samples, segmented_labels = sw(torch.tensor(inputs), torch.tensor(labels))
     # Split the dataset into train, val and test:
