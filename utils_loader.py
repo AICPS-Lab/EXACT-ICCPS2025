@@ -5,7 +5,7 @@ from sklearn.model_selection import train_test_split
 import torch
 from TaskSampler import TaskSampler
 import pandas as pd
-from utilities import sliding_windows
+from utilities import printc, sliding_windows
 from utils_dataset import ClassificationDataset, CustomDataset, NormalDataset
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
@@ -209,11 +209,11 @@ def get_e2_e2prime():
     inputs = np.concatenate(inputs, axis=0)
     labels = np.concatenate(labels, axis=0)
     return inputs, labels
-
+from torch.utils.data import SubsetRandomSampler
 def test_idea_dataloader_e2(config):
     
     inputs, labels = get_e2_e4prime()
-    sw = sliding_windows(50, 15)
+    sw = sliding_windows(50, 50)
     segmented_samples, segmented_labels = sw(torch.tensor(inputs), torch.tensor(labels))
     # Split the dataset into train, val and test:
     train_samples, test_samples, train_labels, test_labels = train_test_split(segmented_samples, segmented_labels, test_size=0.5, random_state=42)
@@ -222,18 +222,27 @@ def test_idea_dataloader_e2(config):
     train_set = ClassificationDataset(train_samples, train_labels)
     val_set = ClassificationDataset(val_samples, val_labels)
     test_set = ClassificationDataset(test_samples, test_labels)
+    # subsample the dataset:
+    # printc('Train set size:', train_samples.shape, 'Val set size:', val_samples.shape, 'Test set size:', test_samples.shape)
+    # train_sampler = SubsetRandomSampler(list(range(0, len(train_samples), 500)))
+    # # val:
+    # val_sampler = SubsetRandomSampler(list(range(0, len(val_samples), 500)))
     train_loader = DataLoader(
         train_set,
         batch_size=config['batch_size'],
         shuffle=True,
         num_workers=0,
-        pin_memory=True,)
+        pin_memory=True,
+        # sampler=train_sampler
+        )
     val_loader = DataLoader(
         val_set,
         batch_size=config['batch_size'],
         shuffle=True,
         num_workers=0,
-        pin_memory=True,)
+        pin_memory=True,
+        # sampler=val_sampler
+        )
     test_loader = DataLoader(
         test_set,
         batch_size=config['batch_size'],
