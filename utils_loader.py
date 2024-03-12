@@ -1,4 +1,5 @@
 import os
+from matplotlib import pyplot as plt
 import numpy as np
 from sklearn.model_selection import train_test_split
 import torch
@@ -7,7 +8,34 @@ import pandas as pd
 from utilities import sliding_windows
 from utils_dataset import ClassificationDataset, CustomDataset, NormalDataset
 from torch.utils.data import Dataset, DataLoader
+import numpy as np
+from scipy.signal import butter, lfilter, freqz
+def butter_lowpass(cutoff, fs, order=5):
+    return butter(order, cutoff, fs=fs, btype='low', analog=False)
+def low_pass_filter(data, cutoff, fs, order=5):
+    """
+    Apply a low-pass filter to the data.
 
+    Parameters:
+    - data: numpy array of shape (N, 6), where N is the number of data points.
+    - cutoff: The cutoff frequency of the filter (Hz).
+    - fs: The sampling rate of the data (Hz).
+    - order: The order of the filter.
+
+    Returns:
+    - filtered_data: The filtered data, numpy array of shape (N, 6).
+    """
+    # Design the Butterworth filter
+    nyquist = 0.5 * fs
+    normal_cutoff = cutoff / nyquist
+    b, a = butter_lowpass(cutoff, fs, order=order)
+
+    # Apply the filter to each channel
+    filtered_data = np.zeros_like(data)
+    for i in range(data.shape[1]):  # Assuming data shape is (N, 6)
+        filtered_data[:, i] = lfilter(b, a, data[:, i])
+    
+    return filtered_data
 def get_e2_e4():
     folder = './datasets/physiq/segment_sessions_one_repetition_data_E2'
     files = []
@@ -125,6 +153,14 @@ def get_e2_e4prime():
         labels.append([1] * e4_prime.shape[0])
     inputs = np.concatenate(inputs, axis=0)
     labels = np.concatenate(labels, axis=0)
+    print(inputs.shape)
+    plt.plot(inputs[:, 4])
+    # low pass filter:
+    inputs = low_pass_filter(inputs, 10, 50)
+    plt.plot(inputs[:, 4])
+    plt.show()
+    
+
     return inputs, labels
     
 
