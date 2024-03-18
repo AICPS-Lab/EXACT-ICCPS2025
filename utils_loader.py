@@ -142,14 +142,13 @@ def get_e2_e4prime():
     
     for k, v in dict_mapping.items():
         v = sorted(v)
-        print(v)
         v_concat = []
         for i in v:
             path_file = os.path.join(folder, i)
             df = pd.read_csv(path_file)
             v_concat.append(df.iloc[:, 2:7].values)
-        v_concat.insert(len(v_concat), v_concat[0][:len(v_concat[0])//2])
-        v_concat[0] = v_concat[0][len(v_concat[0])//2:]
+        # v_concat.insert(len(v_concat), v_concat[0][:len(v_concat[0])//2])
+        # v_concat[0] = v_concat[0][len(v_concat[0])//2:]
         e4_prime = np.concatenate(v_concat, axis=0)
         inputs.append(e4_prime)
         labels.append([1] * e4_prime.shape[0])
