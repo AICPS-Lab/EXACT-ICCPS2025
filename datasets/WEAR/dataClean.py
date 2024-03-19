@@ -25,10 +25,10 @@ def process_directory(folder):
         df['label'] = df['label'].map(mapping)
         df['label'] = df['label'].fillna(0)
         labels.append(df[mask].to_numpy()[-1])
-        print(df[mask].head())
         # mapping from the list using its index:
         
-        
+    datas = np.array(datas)
+    labels = np.array(labels)
         
     return datas, labels
 
@@ -38,7 +38,6 @@ def process_directory(folder):
 #     for i in zip(datas, labels):
 #         print(i)
 
-process_directory('./datasets/WEAR/inertial')
 
 if __name__ == "__main__":
     i, l = process_directory('./datasets/WEAR/inertial')
