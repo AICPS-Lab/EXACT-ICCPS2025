@@ -89,6 +89,7 @@ def main(config):
         correct = 0
         total = 0
         accs = []
+        misclassified_c = 0
         for images, labels in test_loader:
             images = images.float().to(device)
             labels = labels.to(device)
@@ -100,6 +101,24 @@ def main(config):
             # predicted == labels
             acc = (predicted == labels).sum().item() / predicted.shape[0]
             accs.append(acc)
+            # get the misclassified images and save them in a folder for visualization with its ground truth:
+            if misclassified_c < 20:
+                misclassified = predicted != labels
+                images_misclassified = images[misclassified]
+                labels_misclassified = labels[misclassified]
+                predicted_misclassified = predicted[misclassified]
+                for i, (img, label, pred) in enumerate(zip(images_misclassified, labels_misclassified, predicted_misclassified)):
+                    plt.plot(img.cpu().detach().numpy())
+                    plt.title(f'Predicted: {pred.cpu().detach().numpy()} Ground Truth: {label.cpu().detach().numpy()}')
+                    # plt.plot(pred.cpu().detach().numpy(), label='Prediction')
+                    # plt.plot(label.cpu().detach().numpy(), label='Ground Truth')
+                    plt.legend()
+                    plt.savefig(f'./misclassified/{misclassified_c}_{i}.png')
+                    plt.close()
+                misclassified_c += misclassified.sum().item()  
+
+
+
         accs = sum(accs) / len(accs)
         print(f'Test Accuracy of the model on the test images: {accs}')
         # print(f'Mean IoU: {miou}'
