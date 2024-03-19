@@ -120,7 +120,7 @@ def get_e2_e4prime():
         for i in v:
             path_file = os.path.join(folder, i)
             df = pd.read_csv(path_file)
-            v_concat.append(df.iloc[:, 1:7].values)
+            v_concat.append(df.iloc[:, 1:4].values)
         e2 = np.concatenate(v_concat, axis=0)
         inputs.append(e2)
         labels.append([0] * e2.shape[0]) # e2
@@ -146,7 +146,7 @@ def get_e2_e4prime():
         for i in v:
             path_file = os.path.join(folder, i)
             df = pd.read_csv(path_file)
-            v_concat.append(df.iloc[:, 1:7].values)
+            v_concat.append(df.iloc[:, 1:4].values)
         # v_concat.insert(len(v_concat), v_concat[0][:len(v_concat[0])//2])
         # v_concat[0] = v_concat[0][len(v_concat[0])//2:]
         e4_prime = np.concatenate(v_concat, axis=0)
@@ -155,9 +155,9 @@ def get_e2_e4prime():
     inputs = np.concatenate(inputs, axis=0)
     labels = np.concatenate(labels, axis=0)
     # low pass filter:
-    print(inputs.shape)
-    inputs = low_pass_filter(inputs, 10, 50)
-    print(inputs.shape)
+    # print(inputs.shape)
+    # inputs = low_pass_filter(inputs, 10, 50)
+    # print(inputs.shape)
     
 
     return inputs, labels
@@ -209,10 +209,10 @@ def get_e2_e2prime():
     labels = np.concatenate(labels, axis=0)
     return inputs, labels
 from torch.utils.data import SubsetRandomSampler
-def test_idea_dataloader_e2(config):
+def test_idea_dataloader_er_ir(config):
     
     inputs, labels = get_e2_e4prime()
-    sw = sliding_windows(100, 45)
+    sw = sliding_windows(100, 50)
     segmented_samples, segmented_labels = sw(torch.tensor(inputs), torch.tensor(labels))
     # Split the dataset into train, val and test:
     train_samples, test_samples, train_labels, test_labels = train_test_split(segmented_samples, segmented_labels, test_size=0.5, random_state=42)

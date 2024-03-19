@@ -17,9 +17,6 @@ def process_directory(folder):
     for f in files:
         # Read the file
         df = pd.read_csv(os.path.join(folder, f))
-        burp = df['label'].isin(['burpees'])
-        plt.plot(df[burp].to_numpy()[0:1000, 1:4])
-        plt.show()
         # Append the file to the data
         mask = df['label'].isin(['burpees', 'push-ups'])
         # check if each row is number or float:

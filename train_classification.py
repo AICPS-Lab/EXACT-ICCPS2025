@@ -4,7 +4,7 @@ from methods import Segmenter, TransformerModel, LSTM, CRNN, UNet,CCRNN, UNet2, 
 from matplotlib import pyplot as plt
 import torch
 from utilities import printc, seed
-from utils_loader import get_dataloaders, test_idea_dataloader_e2, test_idea_dataloader_burpee_pushup
+from utils_loader import get_dataloaders, test_idea_dataloader_er_ir, test_idea_dataloader_burpee_pushup
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from tqdm import tqdm
 from utils_metrics import mean_iou
@@ -15,7 +15,7 @@ from sklearn.metrics import f1_score
 def main(config):
     
     seed(config['seed'])
-    train_loader, val_loader, test_loader = test_idea_dataloader_burpee_pushup(config)
+    train_loader, val_loader, test_loader = test_idea_dataloader_er_ir(config)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     model = UNet_encoder(in_channels=3, out_channels=2, cnn_embed_dims=[64]).float().to(device)
