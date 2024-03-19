@@ -251,9 +251,51 @@ def test_idea_dataloader_e2(config):
     return train_loader, val_loader, test_loader
     
     
-        
-        
 
+from sklearn.preprocessing import LabelEncoder
+        
+def test_idea_dataloader_burpee_pushup(config):
+    item = np.load('./datasets/WEAR/inertial.npy', allow_pickle=True)
+    inputs, labels = item.item()['data'], item.item()['labels']
+    le = LabelEncoder().fit(labels)
+    labels = le.transform(labels)
+    sw = sliding_windows(50, 25)
+    segmented_samples, segmented_labels = sw(torch.tensor(inputs), torch.tensor(labels))
+    # Split the dataset into train, val and test:
+    train_samples, test_samples, train_labels, test_labels = train_test_split(segmented_samples, segmented_labels, test_size=0.5, random_state=42)
+    # val split:
+    train_samples, val_samples, train_labels, val_labels = train_test_split(train_samples, train_labels, test_size=0.2, random_state=42)
+    train_set = ClassificationDataset(train_samples, train_labels)
+    val_set = ClassificationDataset(val_samples, val_labels)
+    test_set = ClassificationDataset(test_samples, test_labels)
+    # subsample the dataset:
+    # printc('Train set size:', train_samples.shape, 'Val set size:', val_samples.shape, 'Test set size:', test_samples.shape)
+    # train_sampler = SubsetRandomSampler(list(range(0, len(train_samples), 500)))
+    # # val:
+    # val_sampler = SubsetRandomSampler(list(range(0, len(val_samples), 500)))
+    train_loader = DataLoader(
+        train_set,
+        batch_size=config['batch_size'],
+        shuffle=True,
+        num_workers=0,
+        pin_memory=True,
+        # sampler=train_sampler
+        )
+    val_loader = DataLoader(
+        val_set,
+        batch_size=config['batch_size'],
+        shuffle=True,
+        num_workers=0,
+        pin_memory=True,
+        # sampler=val_sampler
+        )
+    test_loader = DataLoader(
+        test_set,
+        batch_size=config['batch_size'],
+        shuffle=True,
+        num_workers=0,
+        pin_memory=True,)
+    return train_loader, val_loader, test_loader
             
             
             

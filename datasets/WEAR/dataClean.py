@@ -18,17 +18,19 @@ def process_directory(folder):
         df = pd.read_csv(os.path.join(folder, f))
         # Append the file to the data
         mask = df['label'].isin(['burpees', 'push-ups'])
-        datas.append(df[mask].to_numpy()[1:4])
-        # extract certain rows given its label exercise:
-
+        # check if each row is number or float:
+        datas.append(df[mask].to_numpy()[:, 1:4])
+        
         
         df['label'] = df['label'].map(mapping)
         df['label'] = df['label'].fillna(0)
-        labels.append(df[mask].to_numpy()[-1])
+        labels.append(df[mask].to_numpy()[:, -1])
         # mapping from the list using its index:
         
-    datas = np.array(datas)
-    labels = np.array(labels)
+    datas = np.concatenate(datas)
+    datas = datas.astype(np.float64)
+    labels = np.concatenate(labels, dtype=np.float64)
+    print(np.unique(labels), datas.dtype, labels.dtype)
         
     return datas, labels
 
