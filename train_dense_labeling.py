@@ -3,6 +3,7 @@ import os
 from methods import Segmenter, TransformerModel, LSTM, CRNN, UNet,CCRNN, UNet2, PatchTST
 from matplotlib import pyplot as plt
 import torch
+from methods.unetr import UNetrt
 from utilities import printc, seed
 from utils_loader import get_dataloaders
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -27,6 +28,8 @@ def get_model(config):
         return UNet2(in_channels=6, out_channels=5)
     elif config['model'].lower() == 'patchtst':
         return PatchTST()
+    elif config['model'].lower() == 'unetrt':
+        return UNetrt(in_channels=6, out_channels=5)
     else:
         raise NotImplementedError
 
@@ -118,7 +121,7 @@ if __name__ == "__main__":
         'batch_size': 128,
         'epochs':200,
         'fsl': False,
-        'model': 'patchtst',
+        'model': 'unetrt',
         'seed': 73054772,
         'dataset': 'physiq_e1',
         'cross_subject': {
