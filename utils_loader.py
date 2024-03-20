@@ -212,7 +212,7 @@ from torch.utils.data import SubsetRandomSampler
 def test_idea_dataloader_er_ir(config):
     
     inputs, labels = get_e2_e4prime()
-    sw = sliding_windows(100, 50)
+    sw = sliding_windows(50, 5)
     segmented_samples, segmented_labels = sw(torch.tensor(inputs), torch.tensor(labels))
     # Split the dataset into train, val and test:
     train_samples, test_samples, train_labels, test_labels = train_test_split(segmented_samples, segmented_labels, test_size=0.5, random_state=42)

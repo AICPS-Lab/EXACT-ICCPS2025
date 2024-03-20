@@ -118,8 +118,8 @@ if __name__ == "__main__":
         'batch_size': 128,
         'epochs':200,
         'fsl': False,
-        'model': 'unet',
+        'model': 'unet2',
         'seed': 73054772,
-        'dataset': 'physiq'
+        'dataset': 'opportunity'
     }
     main(config)
