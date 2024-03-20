@@ -41,7 +41,7 @@ class UNet2(nn.Module):
         self.up1 = UpConv(256, 128)
         self.up2 = UpConv(128, 64)
         self.final_conv = nn.Conv1d(64, out_channels, kernel_size=1)
-        # self.lstm = nn.LSTM(256, 256, 1, batch_first=True, dropout=.5)
+        self.lstm = nn.LSTM(256, 256, 1, batch_first=True, dropout=.5)
 
     def forward(self, x):
         x = x.permute(0, 2, 1)
@@ -50,8 +50,8 @@ class UNet2(nn.Module):
         x2 = self.conv2(p1)
         p2 = self.pool2(x2)
         x3 = self.conv3(p2)
-        # x3, _ = self.lstm(x3.permute(0, 2, 1))0
-        # x3 = x3.permute(0, 2, 1)
+        x3, _ = self.lstm(x3.permute(0, 2, 1))
+        x3 = x3.permute(0, 2, 1)
         x = self.up1(x3, x2)
         x = self.up2(x, x1)
         x = self.final_conv(x)

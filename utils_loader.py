@@ -320,6 +320,7 @@ def non_fsl_dataloaders(config):
     inputs, labels, users = _load(config)
     inputs = np.array(inputs, dtype=np.object_)
     labels = np.array(labels, dtype=np.object_)
+    users = np.array(users)
     sw = sliding_windows(300, 50)
     if config['cross_subject']['enabled']:
         lpgo = LeavePGroupsOut(n_groups=config['cross_subject']['n_groups'])
@@ -329,8 +330,9 @@ def non_fsl_dataloaders(config):
         train_index, test_index = next(iter(lpgo.split(inputs, labels, users)))
         # split train-val on index:
         
-        train_index, val_index = train_test_split(train_index, test_size=0.2, random_state=config['seed'])
-        
+        train_index, val_index = train_test_split(train_index, test_size=0.1, random_state=config['seed'])
+        # percentage of train, val, and test:
+        printc('Train:', len(train_index) / len(inputs), 'Val:', len(val_index) / len(inputs), 'Test:', len(test_index) / len(inputs))
         train_samples, train_labels = inputs[train_index], labels[train_index]
         val_samples, val_labels = inputs[val_index], labels[val_index]
         test_samples, test_labels = inputs[test_index], labels[test_index]

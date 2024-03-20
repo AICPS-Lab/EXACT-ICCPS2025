@@ -118,12 +118,12 @@ if __name__ == "__main__":
         'batch_size': 128,
         'epochs':200,
         'fsl': False,
-        'model': 'unet2',
+        'model': 'patchtst',
         'seed': 73054772,
         'dataset': 'physiq_e1',
         'cross_subject': {
             'enabled': True,
-            'n_groups': 1
+            'n_groups': 1 # number of test group (subject)
         }
     }
     main(config)
