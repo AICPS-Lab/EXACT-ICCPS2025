@@ -120,6 +120,10 @@ if __name__ == "__main__":
         'fsl': False,
         'model': 'unet2',
         'seed': 73054772,
-        'dataset': 'opportunity'
+        'dataset': 'physiq_e1',
+        'cross_subject': {
+            'enabled': True,
+            'n_groups': 1
+        }
     }
     main(config)

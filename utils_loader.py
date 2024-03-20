@@ -302,7 +302,7 @@ def test_idea_dataloader_burpee_pushup(config):
     
     
     
-
+from sklearn.model_selection import LeavePGroupsOut
 
 def get_dataloaders(config):
     if config['fsl']:
@@ -317,12 +317,39 @@ def non_fsl_dataloaders(config):
     Args:
         config (_type_): NA
     """
-    inputs, labels = _load(config)
+    inputs, labels, users = _load(config)
+    inputs = np.array(inputs, dtype=np.object_)
+    labels = np.array(labels, dtype=np.object_)
     sw = sliding_windows(300, 50)
-    segmented_samples, segmented_labels = sw(torch.tensor(inputs), torch.tensor(labels))
-    # Split the dataset into train, val and test:
-    train_samples, test_samples, train_labels, test_labels = train_test_split(segmented_samples, segmented_labels, test_size=0.2, random_state=42)
-    train_samples, val_samples, train_labels, val_labels = train_test_split(train_samples, train_labels, test_size=0.2, random_state=42)
+    if config['cross_subject']['enabled']:
+        lpgo = LeavePGroupsOut(n_groups=config['cross_subject']['n_groups'])
+        num_splits = lpgo.get_n_splits(inputs, labels, users)
+        printc('Number of splits:', num_splits)
+        # only get the first split:
+        train_index, test_index = next(iter(lpgo.split(inputs, labels, users)))
+        # split train-val on index:
+        
+        train_index, val_index = train_test_split(train_index, test_size=0.2, random_state=config['seed'])
+        
+        train_samples, train_labels = inputs[train_index], labels[train_index]
+        val_samples, val_labels = inputs[val_index], labels[val_index]
+        test_samples, test_labels = inputs[test_index], labels[test_index]
+        # concat:
+        train_samples = np.concatenate(train_samples, axis=0)
+        train_labels = np.concatenate(train_labels, axis=0)
+        val_samples = np.concatenate(val_samples, axis=0)
+        val_labels = np.concatenate(val_labels, axis=0)
+        test_samples = np.concatenate(test_samples, axis=0)
+        test_labels = np.concatenate(test_labels, axis=0)
+        train_samples, train_labels = sw(torch.tensor(train_samples), torch.tensor(train_labels))
+        val_samples, val_labels = sw(torch.tensor(val_samples), torch.tensor(val_labels))
+        test_samples, test_labels = sw(torch.tensor(test_samples), torch.tensor(test_labels))
+        
+    else:        
+        segmented_samples, segmented_labels = sw(torch.tensor(inputs), torch.tensor(labels))
+        # Split the dataset into train, val and test:
+        train_samples, test_samples, train_labels, test_labels = train_test_split(segmented_samples, segmented_labels, test_size=0.2, random_state=42)
+        train_samples, val_samples, train_labels, val_labels = train_test_split(train_samples, train_labels, test_size=0.2, random_state=42)
     train_set = NormalDataset(train_samples, train_labels)
     val_set = NormalDataset(val_samples, val_labels)
     test_set = NormalDataset(test_samples, test_labels)
@@ -348,7 +375,7 @@ def non_fsl_dataloaders(config):
         
     
 
-    
+
     
 
 def fsl_dataloaders(config):
@@ -363,6 +390,7 @@ def fsl_dataloaders(config):
     :return: A tuple of (train_loader, test_loader)
     """
     # Load the dataset
+    raise NotImplementedError('FSL dataloaders not implemented correctly due to users added in physqics')
     inputs, labels = _load(config)
     sw = sliding_windows(300, 50)
     segmented_samples, segmented_labels = sw(torch.tensor(inputs), torch.tensor(labels))
@@ -419,18 +447,18 @@ def _load(config):
     
 def _load_physiq_e1():
     inp = np.load('./datasets/physiq/physiq_permute_e1.npy', allow_pickle=True)
-    inputs, labels = inp.item()['inputs'], inp.item()['labels']
-    return inputs, labels
+    inputs, labels, users = inp.item()['inputs'], inp.item()['labels'], inp.item()['users']
+    return inputs, labels, users
 
 def _load_physiq_e2():
     inp = np.load('./datasets/physiq/physiq_permute_e2.npy', allow_pickle=True)
-    inputs, labels = inp.item()['inputs'], inp.item()['labels']
-    return inputs, labels
+    inputs, labels, users = inp.item()['inputs'], inp.item()['labels'], inp.item()['users']
+    return inputs, labels, users
 
 def _load_physiq_e3():
     inp = np.load('./datasets/physiq/physiq_permute_e3.npy', allow_pickle=True)
-    inputs, labels = inp.item()['inputs'], inp.item()['labels']
-    return inputs, labels
+    inputs, labels, users = inp.item()['inputs'], inp.item()['labels'], inp.item()['users']
+    return inputs, labels, users
 
 
 def _load_opportunity():
