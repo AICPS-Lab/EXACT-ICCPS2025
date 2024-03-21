@@ -10,6 +10,8 @@ def majority_vote(series):
     :param series: np.array of shape (300,), where each element is a class label.
     :return: The majority class for the time series.
     """
+    if isinstance(series, tuple):
+        series = series[0]
     counts = np.bincount(series)
     return np.argmax(counts)
 

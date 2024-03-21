@@ -97,7 +97,7 @@ def get_e2_e4():
     return inputs, labels
     
 
-def get_e2_e4prime():
+def get_e2_e4():
     folder = './datasets/physiq/segment_sessions_one_repetition_data_E2'
     files = []
     dict_mapping = dict()
@@ -118,13 +118,18 @@ def get_e2_e4prime():
     for k, v in dict_mapping.items():
         v = sorted(v)
         v_concat = []
+        v_label = []
         for i in v:
             path_file = os.path.join(folder, i)
             df = pd.read_csv(path_file)
-            v_concat.append(df.iloc[:, 1:7].values)
+            # add a -1 label at the end of the first half and add another last value of input to the input to match the length:
+            v_concat.append(np.append(df.iloc[:, 1:7].values, df.iloc[-1::, 1:7].values, axis=0))
+            v_label.append([0] * df.shape[0] + [2])
         e2 = np.concatenate(v_concat, axis=0)
+        e2_label = np.concatenate(v_label, axis=0)
+        printc(e2.shape, e2_label.shape)
         inputs.append(e2)
-        labels.append([0] * e2.shape[0]) # e2
+        labels.append(e2_label) # e2
     
     folder = './datasets/physiq/segment_sessions_one_repetition_data_E4'
     files = []
@@ -144,15 +149,19 @@ def get_e2_e4prime():
     for k, v in dict_mapping.items():
         v = sorted(v)
         v_concat = []
+        v_label = []
         for i in v:
             path_file = os.path.join(folder, i)
             df = pd.read_csv(path_file)
-            v_concat.append(df.iloc[:, 1:7].values)
+            v_concat.append(np.append(df.iloc[:, 1:7].values, df.iloc[-1::, 1:7].values, axis=0))
+            v_label.append([1] * df.shape[0] + [2])
         # v_concat.insert(len(v_concat), v_concat[0][:len(v_concat[0])//2])
         # v_concat[0] = v_concat[0][len(v_concat[0])//2:]
-        e4_prime = np.concatenate(v_concat, axis=0)
-        inputs.append(e4_prime)
-        labels.append([1] * e4_prime.shape[0])
+        e4 = np.concatenate(v_concat, axis=0)
+        e4_label = np.concatenate(v_label, axis=0)
+        inputs.append(e4)
+        labels.append(e4_label) # e2
+        
     inputs = np.concatenate(inputs, axis=0)
     labels = np.concatenate(labels, axis=0)
     # low pass filter:
@@ -212,13 +221,16 @@ def get_e2_e2prime():
 from torch.utils.data import SubsetRandomSampler
 def test_idea_dataloader_er_ir(config):
     
-    inputs, labels = get_e2_e4prime()
-    sw = sliding_windows(50, 5)
+    inputs, labels = get_e2_e4()
+    sw = sliding_windows(config['window_size'], config['step_size'])
     segmented_samples, segmented_labels = sw(torch.tensor(inputs), torch.tensor(labels))
     # Split the dataset into train, val and test:
     train_samples, test_samples, train_labels, test_labels = train_test_split(segmented_samples, segmented_labels, test_size=0.5, random_state=42)
+    test_transitions = find_transitions(test_labels, config['window_size'], config['step_size'], dense_label=False)
+    test_labels = list(zip(test_labels, test_transitions))
     # val split:
     train_samples, val_samples, train_labels, val_labels = train_test_split(train_samples, train_labels, test_size=0.2, random_state=42)
+    
     train_set = ClassificationDataset(train_samples, train_labels)
     val_set = ClassificationDataset(val_samples, val_labels)
     test_set = ClassificationDataset(test_samples, test_labels)

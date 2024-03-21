@@ -15,7 +15,14 @@ def find_transitions(label, window_size, step_size, dense_label=False):
                     transitions.append(0)
         return transitions
     else:
-        raise NotImplementedError
+        # in this case, label should a (N x window_size x 6), and after this func, the label would be aggregate (bincount) to be classification problem
+        transitions = []
+        for each_window in label:
+            if len(np.unique(each_window)) > 1:
+                transitions.append(1)
+            else:
+                transitions.append(0)
+        return transitions
 
 def find_middle(label, window_size, step_size, dense_label=False):
     if dense_label:
