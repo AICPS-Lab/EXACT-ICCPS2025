@@ -15,7 +15,7 @@ from sklearn.metrics import f1_score
 def main(config):
     
     seed(config['seed'])
-    train_loader, val_loader, test_loader = test_idea_dataloader_er_ir(config)
+    train_loader, val_loader, test_loader = test_idea_dataloader_er_ir(config) #test_idea_dataloader_er_ir(config)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     model = UNet_encoder(in_channels=6, out_channels=2, cnn_embed_dims=[64]).float().to(device)
@@ -88,12 +88,15 @@ def main(config):
     with torch.no_grad():
         correct = 0
         total = 0
-        accs = []
         misclassified_c = 0
-        num_transitions = 0
-        correct_in_trasi = 0
-        for images, (labels, transition) in test_loader:
+        num_transitions, correct_in_trasi = 0, 0
+
+        num_middles, correct_in_middles = 0, 0
+
+
+        for images, (labels, (transition, is_middle)) in test_loader:
             num_transitions += sum(transition)
+            num_middles += sum(is_middle)
             images = images.float().to(device)
             labels = labels.to(device)
             outputs = model(images)
@@ -102,9 +105,11 @@ def main(config):
             # accuracy against labels:
             predicted = model.forward_pred(images)
             # predicted == labels
-            correct_in_trasi += (predicted[transition] == labels[transition]).sum().item()
-            acc = (predicted == labels).sum().item() / predicted.shape[0]
-            accs.append(acc)
+            correct_in_trasi += (predicted[transition==1] == labels[transition==1]).sum().item()  
+            correct_in_middles += (predicted[is_middle==1] == labels[is_middle==1]).sum().item()
+
+            correct += (predicted == labels).sum().item()
+            total += labels.size(0)
             # get the misclassified images and save them in a folder for visualization with its ground truth:
             if misclassified_c < 20:
                 misclassified = predicted != labels
@@ -116,15 +121,26 @@ def main(config):
                     plt.title(f'Predicted: {pred.cpu().detach().numpy()} Ground Truth: {label.cpu().detach().numpy()}')
                     # plt.plot(pred.cpu().detach().numpy(), label='Prediction')
                     # plt.plot(label.cpu().detach().numpy(), label='Ground Truth')
-                    plt.legend()
+                    # plt.legend()
                     plt.savefig(f'./misclassified/{misclassified_c}_{i}.png')
                     plt.close()
                 misclassified_c += misclassified.sum().item()  
 
+        printc('Percentage of middles:', num_middles / total)
+        printc('Percentage of middles correctly classified {} out of middles, and {} out of all:'.format(correct_in_middles / num_middles, correct_in_middles / total))
+
         printc('Percentage of transitions:', num_transitions / total)
         printc('Percentage of transitions correctly classified {} out of transitions, and {} out of all:'.format(correct_in_trasi / num_transitions, correct_in_trasi / total))
 
-        accs = sum(accs) / len(accs)
+        accs = correct / total
+        
+        print('Percentage of misclassified:', misclassified_c / total)
+        print('Out of the all, how many middle incorrectly classified:', (num_middles - correct_in_middles) / total)
+        print('Out of the all, how many transitions incorrectly classified:', (num_transitions - correct_in_trasi) / total)
+        inacc = 1-accs
+        print('out of the incorrectly predicted, how many are middle incorrectly classified:', (num_middles - correct_in_middles) / total / inacc)
+        print('out of the incorrectly predicted, how many are transitions incorrectly classified', (num_transitions - correct_in_trasi) / total / inacc)
+
         print(f'Test Accuracy of the model on the test images: {accs}')
         # print(f'Mean IoU: {miou}'
 

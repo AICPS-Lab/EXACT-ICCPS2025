@@ -5,7 +5,7 @@ from sklearn.model_selection import train_test_split
 import torch
 from TaskSampler import TaskSampler
 import pandas as pd
-from metrics import find_transitions
+from metrics import find_mid, find_transitions
 from utilities import printc, sliding_windows
 from utils_dataset import ClassificationDataset, CustomDataset, NormalDataset
 from torch.utils.data import Dataset, DataLoader
@@ -223,11 +223,20 @@ def test_idea_dataloader_er_ir(config):
     
     inputs, labels = get_e2_e4()
     sw = sliding_windows(config['window_size'], config['step_size'])
+    is_middle = find_mid(labels, config['window_size'], config['step_size'], dense_label=True)
     segmented_samples, segmented_labels = sw(torch.tensor(inputs), torch.tensor(labels))
+    assert len(segmented_labels) == len(is_middle), 'Length of labels and is_middle do not match {} and {}'.format(len(segmented_labels), len(is_middle))
+    segmented_labels = list(zip(segmented_labels, is_middle))
+
     # Split the dataset into train, val and test:
     train_samples, test_samples, train_labels, test_labels = train_test_split(segmented_samples, segmented_labels, test_size=0.5, random_state=42)
+    # unzip:
+    train_labels, _ = zip(*train_labels)
+    test_labels, test_middle = zip(*test_labels)
+    
     test_transitions = find_transitions(test_labels, config['window_size'], config['step_size'], dense_label=False)
-    test_labels = list(zip(test_labels, test_transitions))
+
+    test_labels = list(zip(test_labels, list(zip(test_transitions, test_middle))))
     # val split:
     train_samples, val_samples, train_labels, val_labels = train_test_split(train_samples, train_labels, test_size=0.2, random_state=42)
     
@@ -272,10 +281,20 @@ def test_idea_dataloader_burpee_pushup(config):
     inputs, labels = item.item()['data'], item.item()['labels']
     le = LabelEncoder().fit(labels)
     labels = le.transform(labels)
-    sw = sliding_windows(50, 25)
+    is_middle = find_mid(labels, config['window_size'], config['step_size'], dense_label=True)
+    sw = sliding_windows(config['window_size'], config['step_size'])
     segmented_samples, segmented_labels = sw(torch.tensor(inputs), torch.tensor(labels))
+    assert len(segmented_labels) == len(is_middle), 'Length of labels and is_middle do not match {} and {}'.format(len(segmented_labels), len(is_middle))
+    segmented_labels = list(zip(segmented_labels, is_middle))
     # Split the dataset into train, val and test:
     train_samples, test_samples, train_labels, test_labels = train_test_split(segmented_samples, segmented_labels, test_size=0.5, random_state=42)
+    # unzip:
+    train_labels, _ = zip(*train_labels)
+    test_labels, test_middle = zip(*test_labels)
+    # transition:
+    test_transitions = find_transitions(test_labels, config['window_size'], config['step_size'], dense_label=False)
+    
+    test_labels = list(zip(test_labels, list(zip(test_transitions, test_middle))))
     # val split:
     train_samples, val_samples, train_labels, val_labels = train_test_split(train_samples, train_labels, test_size=0.2, random_state=42)
     train_set = ClassificationDataset(train_samples, train_labels)

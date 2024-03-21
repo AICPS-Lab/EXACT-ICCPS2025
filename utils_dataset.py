@@ -3,17 +3,21 @@ from torch.utils.data import Dataset
 import torch
 import pandas as pd
 
-def majority_vote(series):
+def majority_vote(label):
     """
     Convert a single time series of shape (300,) to its majority-vote class.
 
     :param series: np.array of shape (300,), where each element is a class label.
     :return: The majority class for the time series.
     """
-    if isinstance(series, tuple):
-        series = series[0]
-    counts = np.bincount(series)
-    return np.argmax(counts)
+    if isinstance(label, tuple):
+        series = label[0]
+        counts = np.bincount(series)
+        return (np.argmax(counts), *label[1::])
+    else:
+        counts = np.bincount(label)
+        return np.argmax(counts)
+    
 
 class NormalDataset(Dataset):
     def __init__(self, data, label, transform=None):
@@ -49,8 +53,9 @@ class ClassificationDataset(Dataset):
             raise NotImplementedError
             return self.transform(self.data[idx]), self.label[idx]
         cur_label = self.label[idx]
-        if not isinstance(cur_label, torch.Tensor):
-            cur_label = torch.tensor(cur_label, dtype=torch.int16)
+        if not isinstance(cur_label, tuple):
+            if not isinstance(cur_label, torch.Tensor):
+                cur_label = torch.tensor(cur_label, dtype=torch.int16)
         return self.data[idx], self.class_labels[idx]
     def get_labels(self):
         return self.class_labels

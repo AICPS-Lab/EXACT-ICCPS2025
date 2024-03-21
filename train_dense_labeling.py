@@ -117,7 +117,7 @@ def main(config):
             
             # of the one in transitions=1, how many are correctly classified:
             transitions = transitions.to(device)
-            correct_in_trasi += (predicted[transitions.nonzero().squeeze()] == labels[transitions.nonzero().squeeze()]).sum().item()
+            correct_in_trasi += (predicted[transitions==1] == labels[transitions==1]).sum().item()
             
         printc('Percentage of transitions:', num_transitions / total)
         printc('Percentage of transitions correctly classified {} out of transitions, and {} out of all:'.format(correct_in_trasi / num_transitions, correct_in_trasi / total))
