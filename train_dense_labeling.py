@@ -102,7 +102,10 @@ def main(config):
         correct = 0
         total = 0
         m_ious = []
-        for images, labels in test_loader:
+        num_transitions = 0
+        correct_in_trasi = 0
+        for images, (labels, transitions) in test_loader:
+            num_transitions += sum(transitions)
             images = images.float().to(device)
             labels = labels.to(device)
             outputs = model(images)
@@ -110,9 +113,15 @@ def main(config):
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0) * labels.size(1)
             correct += (predicted == labels).sum().item()
-            m_ious.append(mean_iou(model.forward_pred(images), labels.long(), num_classes=5))
-
-        print('Test Accuracy of the model {} on the test images: {} %, Mean IoU: {}'.format(config['model'].upper(), 
+            m_ious.append(mean_iou(model.forward_pred(images), labels.long(), num_classes=config['dataset']['num_classes']))
+            
+            # of the one in transitions=1, how many are correctly classified:
+            transitions = transitions.to(device)
+            correct_in_trasi += (predicted[transitions.nonzero().squeeze()] == labels[transitions.nonzero().squeeze()]).sum().item()
+            
+        printc('Percentage of transitions:', num_transitions / total)
+        printc('Percentage of transitions correctly classified {} out of transitions, and {} out of all:'.format(correct_in_trasi / num_transitions, correct_in_trasi / total))
+        printc('Test Accuracy of the model {} on the test images: {} %, Mean IoU: {}'.format(config['model'].upper(), 
                                                                                             100 * correct / total, 
                                                                                             sum(m_ious) / len(m_ious)))
 
@@ -123,7 +132,13 @@ if __name__ == "__main__":
         'fsl': False,
         'model': 'unetrt',
         'seed': 73054772,
-        'dataset': 'physiq_e1',
+        'dataset': {
+            'name': 'physiq_e1',
+            'num_classes': 5
+        },
+        
+        'window_size': 50,
+        'step_size': 25,
         'cross_subject': {
             'enabled': True,
             'n_groups': 1 # number of test group (subject)

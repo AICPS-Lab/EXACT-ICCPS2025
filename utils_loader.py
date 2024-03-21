@@ -5,6 +5,7 @@ from sklearn.model_selection import train_test_split
 import torch
 from TaskSampler import TaskSampler
 import pandas as pd
+from metrics import find_transitions
 from utilities import printc, sliding_windows
 from utils_dataset import ClassificationDataset, CustomDataset, NormalDataset
 from torch.utils.data import Dataset, DataLoader
@@ -321,7 +322,7 @@ def non_fsl_dataloaders(config):
     inputs = np.array(inputs, dtype=np.object_)
     labels = np.array(labels, dtype=np.object_)
     users = np.array(users)
-    sw = sliding_windows(300, 50)
+    sw = sliding_windows(config['window_size'], config['step_size'])
     if config['cross_subject']['enabled']:
         lpgo = LeavePGroupsOut(n_groups=config['cross_subject']['n_groups'])
         num_splits = lpgo.get_n_splits(inputs, labels, users)
@@ -332,7 +333,7 @@ def non_fsl_dataloaders(config):
         
         train_index, val_index = train_test_split(train_index, test_size=0.1, random_state=config['seed'])
         # percentage of train, val, and test:
-        printc('Train:', len(train_index) / len(inputs), 'Val:', len(val_index) / len(inputs), 'Test:', len(test_index) / len(inputs))
+        printc('Cross Validation info on Train:', len(train_index) / len(inputs), 'Val:', len(val_index) / len(inputs), 'Test:', len(test_index) / len(inputs))
         train_samples, train_labels = inputs[train_index], labels[train_index]
         val_samples, val_labels = inputs[val_index], labels[val_index]
         test_samples, test_labels = inputs[test_index], labels[test_index]
@@ -343,9 +344,14 @@ def non_fsl_dataloaders(config):
         val_labels = np.concatenate(val_labels, axis=0)
         test_samples = np.concatenate(test_samples, axis=0)
         test_labels = np.concatenate(test_labels, axis=0)
+        # add the where the transition is:
+        test_transitions = find_transitions(test_labels, config['window_size'], config['step_size'], dense_label=True)
         train_samples, train_labels = sw(torch.tensor(train_samples), torch.tensor(train_labels))
         val_samples, val_labels = sw(torch.tensor(val_samples), torch.tensor(val_labels))
         test_samples, test_labels = sw(torch.tensor(test_samples), torch.tensor(test_labels))
+        test_labels = list(zip(test_labels, test_transitions))
+       
+        
         
     else:        
         segmented_samples, segmented_labels = sw(torch.tensor(inputs), torch.tensor(labels))
@@ -392,7 +398,7 @@ def fsl_dataloaders(config):
     :return: A tuple of (train_loader, test_loader)
     """
     # Load the dataset
-    raise NotImplementedError('FSL dataloaders not implemented correctly due to users added in physqics')
+    raise NotImplementedError('FSL dataloaders not implemented correctly due to users variable added in physqics')
     inputs, labels = _load(config)
     sw = sliding_windows(300, 50)
     segmented_samples, segmented_labels = sw(torch.tensor(inputs), torch.tensor(labels))
@@ -436,13 +442,14 @@ def fsl_dataloaders(config):
 
 
 def _load(config):
-    if config['dataset'].lower() == 'physiq_e1':
+    if config['dataset']['name'].lower() == 'physiq_e1':
         return _load_physiq_e1()
-    elif config['dataset'].lower() == 'physiq_e2':
+    elif config['dataset']['name'].lower() == 'physiq_e2':
         return _load_physiq_e2()
-    elif config['dataset'].lower() == 'physiq_e3':
+    elif config['dataset']['name'].lower() == 'physiq_e3':
         return _load_physiq_e3()
-    elif config['dataset'].lower() == 'opportunity':
+    elif config['dataset']['name'].lower() == 'opportunity':
+        raise NotImplementedError('Opportunity dataset not implemented correctly in the dataClean.py with users variable')
         return _load_opportunity()
     else:
         raise ValueError(f'Unknown dataset: {config["dataset"]}')
