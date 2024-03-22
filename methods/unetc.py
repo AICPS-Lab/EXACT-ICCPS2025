@@ -3,12 +3,33 @@ import torch.nn as nn
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+class CausalConv1D(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, dilation=1):
+        super(CausalConv1D, self).__init__()
+        self.kernel_size = kernel_size
+        self.dilation = dilation
+        self.stride = stride
 
+        # Compute the required padding to ensure causality
+        self.padding = (kernel_size - 1) * dilation  # Padding on one side to ensure causality
+
+        self.conv1d = nn.Conv1d(in_channels, out_channels, kernel_size,
+                                stride=stride, padding=0, dilation=dilation)  # No built-in padding
+
+    def forward(self, x):
+        # Manually pad the sequence on the left to ensure causality
+        x_padded = nn.functional.pad(x, (self.padding, 0))  # Padding format (left, right)
+        
+        # Apply convolution to the padded input
+        conv = self.conv1d(x_padded)
+        
+        return conv
+    
 class ConvBlock(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(ConvBlock, self).__init__()
-        self.conv1 = nn.Conv1d(in_channels, out_channels, kernel_size=3, padding=1)
-        self.conv2 = nn.Conv1d(out_channels, out_channels, kernel_size=3, padding=1)
+        self.conv1 = CausalConv1D(in_channels, out_channels, kernel_size=3)
+        self.conv2 = CausalConv1D(out_channels, out_channels, kernel_size=3)
         self.relu = nn.ReLU(inplace=True)
 
     def forward(self, x):
@@ -30,9 +51,9 @@ class UpConv(nn.Module):
         # print(x.shape)
         return self.conv(x)
 
-class UNet(nn.Module):
+class UNetc(nn.Module):
     def __init__(self, in_channels, out_channels):
-        super(UNet, self).__init__()
+        super(UNetc, self).__init__()
         self.conv1 = ConvBlock(in_channels, 64)
         self.pool1 = nn.MaxPool1d(kernel_size=2, stride=2)
         self.conv2 = ConvBlock(64, 128)
@@ -60,9 +81,13 @@ class UNet(nn.Module):
         probabilities = F.softmax(masks, dim=1)
         pred = torch.argmax(probabilities, dim=1)
         return pred
-
 if __name__ == '__main__':
-    import echotorch.nn as etnn
-    esn = etnn.ESN(6, 100, 100)
-    inp = torch.randn(32, 100, 6)
-    out = esn(inp)
+
+    # print how many parameters are in the model
+    
+    unet = UNetc(in_channels=6, out_channels=5)
+    print('Number of trainable parameters:', sum(p.numel() for p in unet.parameters() if p.requires_grad))
+    inp = torch.rand(32, 50, 6)
+
+    res = unet(inp)
+    print(res.shape)

@@ -101,7 +101,7 @@ if __name__ == '__main__':
 
     # print how many parameters are in the model
     
-    unet = UNet_encoder(in_channels=6, out_channels=5)
+    unet = UNet(in_channels=6, out_channels=5)
     print('Number of trainable parameters:', sum(p.numel() for p in unet.parameters() if p.requires_grad))
     inp = torch.rand(32, 50, 6)
 
