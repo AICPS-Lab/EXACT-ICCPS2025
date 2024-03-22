@@ -3,6 +3,8 @@ import os
 from methods import Segmenter, TransformerModel, LSTM, CRNN, UNet,CCRNN, UNet2, PatchTST
 from matplotlib import pyplot as plt
 import torch
+from methods.lstm import LSTMClassification
+from methods.transformer import TransformerClassification
 from utilities import printc, seed
 from utils_loader import get_dataloaders, test_idea_dataloader_er_ir, test_idea_dataloader_burpee_pushup
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -17,7 +19,8 @@ def main(config):
     seed(config['seed'])
     train_loader, val_loader, test_loader = test_idea_dataloader_er_ir(config) #test_idea_dataloader_er_ir(config)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
+    # model = TransformerClassification(in_channels=6, num_classes=5).float().to(device)
+    # model = LSTMClassification(in_channels=6, num_classes=5).float().to(device)
     model = UNet_encoder(in_channels=6, out_channels=2, cnn_embed_dims=[64]).float().to(device)
     # model = UNet(in_channels=6, out_channels=5).float().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)

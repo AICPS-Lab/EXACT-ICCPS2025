@@ -33,7 +33,7 @@ class UpConv(nn.Module):
         return self.conv(x)
 
 class TransformerBlock(nn.Module):
-    def __init__(self, ninp=64, num_heads=1, embed_dims=256, dropout=0.1, init_std=.02, activation='relu'):
+    def __init__(self, ninp=64, num_heads=1, embed_dims=256, dropout=0.5, init_std=.02, activation='relu'):
         super(TransformerBlock, self).__init__()
         self.layer = nn.TransformerEncoderLayer(d_model=ninp, 
                                                nhead=num_heads, 
@@ -48,7 +48,7 @@ class TransformerBlock(nn.Module):
         return x
     
 class Transformer(nn.Module):
-    def __init__(self, in_channels=6, ninp=32, num_layers=9, extract_layers=[3, 6, 9]):
+    def __init__(self, in_channels=6, ninp=64, num_layers=6, extract_layers=[2, 4, 6]):
         super().__init__()
         self.embeddings = nn.Linear(in_channels, ninp)
         self.layer = nn.ModuleList()
@@ -72,17 +72,16 @@ class UNetrt(nn.Module):
     def __init__(self, in_channels, out_channels,):
         super(UNetrt, self).__init__()
         self.t = Transformer()
-        self.conv0 = ConvBlock(in_channels, 32)
+        self.conv0 = ConvBlock(in_channels, 64)
         self.pool0 = nn.MaxPool1d(kernel_size=2, stride=2)
-        self.conv1 = ConvBlock(32, 64)
+        self.conv1 = ConvBlock(64, 64)
         self.pool1 = nn.MaxPool1d(kernel_size=2, stride=2)
-        self.conv2 = ConvBlock(32, 128)
+        self.conv2 = ConvBlock(64, 128)
         self.pool2 = nn.MaxPool1d(kernel_size=2, stride=2)
-        self.conv3 = ConvBlock(32, 256)
+        self.conv3 = ConvBlock(64, 256)
         self.up1 = UpConv(256, 128)
         self.up2 = UpConv(128, 64)
-        self.up3 = UpConv(64, 32)
-        self.final_conv = nn.Conv1d(32, out_channels, kernel_size=1)
+        self.final_conv = nn.Conv1d(64, out_channels, kernel_size=1)
 
     def forward(self, x):
         z3, z6, z9 = self.t(x)
@@ -97,7 +96,6 @@ class UNetrt(nn.Module):
         x3 = self.conv3(z9.permute(0, 2, 1))
         x = self.up1(x3, x2)
         x = self.up2(x, x1)
-        x = self.up3(x, x0)
         
         x = self.final_conv(x)
         x = x.permute(0, 2, 1)

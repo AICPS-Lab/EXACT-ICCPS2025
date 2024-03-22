@@ -349,12 +349,12 @@ def non_fsl_dataloaders(config):
     Args:
         config (_type_): NA
     """
-    inputs, labels, users = _load(config)
-    inputs = np.array(inputs, dtype=np.object_)
-    labels = np.array(labels, dtype=np.object_)
+    inputs, labels, users, transitions = _load(config)
     users = np.array(users)
     sw = sliding_windows(config['window_size'], config['step_size'])
     if config['cross_subject']['enabled']:
+        inputs = np.array(inputs, dtype=np.object_)
+        labels = np.array(labels, dtype=np.object_)
         lpgo = LeavePGroupsOut(n_groups=config['cross_subject']['n_groups'])
         num_splits = lpgo.get_n_splits(inputs, labels, users)
         printc('Number of splits:', num_splits)
@@ -385,10 +385,20 @@ def non_fsl_dataloaders(config):
         
         
     else:        
+        inputs = np.concatenate(inputs, axis=0)
+        labels = np.concatenate(labels, axis=0, dtype=int)
+        transitions = np.concatenate(transitions, axis=0)
+        printc('label classes:', np.unique(labels))
+        segmented_transitions = find_transitions(transitions, config['window_size'], config['step_size'], dense_label=True)
         segmented_samples, segmented_labels = sw(torch.tensor(inputs), torch.tensor(labels))
+        # zip label and transitions:
+        segmented_labels = list(zip(segmented_labels, segmented_transitions))
         # Split the dataset into train, val and test:
         train_samples, test_samples, train_labels, test_labels = train_test_split(segmented_samples, segmented_labels, test_size=0.2, random_state=42)
+        # unzip from train:
+        train_labels, _ = zip(*train_labels)
         train_samples, val_samples, train_labels, val_labels = train_test_split(train_samples, train_labels, test_size=0.2, random_state=42)
+
     train_set = NormalDataset(train_samples, train_labels)
     val_set = NormalDataset(val_samples, val_labels)
     test_set = NormalDataset(test_samples, test_labels)
@@ -476,9 +486,12 @@ def _load(config):
     if config['dataset']['name'].lower() == 'physiq_e1':
         return _load_physiq_e1()
     elif config['dataset']['name'].lower() == 'physiq_e2':
+        raise NotImplementedError('Physiq E2 not implemented correctly in the dataClean.py with transition varibale')
         return _load_physiq_e2()
     elif config['dataset']['name'].lower() == 'physiq_e3':
         return _load_physiq_e3()
+    elif config['dataset']['name'].lower() == 'physiq_e2_e4':
+        return _load_physiq_e2_e4()
     elif config['dataset']['name'].lower() == 'opportunity':
         raise NotImplementedError('Opportunity dataset not implemented correctly in the dataClean.py with users variable')
         return _load_opportunity()
@@ -500,6 +513,17 @@ def _load_physiq_e3():
     inputs, labels, users = inp.item()['inputs'], inp.item()['labels'], inp.item()['users']
     return inputs, labels, users
 
+def _load_physiq_e2_e4():
+    inp = np.load('./datasets/physiq/physiq_permute_e4.npy', allow_pickle=True)
+    inputs, labels, users, transitions = inp.item()['inputs'], inp.item()['labels'], inp.item()['users'], inp.item()['transition']
+    for i in range(len(labels)):
+        labels[i] = list(np.array(labels[i]) + 3) # shift the labels to 2, 3, 4, 5
+        transitions[i] = list(np.array(transitions[i]) + 2) # shift the transitions to 2, 3
+
+    
+    inp2 = np.load('./datasets/physiq/physiq_permute_e2.npy', allow_pickle=True)
+    inputs2, labels2, users2, transitions2 = inp2.item()['inputs'], inp2.item()['labels'], inp2.item()['users'], inp2.item()['transition']
+    return inputs + inputs2, labels + labels2, users + users2, transitions + transitions2
 
 def _load_opportunity():
     inp = np.load('./datasets/OpportunityUCIDataset/loco_2_mask.npy', allow_pickle=True)

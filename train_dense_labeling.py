@@ -13,23 +13,23 @@ from torch.nn import functional as F
 
 def get_model(config):
     if config['model'].lower() == 'crnn':
-        return CRNN(in_channels=6, embed_dims=256)
+        return CRNN(in_channels=6, embed_dims=256, num_classes=config['dataset']['num_classes'])
     elif config['model'].lower() == 'lstm':
-        return LSTM(num_classes=5, in_channels=6, embed_dims=64)
+        return LSTM(num_classes=config['dataset']['num_classes'], in_channels=6, embed_dims=64)
     elif config['model'].lower() == 'unet':
-        return UNet(in_channels=6, out_channels=5)
+        return UNet(in_channels=6, out_channels=config['dataset']['num_classes'])
     elif config['model'].lower() == 'ccrnn':
-        return CCRNN(in_channels=6, embed_dims=256)
+        return CCRNN(in_channels=6, embed_dims=256, num_classes=config['dataset']['num_classes'])
     elif config['model'].lower() == 'transformer':
-        return TransformerModel(in_channels=6,embed_dims=256)
+        return TransformerModel(in_channels=6,embed_dims=256, num_classes=config['dataset']['num_classes'])
     elif config['model'].lower() == 'segmenter':
-        return Segmenter(in_channels=6, embed_dims=128)
+        return Segmenter(in_channels=6, embed_dims=128, num_classes=config['dataset']['num_classes'])
     elif config['model'].lower() == 'unet2':
-        return UNet2(in_channels=6, out_channels=5)
+        return UNet2(in_channels=6, out_channels=config['dataset']['num_classes'])
     elif config['model'].lower() == 'patchtst':
         return PatchTST()
     elif config['model'].lower() == 'unetrt':
-        return UNetrt(in_channels=6, out_channels=5)
+        return UNetrt(in_channels=6, out_channels=config['dataset']['num_classes'])
     else:
         raise NotImplementedError
 
@@ -105,7 +105,8 @@ def main(config):
         num_transitions = 0
         correct_in_trasi = 0
         for images, (labels, transitions) in test_loader:
-            num_transitions += sum(transitions)
+            # print(transitions)
+            num_transitions += sum(transitions) * labels.size(1)
             images = images.float().to(device)
             labels = labels.to(device)
             outputs = model(images)
@@ -133,14 +134,14 @@ if __name__ == "__main__":
         'model': 'unetrt',
         'seed': 73054772,
         'dataset': {
-            'name': 'physiq_e1',
-            'num_classes': 5
+            'name': 'physiq_e2_e4',
+            'num_classes': 6
         },
         
-        'window_size': 50,
-        'step_size': 25,
+        'window_size': 300,
+        'step_size': 150,
         'cross_subject': {
-            'enabled': True,
+            'enabled': False,
             'n_groups': 1 # number of test group (subject)
         }
     }
