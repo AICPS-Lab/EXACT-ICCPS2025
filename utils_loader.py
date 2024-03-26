@@ -11,6 +11,8 @@ from utils_dataset import ClassificationDataset, CustomDataset, NormalDataset
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
 from scipy.signal import butter, lfilter, freqz
+from sklearn.preprocessing import LabelEncoder
+import random
 def butter_lowpass(cutoff, fs, order=5):
     return butter(order, cutoff, fs=fs, btype='low', analog=False)
 def low_pass_filter(data, cutoff, fs, order=5):
@@ -329,8 +331,100 @@ def test_idea_dataloader_burpee_pushup(config):
         pin_memory=True,)
     return train_loader, val_loader, test_loader
             
+           
+def test_idea_dataloader_ABC_to_BCA(config):
+    filename = './datasets/spar/spar_dataset'
+    seed = config['seed']
+    # read through the folder that end with csv:
+    def combo_to_np(combo, le: LabelEncoder):
+        samples = []
+        labels = []
+        for each_combo in combo:
+            for each_file in each_combo:
+                df = pd.read_csv(os.path.join(filename, each_file))
+                samples.append(df.to_numpy()[:, 1:7])
+                labels.append([le.transform([each_file.split('_')[1]])[0]] * df.shape[0])
+                # print('labels', labels)
+        # convert to np:
+        samples = np.concatenate(samples)
+        labels = np.concatenate(labels)
+        print(samples.shape, labels.shape)
+        return samples, labels
+    
+    if not os.path.exists('./datasets/spar/temp.npy'):
+        filename = './datasets/spar/spar_dataset'
+        seed = config['seed']
+        # read through the folder that end with csv:
+        classes = []
+        subjs = []
+        for root, dirs, files in os.walk(filename):
+            for file in files:
+                if file.endswith(".csv") and 'R' in file:
+                    label = file.split('_')[1]
+                    subj = file.split('_')[0]
+                    if label not in classes:
+                        classes.append(label)
+                    if subj not in subjs:
+                        subjs.append(subj)
+                    # print(os.path.join(root, file))
+                    # df = pd.read_csv(os.path.join(root, file))
+
+        # generate train combo => ABC, ABD, ... # test combo => BCD (some combo that was not seem in train) based on the classes
+        train_combo = [('E1', 'E2', 'E3')]
+        test_combo = [('E3', 'E1', 'E2')]
+
+        assert all([each in classes for comb in train_combo for each in comb]), 'train combo not in classes'
+        assert all([each in classes for comb in test_combo for each in comb]), 'test combo not in classes'
+        train_classes = list(set([each for comb in train_combo for each in comb]))
+        le = LabelEncoder()
+        le.fit(train_classes)
+        random.seed(seed)
+        train_samples = []
+        test_samples = []
+        for each_subj in subjs:
+            collection = {class_name: [] for class_name in classes}
+            for root, dirs, files in os.walk(filename):
+                for file in files:
+                    if file.endswith(".csv") and 'R' in file and each_subj == file.split('_')[0]:
+                        label = file.split('_')[1]
+                        collection[label].append(file)
+
+            lengths = [len(collection[class_name]) for class_name in classes]
+            minimum = min(lengths)
+            # 80% for train, 20% for test
+            train_length = int(minimum * 0.8)
+            test_length = minimum - train_length
+            print(f'{each_subj} has {minimum} samples, {train_length} for train, {test_length} for test')
+            # generate train and test data
             
-            
+            # randomly extract one sample of label from the collection and remove that label from the list in the collection:
+            for _ in range(train_length):
+                for i in train_combo:
+                    cur_combo = []
+                    for j in i:
+                        selected_sample = random.choice(collection[j])
+                        collection[j].remove(selected_sample)
+                        cur_combo.append(selected_sample)
+                    train_samples.append(cur_combo)
+            for _ in range(test_length):
+                for i in test_combo:
+                    cur_combo = []
+                    for j in i:
+                        selected_sample = random.choice(collection[j])
+                        collection[j].remove(selected_sample)
+                        cur_combo.append(selected_sample)
+                    test_samples.append(cur_combo)
+        train_s = combo_to_np(train_samples, le)
+        test_s = combo_to_np(test_samples, le)
+        np.save('temp.npy', {'train':train_s, 'test':test_s})
+    # check if the file, temp.npy exists, if not, save it:
+    else:
+        temp = np.load('./datasets/spar/temp.npy', allow_pickle=True)
+        train_s = temp.item()['train']
+        test_s = temp.item()['test']
+    return train_s, test_s
+    
+    
     
     
     
