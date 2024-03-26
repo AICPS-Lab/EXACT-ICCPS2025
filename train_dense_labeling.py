@@ -105,11 +105,7 @@ def main(config):
         correct = 0
         total = 0
         m_ious = []
-        num_transitions = 0
-        correct_in_trasi = 0
-        for images, (labels, transitions) in test_loader:
-            # print(transitions)
-            num_transitions += sum(transitions) * labels.size(1)
+        for images, labels in test_loader:
             images = images.float().to(device)
             labels = labels.to(device)
             outputs = model(images)
@@ -119,12 +115,7 @@ def main(config):
             correct += (predicted == labels).sum().item()
             m_ious.append(mean_iou(model.forward_pred(images), labels.long(), num_classes=config['dataset']['num_classes']))
             
-            # of the one in transitions=1, how many are correctly classified:
-            transitions = transitions.to(device)
-            correct_in_trasi += (predicted[transitions==1] == labels[transitions==1]).sum().item()
             
-        printc('Percentage of transitions:', num_transitions / total)
-        printc('Percentage of transitions correctly classified {} out of transitions, and {} out of all:'.format(correct_in_trasi / num_transitions, correct_in_trasi / total))
         printc('Test Accuracy of the model {} on the test images: {} %, Mean IoU: {}'.format(config['model'].upper(), 
                                                                                             100 * correct / total, 
                                                                                             sum(m_ious) / len(m_ious)))
