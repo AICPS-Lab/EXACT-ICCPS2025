@@ -9,7 +9,7 @@ from utilities import printc, seed
 from utils_loader import get_dataloaders, test_idea_dataloader_ABC_to_BCA
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from tqdm import tqdm
-from utils_metrics import mean_iou
+from utils_metrics import eval_dense_label_to_classification, mean_iou
 from torch.nn import functional as F
 
 def get_model(config):
@@ -114,7 +114,7 @@ def main(config):
             total += labels.size(0) * labels.size(1)
             correct += (predicted == labels).sum().item()
             m_ious.append(mean_iou(model.forward_pred(images), labels.long(), num_classes=config['dataset']['num_classes']))
-            
+            eval_dense_label_to_classification(outputs, labels)
             
         printc('Test Accuracy of the model {} on the test images: {} %, Mean IoU: {}'.format(config['model'].upper(), 
                                                                                             100 * correct / total, 

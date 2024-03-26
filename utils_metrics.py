@@ -67,3 +67,35 @@ def mean_iou(preds, labels, num_classes):
     ious = torch.tensor(ious)
     mean_iou = torch.nanmean(ious)  # Mean over all classes, ignoring NaNs
     return mean_iou
+
+def find_majority_label(arr):
+    # Calculate differences
+    diffs = torch.diff(arr, dim=1)
+
+    # Find indices where the value changes
+    change_indices = torch.where(diffs != 0)[0] + 1
+
+    # Select the unique elements, including the first element of the array
+    result = torch.concatenate(([arr[0]], arr[change_indices]))
+    return result
+
+def eval_dense_label_to_classification(preds, labels):
+    """
+    Evaluate dense predictions to classification labels.
+    
+    Parameters:
+        preds (torch.Tensor): Dense predictions, assumed to be one-hot encoded.
+        labels (torch.Tensor): Ground truth labels
+
+    Returns:
+        torch.Tensor: Classification labels.
+    """
+    
+    # if the preds is like (N, 300, C) where N is batch, C is # of classes
+
+    preds_labels = torch.argmax(preds, dim=2)
+    preds_labels = find_majority_label(preds_labels)
+    targs_labels = find_majority_label(labels)
+    print(preds_labels, targs_labels)
+    return
+    
