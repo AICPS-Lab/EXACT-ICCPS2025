@@ -6,7 +6,7 @@ import torch
 from methods.unetc import UNetc
 from methods.unetr import UNetrt
 from utilities import printc, seed
-from utils_loader import get_dataloaders
+from utils_loader import get_dataloaders, test_idea_dataloader_ABC_to_BCA
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from tqdm import tqdm
 from utils_metrics import mean_iou
@@ -39,7 +39,7 @@ def get_model(config):
 def main(config):
     
     seed(config['seed'])
-    train_loader, val_loader, test_loader = get_dataloaders(config)
+    train_loader, val_loader, test_loader = test_idea_dataloader_ABC_to_BCA(config, dense_label=True)# get_dataloaders(config)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = get_model(config).float().to(device)
     # model = UNet(in_channels=6, out_channels=5).float().to(device)

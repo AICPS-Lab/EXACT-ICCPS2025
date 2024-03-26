@@ -225,20 +225,10 @@ def test_idea_dataloader_er_ir(config):
     
     inputs, labels = get_e2_e4()
     sw = sliding_windows(config['window_size'], config['step_size'])
-    is_middle = find_mid(labels, config['window_size'], config['step_size'], dense_label=True)
     segmented_samples, segmented_labels = sw(torch.tensor(inputs), torch.tensor(labels))
-    assert len(segmented_labels) == len(is_middle), 'Length of labels and is_middle do not match {} and {}'.format(len(segmented_labels), len(is_middle))
-    segmented_labels = list(zip(segmented_labels, is_middle))
 
     # Split the dataset into train, val and test:
     train_samples, test_samples, train_labels, test_labels = train_test_split(segmented_samples, segmented_labels, test_size=0.5, random_state=42)
-    # unzip:
-    train_labels, _ = zip(*train_labels)
-    test_labels, test_middle = zip(*test_labels)
-    
-    test_transitions = find_transitions(test_labels, config['window_size'], config['step_size'], dense_label=False)
-
-    test_labels = list(zip(test_labels, list(zip(test_transitions, test_middle))))
     # val split:
     train_samples, val_samples, train_labels, val_labels = train_test_split(train_samples, train_labels, test_size=0.2, random_state=42)
     
@@ -283,20 +273,10 @@ def test_idea_dataloader_burpee_pushup(config):
     inputs, labels = item.item()['data'], item.item()['labels']
     le = LabelEncoder().fit(labels)
     labels = le.transform(labels)
-    is_middle = find_mid(labels, config['window_size'], config['step_size'], dense_label=True)
     sw = sliding_windows(config['window_size'], config['step_size'])
     segmented_samples, segmented_labels = sw(torch.tensor(inputs), torch.tensor(labels))
-    assert len(segmented_labels) == len(is_middle), 'Length of labels and is_middle do not match {} and {}'.format(len(segmented_labels), len(is_middle))
-    segmented_labels = list(zip(segmented_labels, is_middle))
     # Split the dataset into train, val and test:
     train_samples, test_samples, train_labels, test_labels = train_test_split(segmented_samples, segmented_labels, test_size=0.5, random_state=42)
-    # unzip:
-    train_labels, _ = zip(*train_labels)
-    test_labels, test_middle = zip(*test_labels)
-    # transition:
-    test_transitions = find_transitions(test_labels, config['window_size'], config['step_size'], dense_label=False)
-    
-    test_labels = list(zip(test_labels, list(zip(test_transitions, test_middle))))
     # val split:
     train_samples, val_samples, train_labels, val_labels = train_test_split(train_samples, train_labels, test_size=0.2, random_state=42)
     train_set = ClassificationDataset(train_samples, train_labels)
@@ -332,7 +312,7 @@ def test_idea_dataloader_burpee_pushup(config):
     return train_loader, val_loader, test_loader
             
            
-def test_idea_dataloader_ABC_to_BCA(config):
+def test_idea_dataloader_ABC_to_BCA(config, dense_label=False):
     filename = './datasets/spar/spar_dataset'
     seed = config['seed']
     # read through the folder that end with csv:
@@ -348,7 +328,7 @@ def test_idea_dataloader_ABC_to_BCA(config):
         # convert to np:
         samples = np.concatenate(samples)
         labels = np.concatenate(labels)
-        print(samples.shape, labels.shape)
+        # print(samples.shape, labels.shape)
         return samples, labels
     
     if not os.path.exists('./datasets/spar/temp.npy'):
@@ -394,7 +374,7 @@ def test_idea_dataloader_ABC_to_BCA(config):
             # 80% for train, 20% for test
             train_length = int(minimum * 0.8)
             test_length = minimum - train_length
-            print(f'{each_subj} has {minimum} samples, {train_length} for train, {test_length} for test')
+            # print(f'{each_subj} has {minimum} samples, {train_length} for train, {test_length} for test')
             # generate train and test data
             
             # randomly extract one sample of label from the collection and remove that label from the list in the collection:
@@ -416,13 +396,51 @@ def test_idea_dataloader_ABC_to_BCA(config):
                     test_samples.append(cur_combo)
         train_s = combo_to_np(train_samples, le)
         test_s = combo_to_np(test_samples, le)
-        np.save('temp.npy', {'train':train_s, 'test':test_s})
+        np.save('./datasets/spar/temp.npy', {'train':train_s, 'test':test_s})
     # check if the file, temp.npy exists, if not, save it:
     else:
         temp = np.load('./datasets/spar/temp.npy', allow_pickle=True)
         train_s = temp.item()['train']
         test_s = temp.item()['test']
-    return train_s, test_s
+    
+    sw = sliding_windows(config['window_size'], config['step_size'])
+    
+    train_samples, train_labels = sw(torch.tensor(train_s[0]), torch.tensor(train_s[1]))
+    test_samples, test_labels = sw(torch.tensor(test_s[0]), torch.tensor(test_s[1]))
+    # Split the dataset into train, val and test:
+    train_samples, val_samples, train_labels, val_labels = train_test_split(train_samples, train_labels, test_size=0.2, random_state=42)
+    if dense_label:
+        train_set = NormalDataset(train_samples, train_labels)
+        val_set = NormalDataset(val_samples, val_labels)
+        test_set = NormalDataset(test_samples, test_labels)
+    else:
+        train_set = ClassificationDataset(train_samples, train_labels)
+        val_set = ClassificationDataset(val_samples, val_labels)
+        test_set = ClassificationDataset(test_samples, test_labels)
+    # subsample the dataset:    
+    train_loader = DataLoader(
+        train_set,
+        batch_size=config['batch_size'],
+        shuffle=True,
+        num_workers=0,
+        pin_memory=True,
+        )
+    val_loader = DataLoader(
+        val_set,
+        batch_size=config['batch_size'],
+        shuffle=True,
+        num_workers=0,
+        pin_memory=True,
+        drop_last=True
+        )
+    test_loader = DataLoader(
+        test_set,
+        batch_size=config['batch_size'],
+        shuffle=True,
+        num_workers=0,
+        pin_memory=True,)
+    
+    return train_loader, val_loader, test_loader
     
     
     
@@ -443,7 +461,7 @@ def non_fsl_dataloaders(config):
     Args:
         config (_type_): NA
     """
-    inputs, labels, users, transitions = _load(config)
+    inputs, labels, users = _load(config)
     users = np.array(users)
     sw = sliding_windows(config['window_size'], config['step_size'])
     if config['cross_subject']['enabled']:
@@ -469,12 +487,9 @@ def non_fsl_dataloaders(config):
         val_labels = np.concatenate(val_labels, axis=0)
         test_samples = np.concatenate(test_samples, axis=0)
         test_labels = np.concatenate(test_labels, axis=0)
-        # add the where the transition is:
-        test_transitions = find_transitions(test_labels, config['window_size'], config['step_size'], dense_label=True)
         train_samples, train_labels = sw(torch.tensor(train_samples), torch.tensor(train_labels))
         val_samples, val_labels = sw(torch.tensor(val_samples), torch.tensor(val_labels))
         test_samples, test_labels = sw(torch.tensor(test_samples), torch.tensor(test_labels))
-        test_labels = list(zip(test_labels, test_transitions))
        
         
         
@@ -482,11 +497,7 @@ def non_fsl_dataloaders(config):
         inputs = np.concatenate(inputs, axis=0)
         labels = np.concatenate(labels, axis=0, dtype=int)
         transitions = np.concatenate(transitions, axis=0)
-        printc('label classes:', np.unique(labels))
-        segmented_transitions = find_transitions(transitions, config['window_size'], config['step_size'], dense_label=True)
         segmented_samples, segmented_labels = sw(torch.tensor(inputs), torch.tensor(labels))
-        # zip label and transitions:
-        segmented_labels = list(zip(segmented_labels, segmented_transitions))
         # Split the dataset into train, val and test:
         train_samples, test_samples, train_labels, test_labels = train_test_split(segmented_samples, segmented_labels, test_size=0.2, random_state=42)
         # unzip from train:
@@ -580,7 +591,6 @@ def _load(config):
     if config['dataset']['name'].lower() == 'physiq_e1':
         return _load_physiq_e1()
     elif config['dataset']['name'].lower() == 'physiq_e2':
-        raise NotImplementedError('Physiq E2 not implemented correctly in the dataClean.py with transition varibale')
         return _load_physiq_e2()
     elif config['dataset']['name'].lower() == 'physiq_e3':
         return _load_physiq_e3()
@@ -608,6 +618,7 @@ def _load_physiq_e3():
     return inputs, labels, users
 
 def _load_physiq_e2_e4():
+    raise NotImplementedError('code is not updated, after deleting transition')
     inp = np.load('./datasets/physiq/physiq_permute_e4.npy', allow_pickle=True)
     inputs, labels, users, transitions = inp.item()['inputs'], inp.item()['labels'], inp.item()['users'], inp.item()['transition']
     for i in range(len(labels)):

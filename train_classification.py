@@ -6,7 +6,7 @@ import torch
 from methods.lstm import LSTMClassification
 from methods.transformer import TransformerClassification
 from utilities import printc, seed
-from utils_loader import get_dataloaders, test_idea_dataloader_er_ir, test_idea_dataloader_burpee_pushup
+from utils_loader import get_dataloaders, test_idea_dataloader_er_ir, test_idea_dataloader_burpee_pushup, test_idea_dataloader_ABC_to_BCA
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from tqdm import tqdm
 from utils_metrics import mean_iou
@@ -17,11 +17,11 @@ from sklearn.metrics import f1_score
 def main(config):
     
     seed(config['seed'])
-    train_loader, val_loader, test_loader = test_idea_dataloader_er_ir(config) #test_idea_dataloader_er_ir(config)
+    train_loader, val_loader, test_loader = test_idea_dataloader_ABC_to_BCA(config) #test_idea_dataloader_er_ir(config)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # model = TransformerClassification(in_channels=6, num_classes=5).float().to(device)
     # model = LSTMClassification(in_channels=6, num_classes=5).float().to(device)
-    model = UNet_encoder(in_channels=6, out_channels=2, cnn_embed_dims=[64]).float().to(device)
+    model = UNet_encoder(in_channels=6, out_channels=3, cnn_embed_dims=[64]).float().to(device)
     # model = UNet(in_channels=6, out_channels=5).float().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     # scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, verbose=True, threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-08)
@@ -92,14 +92,9 @@ def main(config):
         correct = 0
         total = 0
         misclassified_c = 0
-        num_transitions, correct_in_trasi = 0, 0
-
-        num_middles, correct_in_middles = 0, 0
 
 
-        for images, (labels, (transition, is_middle)) in test_loader:
-            num_transitions += sum(transition)
-            num_middles += sum(is_middle)
+        for images, labels in test_loader:
             images = images.float().to(device)
             labels = labels.to(device)
             outputs = model(images)
@@ -107,9 +102,6 @@ def main(config):
             loss = criterion(outputs, labels.long())
             # accuracy against labels:
             predicted = model.forward_pred(images)
-            # predicted == labels
-            correct_in_trasi += (predicted[transition==1] == labels[transition==1]).sum().item()  
-            correct_in_middles += (predicted[is_middle==1] == labels[is_middle==1]).sum().item()
 
             correct += (predicted == labels).sum().item()
             total += labels.size(0)
@@ -129,21 +121,7 @@ def main(config):
                     plt.close()
                 misclassified_c += misclassified.sum().item()  
 
-        printc('Percentage of middles:', num_middles / total)
-        printc('Percentage of middles correctly classified {} out of middles, and {} out of all:'.format(correct_in_middles / num_middles, correct_in_middles / total))
-
-        printc('Percentage of transitions:', num_transitions / total)
-        printc('Percentage of transitions correctly classified {} out of transitions, and {} out of all:'.format(correct_in_trasi / num_transitions, correct_in_trasi / total))
-
         accs = correct / total
-        
-        print('Percentage of misclassified:', misclassified_c / total)
-        print('Out of the all, how many middle incorrectly classified:', (num_middles - correct_in_middles) / total)
-        print('Out of the all, how many transitions incorrectly classified:', (num_transitions - correct_in_trasi) / total)
-        inacc = 1-accs
-        print('out of the incorrectly predicted, how many are middle incorrectly classified:', (num_middles - correct_in_middles) / total / inacc)
-        print('out of the incorrectly predicted, how many are transitions incorrectly classified', (num_transitions - correct_in_trasi) / total / inacc)
-
         print(f'Test Accuracy of the model on the test images: {accs}')
         # print(f'Mean IoU: {miou}'
 
