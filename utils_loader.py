@@ -444,7 +444,110 @@ def test_idea_dataloader_ABC_to_BCA(config, dense_label=False):
     return train_loader, val_loader, test_loader
     
     
+def test_idea_dataloader_long_A_B_to_AB(config, dense_label=False):
+    allowed = ['E1', 'E2']
+    classes = []
+    subjs = []
+    filename = './datasets/spar/spar_dataset'
+    sw = sliding_windows(config['window_size'], config['step_size'])
+    le = LabelEncoder()
+    le.fit(allowed)
+    def process(files, sw, le: LabelEncoder):
+        nps = []
+        labels = []
+        for file in files:
+            df = pd.read_csv(os.path.join(filename, file))
+            nps.append(df.to_numpy()[:, 1:7])
+            labels.append([le.transform([file.split('_')[1]])[0]]*df.shape[0])
+        nps = np.concatenate(nps, axis=0)
+        labels = np.concatenate(labels, axis=0)
+        return sw(torch.tensor(nps).float(), torch.tensor(labels))
     
+    def combine(leftovers, sw, le: LabelEncoder):
+        nps = []
+        labels = []
+        # leftovers has E1, E2 classes left over:
+        # shuffle the leftovers:
+        random.shuffle(leftovers)
+        for file in leftovers:
+            df = pd.read_csv(os.path.join(filename, file))
+            nps.append(df.to_numpy()[:, 1:7])
+            labels.append([le.transform([file.split('_')[1]])[0]]*df.shape[0])
+        nps = np.concatenate(nps, axis=0)
+        labels = np.concatenate(labels, axis=0)
+        return sw(torch.tensor(nps).float(), torch.tensor(labels))
+    for root, dirs, files in os.walk(filename):
+        for file in files:
+            if file.endswith(".csv") and 'R' in file:
+                label = file.split('_')[1]
+                subj = file.split('_')[0]
+                if label not in classes:
+                    classes.append(label)
+                if subj not in subjs:
+                    subjs.append(subj)
+    train_samples = []
+    train_labels = []
+    test_samples = []
+    test_labels = []
+    for each_subj in subjs:
+        collection = {class_name: [] for class_name in classes}
+        for root, dirs, files in os.walk(filename):
+            for file in files:
+                if file.endswith(".csv") and 'R' in file and each_subj == file.split('_')[0]:
+                    label = file.split('_')[1]
+                    collection[label].append(file)
+        leftover = []
+        for key in collection:
+            if key in allowed:
+                # sort the files
+                sorted_files = sorted(collection[key], key=lambda x: int(x.split('_')[3].split('.')[0]))
+                leftover.extend(sorted_files[10:13])
+                sample, lab = process(sorted_files[0:10], sw, le)
+                train_samples.append(sample)
+                train_labels.append(lab)
+        leftover_sample, leftover_label = combine(leftover, sw, le)
+        test_samples.append(leftover_sample)
+        test_labels.append(leftover_label)
+    train_samples = np.concatenate(train_samples, axis=0)
+    train_labels = np.concatenate(train_labels, axis=0)
+    
+    test_samples = np.concatenate(test_samples, axis=0)
+    test_labels = np.concatenate(test_labels, axis=0)
+    
+    train_samples, val_samples, train_labels, val_labels = train_test_split(train_samples, train_labels, test_size=0.2, random_state=42)
+    print(train_samples.shape, val_samples.shape, test_samples.shape)
+    if dense_label:
+        train_set = NormalDataset(train_samples, train_labels)
+        val_set = NormalDataset(val_samples, val_labels)
+        test_set = NormalDataset(test_samples, test_labels)
+    else:
+        train_set = ClassificationDataset(train_samples, train_labels)
+        val_set = ClassificationDataset(val_samples, val_labels)
+        test_set = ClassificationDataset(test_samples, test_labels)
+    # subsample the dataset:    
+    train_loader = DataLoader(
+        train_set,
+        batch_size=config['batch_size'],
+        shuffle=True,
+        num_workers=0,
+        pin_memory=True,
+        )
+    val_loader = DataLoader(
+        val_set,
+        batch_size=config['batch_size'],
+        shuffle=True,
+        num_workers=0,
+        pin_memory=True,
+        )
+    test_loader = DataLoader(
+        test_set,
+        batch_size=config['batch_size'],
+        shuffle=True,
+        num_workers=0,
+        pin_memory=True,)
+    
+    return train_loader, val_loader, test_loader
+              
     
     
 from sklearn.model_selection import LeavePGroupsOut
