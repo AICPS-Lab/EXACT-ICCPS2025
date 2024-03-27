@@ -437,7 +437,7 @@ def test_idea_dataloader_ABC_to_BCA(config, dense_label=False):
     test_loader = DataLoader(
         test_set,
         batch_size=config['batch_size'],
-        shuffle=True,
+        shuffle=False,
         num_workers=0,
         pin_memory=True,)
     
@@ -542,7 +542,7 @@ def test_idea_dataloader_long_A_B_to_AB(config, dense_label=False):
     test_loader = DataLoader(
         test_set,
         batch_size=config['batch_size'],
-        shuffle=True,
+        shuffle=False,
         num_workers=0,
         pin_memory=True,)
     

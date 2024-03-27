@@ -118,6 +118,7 @@ def main(config):
             
             softmaxed = F.softmax(outputs, dim=1)
             for i in range(images.shape[0]):
+            # i = 0
                 visualize_softmax(softmaxed[i].cpu().detach().numpy(), labels[i].cpu().detach().numpy(), images[i].cpu().detach().numpy())
 
             eval_dense_label_to_classification(outputs, labels)
@@ -135,7 +136,7 @@ if __name__ == "__main__":
         'seed': 73054772,
         'dataset': {
             'name': 'physiq_e2',
-            'num_classes': 3
+            'num_classes': 2
         },
         
         'window_size': 300,
