@@ -1,3 +1,5 @@
+from matplotlib import pyplot as plt
+import numpy as np
 import torch
 
 
@@ -87,6 +89,47 @@ def find_majority_label(arr):
     
     return results
 
+# Define the visualization function with subplots, including the label subplot
+def visualize_softmax(pred, label_data, data):
+    time = np.arange(pred.shape[1])
+    labels = np.arange(pred.shape[0])
+    # Create a figure with 3 subplots
+    fig, axs = plt.subplots(3, 1, figsize=(10, 8), sharex=True)
+
+    # Original data plot
+    axs[0].plot(time, data, label='Original Data')
+    axs[0].set_title('Original Input Data')
+    axs[0].set_ylabel('Value')
+    axs[0].legend(loc='upper left')
+
+    # Labels plot
+    colors = plt.cm.viridis(np.linspace(0, 1, pred.shape[0]))  # Get a colormap to use for the label lines
+    for i in range(len(labels)):
+        print(time[label_data == i])
+        axs[1].fill_between(time, 0, 1, label=f'Label {i}', color=colors[i], where=label_data == i, alpha=0.7)
+    axs[1].set_title('Labels')
+    axs[1].set_ylabel('Label Active')
+    # axs[1].set_ylim(-0.1, 1.1)  # Set y limits to make the lines more distinct
+    axs[1].legend(loc='upper left')
+
+    # Softmax probabilities plot
+    start = np.zeros(pred.shape[1])  # Initialize the starting boundary as zeros
+    for i in range(pred.shape[0]):
+        axs[2].fill_between(time, start, start + pred[i, :], label=labels[i], alpha=0.7, color=colors[i])
+        start += pred[i, :]  # Update the starting boundary
+
+    axs[2].plot(time, start, color='black', lw=2, label='Total Confidence')
+    axs[2].set_title('Softmax Probabilities with Stacked Areas')
+    axs[2].set_xlabel('Time')
+    axs[2].set_ylabel('Confidence Score')
+    axs[2].set_ylim(0, 1.1)
+    axs[2].legend(loc='upper left')
+
+    plt.tight_layout()
+    plt.show()
+
+
+
 def eval_dense_label_to_classification(preds, labels):
     """
     Evaluate dense predictions to classification labels.
@@ -100,10 +143,9 @@ def eval_dense_label_to_classification(preds, labels):
     """
     
     # if the preds is like (N, 300, C) where N is batch, C is # of classes
-
+    softmaxed = torch.nn.functional.softmax(preds[0], dim=0)
     preds_labels = torch.argmax(preds, dim=1)
     preds_labels = find_majority_label(preds_labels)
     targs_labels = find_majority_label(labels)
-    print(targs_labels)
     return
     

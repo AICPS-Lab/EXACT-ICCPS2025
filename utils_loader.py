@@ -323,7 +323,8 @@ def test_idea_dataloader_ABC_to_BCA(config, dense_label=False):
             for each_file in each_combo:
                 df = pd.read_csv(os.path.join(filename, each_file))
                 samples.append(df.to_numpy()[:, 1:7])
-                labels.append([le.transform([each_file.split('_')[1]])[0]] * df.shape[0])
+                transformed = le.transform([each_file.split('_')[1]])[0]
+                labels.append([transformed] * df.shape[0])
                 # print('labels', labels)
         # convert to np:
         samples = np.concatenate(samples)
@@ -351,7 +352,7 @@ def test_idea_dataloader_ABC_to_BCA(config, dense_label=False):
 
         # generate train combo => ABC, ABD, ... # test combo => BCD (some combo that was not seem in train) based on the classes
         train_combo = [('E1', 'E2', 'E3')]
-        test_combo = [('E3', 'E1', 'E2')]
+        test_combo = [('E3', 'E2', 'E1')]
 
         assert all([each in classes for comb in train_combo for each in comb]), 'train combo not in classes'
         assert all([each in classes for comb in test_combo for each in comb]), 'test combo not in classes'

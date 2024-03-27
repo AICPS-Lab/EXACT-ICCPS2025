@@ -9,7 +9,7 @@ from utilities import printc, seed
 from utils_loader import get_dataloaders, test_idea_dataloader_ABC_to_BCA
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from tqdm import tqdm
-from utils_metrics import eval_dense_label_to_classification, mean_iou
+from utils_metrics import eval_dense_label_to_classification, mean_iou, visualize_softmax
 from torch.nn import functional as F
 
 def get_model(config):
@@ -83,7 +83,7 @@ def main(config):
             outputs = outputs.permute(0, 2, 1)
             loss = criterion(outputs, labels.long())
             val_losses.append(loss.item())
-            mean_ious.append(mean_iou(model.forward_pred(images), labels.long(),num_classes=5))
+            mean_ious.append(mean_iou(model.forward_pred(images), labels.long(),num_classes=config['dataset']['num_classes']))
         val_loss = sum(val_losses) / len(val_losses)
         miou = sum(mean_ious) / len(mean_ious)
         # print(f'Epoch [{epoch+1}/{config["epochs"]}], Val Loss: {val_loss}, Mean IoU: {miou}')
@@ -114,6 +114,11 @@ def main(config):
             total += labels.size(0) * labels.size(1)
             correct += (predicted == labels).sum().item()
             m_ious.append(mean_iou(model.forward_pred(images), labels.long(), num_classes=config['dataset']['num_classes']))
+            
+            softmaxed = F.softmax(outputs, dim=1)
+            for i in range(images.shape[0]):
+                visualize_softmax(softmaxed[i].cpu().detach().numpy(), labels[i].cpu().detach().numpy(), images[i].cpu().detach().numpy())
+
             eval_dense_label_to_classification(outputs, labels)
             
         printc('Test Accuracy of the model {} on the test images: {} %, Mean IoU: {}'.format(config['model'].upper(), 
@@ -123,7 +128,7 @@ def main(config):
 if __name__ == "__main__":
     config = {
         'batch_size': 128,
-        'epochs':10,
+        'epochs':100,
         'fsl': False,
         'model': 'unet',
         'seed': 73054772,
