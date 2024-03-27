@@ -69,15 +69,23 @@ def mean_iou(preds, labels, num_classes):
     return mean_iou
 
 def find_majority_label(arr):
-    # Calculate differences
-    diffs = torch.diff(arr, dim=1)
-
-    # Find indices where the value changes
-    change_indices = torch.where(diffs != 0)[0] + 1
-
-    # Select the unique elements, including the first element of the array
-    result = torch.concatenate(([arr[0]], arr[change_indices]))
-    return result
+    results = []
+    for i in range(arr.shape[0]):
+        # Process each row/sample individually
+        row = arr[i]
+        
+        # Calculate differences along the sequence
+        diffs = torch.diff(row)
+        
+        # Find indices where the value changes
+        change_indices = torch.where(diffs != 0)[0] + 1
+        
+        # Select the unique elements, including the first element of the sequence
+        unique_elements = torch.cat((row[0:1], row[change_indices]))
+        
+        results.append(unique_elements.cpu().tolist())  # Assuming you want the final result as a NumPy array
+    
+    return results
 
 def eval_dense_label_to_classification(preds, labels):
     """
@@ -93,9 +101,9 @@ def eval_dense_label_to_classification(preds, labels):
     
     # if the preds is like (N, 300, C) where N is batch, C is # of classes
 
-    preds_labels = torch.argmax(preds, dim=2)
+    preds_labels = torch.argmax(preds, dim=1)
     preds_labels = find_majority_label(preds_labels)
     targs_labels = find_majority_label(labels)
-    print(preds_labels, targs_labels)
+    print(targs_labels)
     return
     

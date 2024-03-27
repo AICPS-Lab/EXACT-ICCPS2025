@@ -109,7 +109,7 @@ def main(config):
             images = images.float().to(device)
             labels = labels.to(device)
             outputs = model(images)
-            outputs = outputs.permute(0, 2, 1)
+            outputs = outputs.permute(0, 2, 1) # B, C, T
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0) * labels.size(1)
             correct += (predicted == labels).sum().item()
@@ -123,13 +123,13 @@ def main(config):
 if __name__ == "__main__":
     config = {
         'batch_size': 128,
-        'epochs':200,
+        'epochs':10,
         'fsl': False,
         'model': 'unet',
         'seed': 73054772,
         'dataset': {
-            'name': 'physiq_e2_e4',
-            'num_classes': 6
+            'name': 'physiq_e2',
+            'num_classes': 3
         },
         
         'window_size': 300,
