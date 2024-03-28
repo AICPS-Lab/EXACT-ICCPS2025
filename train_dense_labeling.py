@@ -106,6 +106,7 @@ def main(config):
         correct = 0
         total = 0
         m_ious = []
+        accuracy_per_classes = {i: 0 for i in range(config['dataset']['num_classes'])}
         for images, labels in test_loader:
             images = images.float().to(device)
             labels = labels.to(device)
@@ -117,16 +118,19 @@ def main(config):
             m_ious.append(mean_iou(model.forward_pred(images), labels.long(), num_classes=config['dataset']['num_classes']))
             
             softmaxed = F.softmax(outputs, dim=1)
-            for i in range(images.shape[0]):
-            # i = 0
-                visualize_softmax(softmaxed[i].cpu().detach().numpy(), labels[i].cpu().detach().numpy(), images[i].cpu().detach().numpy())
-
-            eval_dense_label_to_classification(outputs, labels)
+            # for i in range(images.shape[0]):
+            i = 0
+            visualize_softmax(softmaxed[i].cpu().detach().numpy(), labels[i].cpu().detach().numpy(), images[i].cpu().detach().numpy())
+            # eval_dense_label_to_classification(outputs, labels)
+            # check accuracy per class:
+            for i in range(config['dataset']['num_classes']):
+                accuracy_per_classes[i] += (predicted[labels == i] == i).sum().item()
             
         printc('Test Accuracy of the model {} on the test images: {} %, Mean IoU: {}'.format(config['model'].upper(), 
                                                                                             100 * correct / total, 
                                                                                             sum(m_ious) / len(m_ious)))
-
+        for i in range(config['dataset']['num_classes']):
+            printc(f'Accuracy of {i}: {accuracy_per_classes[i] / total}')
 if __name__ == "__main__":
     config = {
         'batch_size': 128,
