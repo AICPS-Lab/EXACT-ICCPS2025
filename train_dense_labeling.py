@@ -40,7 +40,7 @@ def main(config):
     
     seed(config['seed'])
     # train_loader, val_loader, test_loader = test_idea_dataloader_ABC_to_BCA(config, dense_label=True)# get_dataloaders(config)
-    train_loader, val_loader, test_loader = test_idea_dataloader_long_A_B_to_AB(config, dense_label=True)
+    train_loader, val_loader, test_loader = test_idea_dataloader_long_A_B_to_AB(config, dense_label=True, interpolateA=True)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = get_model(config).float().to(device)
     # model = UNet(in_channels=6, out_channels=5).float().to(device)

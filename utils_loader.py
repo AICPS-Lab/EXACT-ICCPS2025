@@ -13,6 +13,25 @@ import numpy as np
 from scipy.signal import butter, lfilter, freqz
 from sklearn.preprocessing import LabelEncoder
 import random
+from scipy.interpolate import interp1d
+def interpolate(data, n_time=5):
+    L = data.shape[0]
+    original_indices = np.linspace(0, L-1, L)
+    new_indices = np.linspace(0, L-1, L*n_time)
+
+    # Container for interpolated data
+    interpolated_data = np.zeros((L*n_time, 6))
+
+    # Interpolate each column independently
+    for i in range(6):
+        # Create an interpolation function for the current column
+        interp_func = interp1d(original_indices, data[:, i], kind='linear')
+        
+        # Use the interpolation function to generate new data points
+        interpolated_data[:, i] = interp_func(new_indices)
+    return interpolated_data
+
+
 def butter_lowpass(cutoff, fs, order=5):
     return butter(order, cutoff, fs=fs, btype='low', analog=False)
 def low_pass_filter(data, cutoff, fs, order=5):
@@ -444,7 +463,7 @@ def test_idea_dataloader_ABC_to_BCA(config, dense_label=False):
     return train_loader, val_loader, test_loader
     
     
-def test_idea_dataloader_long_A_B_to_AB(config, dense_label=False):
+def test_idea_dataloader_long_A_B_to_AB(config, dense_label=False, interpolateA=False):
     allowed = ['E1', 'E2']
     classes = []
     subjs = []
@@ -452,13 +471,18 @@ def test_idea_dataloader_long_A_B_to_AB(config, dense_label=False):
     sw = sliding_windows(config['window_size'], config['step_size'])
     le = LabelEncoder()
     le.fit(allowed)
-    def process(files, sw, le: LabelEncoder):
+    def process(files, sw, le: LabelEncoder, interpolating=False):
         nps = []
         labels = []
         for file in files:
             df = pd.read_csv(os.path.join(filename, file))
-            nps.append(df.to_numpy()[:, 1:7])
-            labels.append([le.transform([file.split('_')[1]])[0]]*df.shape[0])
+            if interpolating:
+                interp_data = interpolate(df.to_numpy()[:, 1:7])
+                nps.append(interp_data)
+                labels.append([le.transform([file.split('_')[1]])[0]]*interp_data.shape[0])
+            else: 
+                nps.append(df.to_numpy()[:, 1:7])
+                labels.append([le.transform([file.split('_')[1]])[0]]*df.shape[0])
         nps = np.concatenate(nps, axis=0)
         labels = np.concatenate(labels, axis=0)
         return sw(torch.tensor(nps).float(), torch.tensor(labels))
@@ -499,10 +523,11 @@ def test_idea_dataloader_long_A_B_to_AB(config, dense_label=False):
         leftover = []
         for key in collection:
             if key in allowed:
+                    
                 # sort the files
                 sorted_files = sorted(collection[key], key=lambda x: int(x.split('_')[3].split('.')[0]))
                 leftover.extend(sorted_files[10:13])
-                sample, lab = process(sorted_files[0:10], sw, le)
+                sample, lab = process(sorted_files[0:10], sw, le, interpolateA and key == allowed[0])
                 train_samples.append(sample)
                 train_labels.append(lab)
         leftover_sample, leftover_label = combine(leftover, sw, le)
