@@ -673,7 +673,7 @@ def fsl_dataloaders(config):
     :return: A tuple of (train_loader, test_loader)
     """
     # Load the dataset
-    raise NotImplementedError('FSL dataloaders not implemented correctly due to users variable added in physqics')
+    # raise NotImplementedError('FSL dataloaders not implemented correctly due to users variable added in physqics')
     inputs, labels = _load(config)
     sw = sliding_windows(300, 50)
     segmented_samples, segmented_labels = sw(torch.tensor(inputs), torch.tensor(labels))

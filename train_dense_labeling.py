@@ -12,6 +12,40 @@ from tqdm import tqdm
 from utils_metrics import eval_dense_label_to_classification, mean_iou, visualize_softmax
 from torch.nn import functional as F
 
+def compute_kl_loss(outputs):
+    """
+    Computes the KL divergence loss between the predicted label distributions
+    at consecutive time steps to encourage smooth labeling.
+
+    Args:
+        outputs (torch.Tensor): The raw output logits from the model.
+                                Shape: (batch_size, sequence_length, num_classes)
+
+    Returns:
+        kl_loss (torch.Tensor): The computed KL divergence loss (scalar).
+    """
+    # Compute predicted probabilities and log probabilities
+    p_t = F.softmax(outputs, dim=-1)         # Shape: (batch_size, sequence_length, num_classes)
+    log_p_t = F.log_softmax(outputs, dim=-1) # Shape: (batch_size, sequence_length, num_classes)
+    # Shift the probabilities and log probabilities to get p_{t+1} and log_p_{t+1}
+    p_t_next = p_t[:, 1:, :]         # Exclude the first time step
+    log_p_t_next = log_p_t[:, 1:, :] # Exclude the first time step
+
+    # Current time step probabilities (exclude the last time step)
+    p_t_current = p_t[:, :-1, :]
+    # No need to compute log_p_t_current for KL divergence since it's not used in F.kl_div
+
+    # Compute KL divergence between consecutive time steps
+    # KL divergence D_{KL}(p_{t+1} || p_t) for each time step and batch
+    kl_div = F.kl_div(log_p_t_next, p_t_current, reduction='mean', log_target=True)  # Shape: (batch_size, sequence_length - 1, num_classes)
+    # print(kl_div)
+    # Sum over classes
+    # kl_div = kl_div.sum(-1)  # Shape: (batch_size, sequence_length - 1)
+
+    # # # Mean over batches and time steps
+    # kl_loss = kl_div.mean()
+
+    return kl_div
 def get_model(config):
     if config['model'].lower() == 'crnn':
         return CRNN(in_channels=6, embed_dims=256, num_classes=config['dataset']['num_classes'])
@@ -39,8 +73,8 @@ def get_model(config):
 def main(config):
     
     seed(config['seed'])
-    # train_loader, val_loader, test_loader = test_idea_dataloader_ABC_to_BCA(config, dense_label=True)# get_dataloaders(config)
-    train_loader, val_loader, test_loader = test_idea_dataloader_long_A_B_to_AB(config, dense_label=True, interpolateA=True)
+    train_loader, val_loader, test_loader = test_idea_dataloader_ABC_to_BCA(config, dense_label=True)# get_dataloaders(config)
+    # train_loader, val_loader, test_loader = test_idea_dataloader_long_A_B_to_AB(config, dense_label=True, interpolateA=True)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = get_model(config).float().to(device)
     # model = UNet(in_channels=6, out_channels=5).float().to(device)
@@ -53,7 +87,7 @@ def main(config):
 
     best_loss = math.inf
     counter_i = 0
-    pbar = tqdm(range(config['epochs']), postfix={'loss': 0.0, 'miou': 0.0})
+    pbar = tqdm(range(config['epochs']), postfix={'loss': 0.0, 'kl':0.0, 'miou': 0.0})
     for epoch in pbar:
         model.train()
         for images, labels in train_loader:
@@ -64,7 +98,7 @@ def main(config):
             outputs = model(images)
             outputs = outputs.permute(0, 2, 1)
             # probs = F.softmax(outputs, dim=1)
-            loss= criterion(outputs, labels.long())
+            loss= criterion(outputs, labels.long()) + 0.3* compute_kl_loss(outputs)
             # Backward and optimize
             optimizer.zero_grad()
             loss.backward()
@@ -88,7 +122,7 @@ def main(config):
         val_loss = sum(val_losses) / len(val_losses)
         miou = sum(mean_ious) / len(mean_ious)
         # print(f'Epoch [{epoch+1}/{config["epochs"]}], Val Loss: {val_loss}, Mean IoU: {miou}')
-        pbar.set_postfix({'loss': val_loss, 'miou': miou.item()})
+        pbar.set_postfix({'loss': val_loss, 'miou': miou.item(), 'kl': compute_kl_loss(outputs).item()})
         if val_loss < best_loss:
             best_loss = val_loss
             torch.save(model.state_dict(), f'./saved_model/opportunity_{config["model"]}.pth')
@@ -133,17 +167,17 @@ def main(config):
             printc(f'Accuracy of {i}: {accuracy_per_classes[i] / total}')
 if __name__ == "__main__":
     config = {
-        'batch_size': 128,
+        'batch_size': 64,
         'epochs':100,
         'fsl': False,
         'model': 'unet',
         'seed': 73054772,
         'dataset': {
             'name': 'physiq_e2',
-            'num_classes': 2
+            'num_classes': 3
         },
         
-        'window_size': 300,
+        'window_size': 700,
         'step_size': 150,
         'cross_subject': {
             'enabled': False,

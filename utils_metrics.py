@@ -126,7 +126,9 @@ def visualize_softmax(pred, label_data, data):
     axs[2].legend(loc='upper left')
 
     plt.tight_layout()
-    plt.show()
+    # plt.show()
+    # plt.savefig
+    plt.savefig('softmax_plot.png')
 
 
 
