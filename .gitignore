@@ -1,8 +1,8 @@
 **/__pycache__/**
 **.DS_Store
 .DS_Store
-datasets/OpportunityUCIDataset/loco_2.npy
-datasets/OpportunityUCIDataset/loco_2_mask.npy
+data/OpportunityUCIDataset/loco_2.npy
+data/OpportunityUCIDataset/loco_2_mask.npy
 *.png
-datasets/physiq/physiq_permute_all.npy
-/datasets/WEAR/inertial
+data/physiq/physiq_permute_all.npy
+/data/WEAR/inertial
