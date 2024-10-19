@@ -1,0 +1,32 @@
+2024-10-18 14:33:24,656 INFO    MainThread:16914 [wandb_setup.py:_flush():79] Current SDK version is 0.18.5
+2024-10-18 14:33:24,656 INFO    MainThread:16914 [wandb_setup.py:_flush():79] Configure stats pid to 16914
+2024-10-18 14:33:24,656 INFO    MainThread:16914 [wandb_setup.py:_flush():79] Loading settings from /Users/davidwang/.config/wandb/settings
+2024-10-18 14:33:24,656 INFO    MainThread:16914 [wandb_setup.py:_flush():79] Loading settings from /Users/davidwang/Documents/GitHub/EXACT/wandb/settings
+2024-10-18 14:33:24,656 INFO    MainThread:16914 [wandb_setup.py:_flush():79] Loading settings from environment variables: {}
+2024-10-18 14:33:24,656 INFO    MainThread:16914 [wandb_setup.py:_flush():79] Applying setup settings: {'mode': None, '_disable_service': None}
+2024-10-18 14:33:24,656 INFO    MainThread:16914 [wandb_setup.py:_flush():79] Inferring run settings from compute environment: {'program_relpath': 'test.py', 'program_abspath': '/Users/davidwang/Documents/GitHub/EXACT/test.py', 'program': '/Users/davidwang/Documents/GitHub/EXACT/test.py'}
+2024-10-18 14:33:24,656 INFO    MainThread:16914 [wandb_setup.py:_flush():79] Applying login settings: {}
+2024-10-18 14:33:24,656 INFO    MainThread:16914 [wandb_init.py:_log_setup():534] Logging user logs to /Users/davidwang/Documents/GitHub/EXACT/wandb/run-20241018_143324-1cg4w9vw/logs/debug.log
+2024-10-18 14:33:24,657 INFO    MainThread:16914 [wandb_init.py:_log_setup():535] Logging internal logs to /Users/davidwang/Documents/GitHub/EXACT/wandb/run-20241018_143324-1cg4w9vw/logs/debug-internal.log
+2024-10-18 14:33:24,657 INFO    MainThread:16914 [wandb_init.py:init():621] calling init triggers
+2024-10-18 14:33:24,657 INFO    MainThread:16914 [wandb_init.py:init():628] wandb.init called with sweep_config: {}
+config: {'learning_rate': 0.02, 'architecture': 'CNN', 'dataset': 'CIFAR-100', 'epochs': 10}
+2024-10-18 14:33:24,657 INFO    MainThread:16914 [wandb_init.py:init():671] starting backend
+2024-10-18 14:33:24,657 INFO    MainThread:16914 [wandb_init.py:init():675] sending inform_init request
+2024-10-18 14:33:24,658 INFO    MainThread:16914 [backend.py:_multiprocessing_setup():104] multiprocessing start_methods=spawn,fork,forkserver, using: spawn
+2024-10-18 14:33:24,658 INFO    MainThread:16914 [wandb_init.py:init():688] backend started and connected
+2024-10-18 14:33:24,662 INFO    MainThread:16914 [wandb_init.py:init():783] updated telemetry
+2024-10-18 14:33:24,688 INFO    MainThread:16914 [wandb_init.py:init():816] communicating run to backend with 90.0 second timeout
+2024-10-18 14:33:25,208 INFO    MainThread:16914 [wandb_init.py:init():867] starting run threads in backend
+2024-10-18 14:33:25,362 INFO    MainThread:16914 [wandb_run.py:_console_start():2463] atexit reg
+2024-10-18 14:33:25,362 INFO    MainThread:16914 [wandb_run.py:_redirect():2311] redirect: wrap_raw
+2024-10-18 14:33:25,362 INFO    MainThread:16914 [wandb_run.py:_redirect():2376] Wrapping output streams.
+2024-10-18 14:33:25,363 INFO    MainThread:16914 [wandb_run.py:_redirect():2401] Redirects installed.
+2024-10-18 14:33:25,364 INFO    MainThread:16914 [wandb_init.py:init():911] run started, returning control to user process
+2024-10-18 14:33:25,364 INFO    MainThread:16914 [wandb_run.py:_finish():2158] finishing run hanchen-david-wang-vanderbilt-university/my-awesome-project/1cg4w9vw
+2024-10-18 14:33:25,365 INFO    MainThread:16914 [wandb_run.py:_atexit_cleanup():2426] got exitcode: 0
+2024-10-18 14:33:25,365 INFO    MainThread:16914 [wandb_run.py:_restore():2408] restore
+2024-10-18 14:33:25,365 INFO    MainThread:16914 [wandb_run.py:_restore():2414] restore done
+2024-10-18 14:33:27,713 INFO    MainThread:16914 [wandb_run.py:_footer_history_summary_info():3975] rendering history
+2024-10-18 14:33:27,714 INFO    MainThread:16914 [wandb_run.py:_footer_history_summary_info():4007] rendering summary
+2024-10-18 14:33:27,727 INFO    MainThread:16914 [wandb_run.py:_footer_sync_info():3934] logging synced files

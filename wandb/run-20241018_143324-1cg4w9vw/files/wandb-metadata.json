@@ -1,0 +1,17 @@
+{
+  "os": "macOS-15.0.1-arm64-arm-64bit",
+  "python": "3.9.18",
+  "startedAt": "2024-10-18T19:33:24.658933Z",
+  "program": "/Users/davidwang/Documents/GitHub/EXACT/test.py",
+  "codePath": "test.py",
+  "git": {
+    "remote": "https://github.com/HCWDavid/EXACT.git",
+    "commit": "f1263d2fac6b895ee1fe9d0bdeebb35b1022e5de"
+  },
+  "email": "hanchen.wang.1@vanderbilt.edu",
+  "root": "/Users/davidwang/Documents/GitHub/EXACT",
+  "host": "Davids-MacBook-Pro-2.local",
+  "username": "davidwang",
+  "executable": "/Users/davidwang/opt/anaconda3/envs/research/bin/python",
+  "codePathLocal": "test.py"
+}
