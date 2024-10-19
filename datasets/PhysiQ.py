@@ -24,6 +24,7 @@ class PhysiQ(QueryDataset):
     
     args = args.parse_args()
     DATASET_NAME = "physiq"
+    NUM_TASKS = 16
 
     def __init__(
         self,
@@ -32,7 +33,7 @@ class PhysiQ(QueryDataset):
         split="train",
         window_size=300,
         window_step=50,
-        bg_fg=4,
+        bg_fg=None,
     ):
         super(PhysiQ, self).__init__(
             root, N_way, split, window_size, window_step, bg_fg
@@ -177,7 +178,8 @@ class PhysiQ(QueryDataset):
                 
                 if self.bg_fg is not None: 
                     dense_label.append([1 if original_label == self.bg_fg else 0] * df_np.shape[0])
-                
+                else:
+                    dense_label.append([original_label] * df_np.shape[0])
             file = np.concatenate(file, axis=0)
             dense_label = np.concatenate(dense_label, axis=0)
             sfile, sdense_label = self.sw(torch.tensor(file), torch.tensor(dense_label))

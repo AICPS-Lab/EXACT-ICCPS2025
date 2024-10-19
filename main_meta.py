@@ -7,7 +7,7 @@ from    torch.utils.data import DataLoader
 from    torch.optim import lr_scheduler
 import  random, sys, pickle
 import  argparse
-from torch.utils.tensorboard import SummaryWriter
+# from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 import wandb
 from datasets.DenseLabelTaskSampler import DenseLabelTaskSampler
@@ -29,12 +29,12 @@ def mean_confidence_interval(accs, confidence=0.95):
 def main(args, config, string: str = None):
     # add time stamp to the string
     wandb.init(
-    # set the wandb project where this run will be logged
-    project="EXACT",
+        # set the wandb project where this run will be logged
+        project="EXACT",
 
-    # track hyperparameters and run metadata
-    config=vars(args)
-)
+        # track hyperparameters and run metadata
+        config=vars(args)
+    )
     # string_time =  str(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
     # writer = SummaryWriter(log_dir=f'./runs/{string}/{string_time}')
     #TODO connect back to my seed
@@ -44,7 +44,7 @@ def main(args, config, string: str = None):
 
     print(args)
 
-    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     maml = Meta(args, config)
     # data parallel:
     # maml = torch.nn.DataParallel(maml)
@@ -54,13 +54,13 @@ def main(args, config, string: str = None):
     num = sum(map(lambda x: np.prod(x.shape), tmp))
     print(maml)
     print('Total trainable tensors:', num)
-    train_dataset = PhysiQ(root="data", N_way=2, split="train", window_size=200, bg_fg=4)
-    test_dataset = PhysiQ(root="data", N_way=2, split="test", window_size=200, bg_fg=4)
+    train_dataset = PhysiQ(root="data", N_way=2, split="train", window_size=200, bg_fg=None)
+    test_dataset = PhysiQ(root="data", N_way=2, split="test", window_size=200, bg_fg=None)
     train_sampler = DenseLabelTaskSampler(
-            train_dataset, n_way=2, n_shot=4, batch_size=2, n_query=4, n_tasks=10, threshold_ratio=.25
+            train_dataset, n_way=2, n_shot=4, batch_size=32, n_query=4, n_tasks=1, threshold_ratio=.25
         )
     test_sampler = DenseLabelTaskSampler(
-            test_dataset, n_way=2, n_shot=4, batch_size=2, n_query=4, n_tasks=10, threshold_ratio=.25
+            test_dataset, n_way=2, n_shot=4, batch_size=32, n_query=4, n_tasks=1, threshold_ratio=.25
         )
     # support_images, support_labels, query_images, query_labels, true_class_ids = next(iter(train_loader))
     # batchsz here means total episode number
@@ -83,7 +83,7 @@ def main(args, config, string: str = None):
         os.makedirs(cur_model_dir)
     print(f"The model will be saved to {cur_model_dir}")
     
-    for epoch in tqdm(range(args.epoch//10000)):
+    for epoch in tqdm(range(args.epoch)):
         # fetch meta_batchsz num of episode each time
         train_loader = DataLoader(
             train_dataset,
@@ -206,7 +206,7 @@ def main_test_only(config, string):
 if __name__ == '__main__':
 
     argparser = argparse.ArgumentParser()
-    argparser.add_argument('--epoch', type=int, help='epoch number', default=30000)
+    argparser.add_argument('--epoch', type=int, help='epoch number', default=100)
     argparser.add_argument('--n_way', type=int, help='n way', default=1)
     argparser.add_argument('--k_spt', type=int, help='k shot for support set', default=10) # slightly better than k_s=1, k_q = 15
     argparser.add_argument('--k_qry', type=int, help='k shot for query set', default=20)

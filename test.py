@@ -35,15 +35,15 @@ if __name__ == "__main__":
     # test the dataset
 
     dataset = PhysiQ(
-        root="data", N_way=2, split="train", window_size=200, bg_fg=4
+        root="data", N_way=2, split="train", window_size=200, bg_fg=None
     )
     train_sampler = DenseLabelTaskSampler(
         dataset,
         n_way=2,
         n_shot=4,
-        batch_size=2,
+        batch_size=4,
         n_query=4,
-        n_tasks=10,
+        n_tasks=dataset.NUM_TASKS,
         threshold_ratio=0.25,
     )
     train_loader = DataLoader(
@@ -68,7 +68,7 @@ if __name__ == "__main__":
         true_class_ids,
     )
 
-    # for i in range(16):
-    #     plt.plot(support_images[i])
-    #     plt.plot(support_labels[i])
-    #     plt.show()
+    for i in range(8):
+        plt.plot(support_images[i,0])
+        plt.plot(support_labels[i,0])
+        plt.show()
