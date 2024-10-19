@@ -9,6 +9,8 @@ import  random, sys, pickle
 import  argparse
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
+from datasets import DenseLabelTaskSampler
+from datasets.PhysiQ import PhysiQ
 from learner import Learner
 from meta import Meta
 # from databuilder import TimeSeriesDataset
@@ -26,8 +28,8 @@ def mean_confidence_interval(accs, confidence=0.95):
 def main(config, string: str = None):
     # add time stamp to the string
 
-    string_time =  str(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
-    writer = SummaryWriter(log_dir=f'./runs/{string}/{string_time}')
+    # string_time =  str(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
+    # writer = SummaryWriter(log_dir=f'./runs/{string}/{string_time}')
     #TODO connect back to my seed
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
@@ -45,7 +47,15 @@ def main(config, string: str = None):
     num = sum(map(lambda x: np.prod(x.shape), tmp))
     print(maml)
     print('Total trainable tensors:', num)
-
+    train_dataset = PhysiQ(root="data", N_way=2, split="train", bg_fg=4)
+    test_dataset = PhysiQ(root="data", N_way=2, split="test", bg_fg=4)
+    train_sampler = DenseLabelTaskSampler(
+            train_dataset, n_way=2, n_shot=4, batch_size=2, n_query=4, n_tasks=10, threshold_ratio=.25
+        )
+    test_sampler = DenseLabelTaskSampler(
+            test_dataset, n_way=2, n_shot=4, batch_size=2, n_query=4, n_tasks=10, threshold_ratio=.25
+        )
+    # support_images, support_labels, query_images, query_labels, true_class_ids = next(iter(train_loader))
     # batchsz here means total episode number
     # mini = MiniImagenet('./miniimagenet/', mode='train', n_way=args.n_way, k_shot=args.k_spt,
     #                     k_query=args.k_qry,
@@ -68,30 +78,42 @@ def main(config, string: str = None):
     
     for epoch in tqdm.tqdm(range(args.epoch//10000)):
         # fetch meta_batchsz num of episode each time
-        db = DataLoader(mini, args.task_num, shuffle=True, num_workers=0, pin_memory=True)
+        train_loader = DataLoader(
+            train_dataset,
+            batch_sampler=train_sampler,
+            num_workers=0,
+            pin_memory=True,
+            collate_fn=train_sampler.episodic_collate_fn,
+        )
+        # db = DataLoader(mini, args.task_num, shuffle=True, num_workers=0, pin_memory=True)
 
-        for step, (x_spt, y_spt, x_qry, y_qry) in enumerate(db):
+        for step, (x_spt, y_spt, x_qry, y_qry, true_id) in enumerate(train_loader):
 
             x_spt, y_spt, x_qry, y_qry = x_spt.to(device), y_spt.to(device), x_qry.to(device), y_qry.to(device)
             accs = maml(x_spt, y_spt, x_qry, y_qry)
 
-            if step % 30 == 0:
-                # print('step:', step, '\ttraining acc:', accs)
-                writer.add_scalar('dice/train', accs[-1][0], counter)
-                writer.add_scalar('f2/train', accs[-1][1], counter)
-                writer.add_scalar('iou/train', accs[-1][2], counter)
-                writer.add_scalar('recall/train', accs[-1][3], counter)
-                writer.add_scalar('specificity/train', accs[-1][4], counter)
-                writer.add_scalar('precision/train', accs[-1][5], counter)
-                writer.add_scalar('euclidean/train', accs[-1][6], counter)
-                writer.add_scalar('loss/train', accs[-1][7], counter)
-                # torch.save(maml.state_dict(), os.path.join(cur_model_dir, f'epoch_{epoch}_step_{step}.pt'))
+            # if step % 30 == 0:
+                # writer.add_scalar('dice/train', accs[-1][0], counter)
+                # writer.add_scalar('f2/train', accs[-1][1], counter)
+                # writer.add_scalar('iou/train', accs[-1][2], counter)
+                # writer.add_scalar('recall/train', accs[-1][3], counter)
+                # writer.add_scalar('specificity/train', accs[-1][4], counter)
+                # writer.add_scalar('precision/train', accs[-1][5], counter)
+                # writer.add_scalar('euclidean/train', accs[-1][6], counter)
+                # writer.add_scalar('loss/train', accs[-1][7], counter)
 
             if step % 1000 == 0:  # evaluation
-                db_test = DataLoader(mini_test, 1, shuffle=True, num_workers=0, pin_memory=True)
+                test_dataloader = DataLoader(
+                    test_dataset,
+                    batch_sampler=test_sampler,
+                    num_workers=0,
+                    pin_memory=True,
+                    collate_fn=test_sampler.episodic_collate_fn,
+                )
+                
                 accs_all_test = []
 
-                for x_spt, y_spt, x_qry, y_qry in db_test:
+                for x_spt, y_spt, x_qry, y_qry, true_id in test_dataloader:
                     x_spt, y_spt, x_qry, y_qry = x_spt.squeeze(0).to(device), y_spt.squeeze(0).to(device), \
                                                  x_qry.squeeze(0).to(device), y_qry.squeeze(0).to(device)
 
@@ -109,14 +131,14 @@ def main(config, string: str = None):
                     torch.save(maml.state_dict(), os.path.join(cur_model_dir, f'best_model.pt'))
 
 
-                writer.add_scalar('dice/test', accs[-1][0], counter)
-                writer.add_scalar('f2/test', accs[-1][1], counter)
-                writer.add_scalar('iou/test', accs[-1][2], counter)
-                writer.add_scalar('recall/test', accs[-1][3], counter)
-                writer.add_scalar('specificity/test', accs[-1][4], counter)
-                writer.add_scalar('precision/test', accs[-1][5], counter)
-                writer.add_scalar('euclidean/test', accs[-1][6], counter)
-                writer.add_scalar('loss/test', accs[-1][7], counter)
+                # writer.add_scalar('dice/test', accs[-1][0], counter)
+                # writer.add_scalar('f2/test', accs[-1][1], counter)
+                # writer.add_scalar('iou/test', accs[-1][2], counter)
+                # writer.add_scalar('recall/test', accs[-1][3], counter)
+                # writer.add_scalar('specificity/test', accs[-1][4], counter)
+                # writer.add_scalar('precision/test', accs[-1][5], counter)
+                # writer.add_scalar('euclidean/test', accs[-1][6], counter)
+                # writer.add_scalar('loss/test', accs[-1][7], counter)
 
             if step % 30 == 0:
                 counter+=1
