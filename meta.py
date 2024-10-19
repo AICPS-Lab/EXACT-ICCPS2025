@@ -182,8 +182,12 @@ class Meta(nn.Module):
         :param y_qry:   [querysz]
         :return:
         """
-        assert len(x_spt.shape) == 4 or len(x_spt.shape) == 3, 'x_spt shape should be 3 or 4 dimensional but got %d' % len(x_spt.shape)
-
+        assert len(x_spt.shape) == 4, 'x_spt shape should be 4 dimensional but got %d' % len(x_spt.shape)
+        # make shape 0 and 1 together:
+        x_spt = x_spt.reshape(-1, x_spt.size(-2), x_spt.size(-1)).float()
+        y_spt = y_spt.reshape(-1, y_spt.size(-1)).long()
+        x_qry = x_qry.reshape(-1, x_qry.size(-2), x_qry.size(-1)).float()
+        y_qry = y_qry.reshape(-1, y_qry.size(-1)).long()
         querysz = x_qry.size(0)
 
         corrects = [0 for _ in range(self.update_step_test + 1)]
@@ -193,7 +197,7 @@ class Meta(nn.Module):
         net = deepcopy(self.net)
 
         # 1. run the i-th task and compute loss for k=0
-        logits = net(x_spt)
+        logits = net(x_spt)   
         loss = self.loss_fn(logits, y_spt)
         grad = torch.autograd.grad(loss, net.parameters())
         fast_weights = list(map(lambda p: p[1] - self.update_lr * p[0], zip(grad, net.parameters())))

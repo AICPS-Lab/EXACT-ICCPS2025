@@ -126,17 +126,17 @@ class DenseLabelTaskSampler(Sampler):
 
         # Separate support and query sets
         support_images = all_images[:, : self.n_shot].reshape(
-            (-1, *all_images.shape[3:])
+            (-1, *all_images.shape[2:])
         )
         query_images = all_images[:, self.n_shot :].reshape(
-            (-1, *all_images.shape[3:])
+            (-1, *all_images.shape[2:])
         )
 
         support_labels = all_labels[:, : self.n_shot].reshape(
-            (-1, *all_labels.shape[3:])
+            (-1, *all_labels.shape[2:])
         )
         query_labels = all_labels[:, self.n_shot :].reshape(
-            (-1, *all_labels.shape[3:])
+            (-1, *all_labels.shape[2:])
         )
 
         return (

@@ -9,13 +9,14 @@ import  random, sys, pickle
 import  argparse
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
-from datasets import DenseLabelTaskSampler
+import wandb
+from datasets.DenseLabelTaskSampler import DenseLabelTaskSampler
 from datasets.PhysiQ import PhysiQ
 from learner import Learner
 from meta import Meta
 # from databuilder import TimeSeriesDataset
 # from torch_dataset import *
-from utilities import validation2, validation3
+# from utilities import validation2, validation3
 from model_configs import *
 
 def mean_confidence_interval(accs, confidence=0.95):
@@ -25,9 +26,15 @@ def mean_confidence_interval(accs, confidence=0.95):
     return m, h
 
 
-def main(config, string: str = None):
+def main(args, config, string: str = None):
     # add time stamp to the string
+    wandb.init(
+    # set the wandb project where this run will be logged
+    project="EXACT",
 
+    # track hyperparameters and run metadata
+    config=vars(args)
+)
     # string_time =  str(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
     # writer = SummaryWriter(log_dir=f'./runs/{string}/{string_time}')
     #TODO connect back to my seed
@@ -47,8 +54,8 @@ def main(config, string: str = None):
     num = sum(map(lambda x: np.prod(x.shape), tmp))
     print(maml)
     print('Total trainable tensors:', num)
-    train_dataset = PhysiQ(root="data", N_way=2, split="train", bg_fg=4)
-    test_dataset = PhysiQ(root="data", N_way=2, split="test", bg_fg=4)
+    train_dataset = PhysiQ(root="data", N_way=2, split="train", window_size=200, bg_fg=4)
+    test_dataset = PhysiQ(root="data", N_way=2, split="test", window_size=200, bg_fg=4)
     train_sampler = DenseLabelTaskSampler(
             train_dataset, n_way=2, n_shot=4, batch_size=2, n_query=4, n_tasks=10, threshold_ratio=.25
         )
@@ -76,7 +83,7 @@ def main(config, string: str = None):
         os.makedirs(cur_model_dir)
     print(f"The model will be saved to {cur_model_dir}")
     
-    for epoch in tqdm.tqdm(range(args.epoch//10000)):
+    for epoch in tqdm(range(args.epoch//10000)):
         # fetch meta_batchsz num of episode each time
         train_loader = DataLoader(
             train_dataset,
@@ -89,10 +96,11 @@ def main(config, string: str = None):
 
         for step, (x_spt, y_spt, x_qry, y_qry, true_id) in enumerate(train_loader):
 
-            x_spt, y_spt, x_qry, y_qry = x_spt.to(device), y_spt.to(device), x_qry.to(device), y_qry.to(device)
+            x_spt, y_spt, x_qry, y_qry = x_spt.float().to(device), y_spt.to(device), x_qry.float().to(device), y_qry.to(device)
             accs = maml(x_spt, y_spt, x_qry, y_qry)
 
-            # if step % 30 == 0:
+            if step % 30 == 0:
+                wandb.log({"dice": accs[-1][0], "f2": accs[-1][1], "iou": accs[-1][2], "recall": accs[-1][3], "specificity": accs[-1][4], "precision": accs[-1][5], "euclidean": accs[-1][6], "loss": accs[-1][7]})
                 # writer.add_scalar('dice/train', accs[-1][0], counter)
                 # writer.add_scalar('f2/train', accs[-1][1], counter)
                 # writer.add_scalar('iou/train', accs[-1][2], counter)
@@ -189,7 +197,7 @@ def main_test_only(config, string):
     # x_sqt, (_, y_spt, _) = next(iter(val_loader))
     # net = maml.meta_finetune(x_sqt, y_spt)
     # validation3(val_loader=val_loader, model=net, device=device, window_size=args.input_length, look_back_length=args.input_length-args.main_length)
-    validation2(val_loader=val_loader, model=net, device=device, window_size=args.input_length, look_back_length=args.input_length-args.main_length, vis=True)
+    # validation2(val_loader=val_loader, model=net, device=device, window_size=args.input_length, look_back_length=args.input_length-args.main_length, vis=True)
 
 
 
@@ -211,7 +219,7 @@ if __name__ == '__main__':
     argparser.add_argument('--update_step', type=int, help='task-level inner update steps', default=5)
     argparser.add_argument('--update_step_test', type=int, help='update steps for finetunning', default=10) # 10
     argparser.add_argument('--main_length', type=int, help='this length is the length to be returned for segmentation', default=50) # this length is the output length of the model
-    argparser.add_argument('--input_length', type=int, help='this length is the length to be returned for segmentation', default=200) # this length is the input length of the model
+    argparser.add_argument('--input_length', type=int, help='this length is the length to be returned for segmentation', default=300) # this length is the input length of the model
     argparser.add_argument('--segmentation', type=bool, help='bool to make the deep learning segmentation problem', default=True)
     
     # noise:
@@ -250,7 +258,7 @@ if __name__ == '__main__':
     args.side_noise = -1
     args.augmentation = 1.0
     args.seed = 222
-    main(config, string)
+    main(args, config, string)
 
     # string = 'EXACT_SPAR_testSPAR9x_Noise0.5'
     # config = EXACT_config

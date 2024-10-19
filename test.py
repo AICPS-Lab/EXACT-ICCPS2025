@@ -33,11 +33,19 @@ import random
 # wandb.finish()
 if __name__ == "__main__":
     # test the dataset
-    
-    dataset = PhysiQ(root="data", N_way=2, split="train", bg_fg=4)
+
+    dataset = PhysiQ(
+        root="data", N_way=2, split="train", window_size=200, bg_fg=4
+    )
     train_sampler = DenseLabelTaskSampler(
-            dataset, n_way=2, n_shot=4, batch_size=2, n_query=4, n_tasks=10, threshold_ratio=.25
-        )
+        dataset,
+        n_way=2,
+        n_shot=4,
+        batch_size=2,
+        n_query=4,
+        n_tasks=10,
+        threshold_ratio=0.25,
+    )
     train_loader = DataLoader(
         dataset,
         batch_sampler=train_sampler,
@@ -45,11 +53,22 @@ if __name__ == "__main__":
         pin_memory=True,
         collate_fn=train_sampler.episodic_collate_fn,
     )
-    support_images, support_labels, query_images, query_labels, true_class_ids = next(iter(train_loader))
-    print(support_images.shape, support_labels.shape, query_images.shape, query_labels.shape, true_class_ids)
+    (
+        support_images,
+        support_labels,
+        query_images,
+        query_labels,
+        true_class_ids,
+    ) = next(iter(train_loader))
+    print(
+        support_images.shape,
+        support_labels.shape,
+        query_images.shape,
+        query_labels.shape,
+        true_class_ids,
+    )
 
     # for i in range(16):
     #     plt.plot(support_images[i])
     #     plt.plot(support_labels[i])
     #     plt.show()
-    
