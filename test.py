@@ -53,22 +53,23 @@ if __name__ == "__main__":
         pin_memory=True,
         collate_fn=train_sampler.episodic_collate_fn,
     )
-    (
+    
+    # print(
+    #     support_images.shape,
+    #     support_labels.shape,
+    #     query_images.shape,
+    #     query_labels.shape,
+    #     true_class_ids,
+    # )
+    for (
         support_images,
         support_labels,
         query_images,
         query_labels,
         true_class_ids,
-    ) = next(iter(train_loader))
-    print(
-        support_images.shape,
-        support_labels.shape,
-        query_images.shape,
-        query_labels.shape,
-        true_class_ids,
-    )
-
-    for i in range(8):
-        plt.plot(support_images[i,0])
-        plt.plot(support_labels[i,0])
+    )  in train_loader:
+        # print(true_class_ids)
+        # for i in range(8):
+        plt.plot(support_images[0,0])
+        plt.plot(support_labels[0,0])
         plt.show()

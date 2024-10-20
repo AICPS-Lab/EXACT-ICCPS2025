@@ -39,7 +39,7 @@ class DenseLabelTaskSampler(Sampler):
         self.threshold_ratio = (
             threshold_ratio  # Ratio for non-background labels
         )
-
+        self._cur_task = -1
         self.dataset = dataset
         self.items_per_label: Dict[int, List[int]] = {}
 
@@ -64,7 +64,7 @@ class DenseLabelTaskSampler(Sampler):
         Yields:
             A list of indices of length (n_way * batch_size * (n_shot + n_query)).
         """
-        for _ in range(self.n_tasks):
+        for cur_task in range(self.n_tasks):
             sampled_task_indices = torch.cat(
                 [
                     torch.tensor(
@@ -76,8 +76,13 @@ class DenseLabelTaskSampler(Sampler):
                     for label in random.sample(
                         sorted(self.items_per_label.keys()), self.n_way
                     )
+                    # if label = cur_task, then the label is 1 else 0
+                    
                 ]
+                
             )
+            self._cur_task = cur_task
+            
             yield sampled_task_indices.tolist()
 
     def episodic_collate_fn(
@@ -97,6 +102,7 @@ class DenseLabelTaskSampler(Sampler):
                 - query_labels: Query set dense labels of the same shape as the input (n_way * n_query * batch_size, height, width).
                 - true_class_ids: The true class IDs of the classes sampled in the episode.
         """
+        # print(input_data)
         true_class_ids = list(
             {self._classify_label(x[1]) for x in input_data}
         )  # Use max value to identify class IDs in dense labels
@@ -138,7 +144,12 @@ class DenseLabelTaskSampler(Sampler):
         query_labels = all_labels[:, self.n_shot :].reshape(
             (-1, *all_labels.shape[2:])
         )
-
+        # query labels and support labels where == _cur_task, is 1 else 0
+        # print(self._cur_task)
+        # print(query_labels)
+        # print(support_labels)
+        query_labels = torch.where(query_labels == self._cur_task, 1, 0)
+        support_labels = torch.where(support_labels == self._cur_task, 1, 0)
         return (
             support_images,
             support_labels,

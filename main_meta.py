@@ -57,10 +57,10 @@ def main(args, config, string: str = None):
     train_dataset = PhysiQ(root="data", N_way=2, split="train", window_size=200, bg_fg=None)
     test_dataset = PhysiQ(root="data", N_way=2, split="test", window_size=200, bg_fg=None)
     train_sampler = DenseLabelTaskSampler(
-            train_dataset, n_way=2, n_shot=4, batch_size=32, n_query=4, n_tasks=1, threshold_ratio=.25
+            train_dataset, n_way=2, n_shot=4, batch_size=4, n_query=4, n_tasks=train_dataset.NUM_TASKS, threshold_ratio=.25
         )
     test_sampler = DenseLabelTaskSampler(
-            test_dataset, n_way=2, n_shot=4, batch_size=32, n_query=4, n_tasks=1, threshold_ratio=.25
+            test_dataset, n_way=2, n_shot=4, batch_size=4, n_query=4, n_tasks=test_dataset.NUM_TASKS, threshold_ratio=.25
         )
     # support_images, support_labels, query_images, query_labels, true_class_ids = next(iter(train_loader))
     # batchsz here means total episode number
