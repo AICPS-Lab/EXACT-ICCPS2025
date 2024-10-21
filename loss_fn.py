@@ -5,6 +5,11 @@ from    torch.nn import functional as F
 from torch import nn
 def mse_loss(y_pred, y_true):
     return torch.sum((y_pred - y_true) ** 2)
+
+def bce_loss(y_pred, y_true):
+    
+    return F.binary_cross_entropy_with_logits(y_pred, y_true.float())
+
 def smooth_l1_loss(y_pred, y_true):
     abs_diff = torch.abs(y_pred - y_true)
     loss = torch.where(abs_diff < 1, 0.5 * abs_diff ** 2, abs_diff - 0.5)

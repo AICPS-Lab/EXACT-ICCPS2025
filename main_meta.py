@@ -57,10 +57,10 @@ def main(args, config, string: str = None):
     train_dataset = PhysiQ(root="data", N_way=2, split="train", window_size=200, bg_fg=None)
     test_dataset = PhysiQ(root="data", N_way=2, split="test", window_size=200, bg_fg=None)
     train_sampler = DenseLabelTaskSampler(
-            train_dataset, n_way=2, n_shot=4, batch_size=4, n_query=4, n_tasks=train_dataset.NUM_TASKS, threshold_ratio=.25
+            train_dataset, n_way=2, n_shot=1, batch_size=16, n_query=1, n_tasks=train_dataset.NUM_TASKS, threshold_ratio=.25
         )
     test_sampler = DenseLabelTaskSampler(
-            test_dataset, n_way=2, n_shot=4, batch_size=4, n_query=4, n_tasks=test_dataset.NUM_TASKS, threshold_ratio=.25
+            test_dataset, n_way=2, n_shot=1, batch_size=16, n_query=1, n_tasks=test_dataset.NUM_TASKS, threshold_ratio=.25
         )
     # support_images, support_labels, query_images, query_labels, true_class_ids = next(iter(train_loader))
     # batchsz here means total episode number
@@ -97,10 +97,10 @@ def main(args, config, string: str = None):
         for step, (x_spt, y_spt, x_qry, y_qry, true_id) in enumerate(train_loader):
 
             x_spt, y_spt, x_qry, y_qry = x_spt.float().to(device), y_spt.to(device), x_qry.float().to(device), y_qry.to(device)
+            
             accs = maml(x_spt, y_spt, x_qry, y_qry)
-
-            if step % 30 == 0:
-                wandb.log({"dice": accs[-1][0], "f2": accs[-1][1], "iou": accs[-1][2], "recall": accs[-1][3], "specificity": accs[-1][4], "precision": accs[-1][5], "euclidean": accs[-1][6], "loss": accs[-1][7]})
+            # if step % 30 == 0:
+                # wandb.log({"dice": accs[-1][0], "f2": accs[-1][1], "iou": accs[-1][2], "recall": accs[-1][3], "specificity": accs[-1][4], "precision": accs[-1][5], "euclidean": accs[-1][6], "loss": accs[-1][7]})
                 # writer.add_scalar('dice/train', accs[-1][0], counter)
                 # writer.add_scalar('f2/train', accs[-1][1], counter)
                 # writer.add_scalar('iou/train', accs[-1][2], counter)
@@ -138,7 +138,7 @@ def main(args, config, string: str = None):
                     print(f"Best dice so far: {best_dice}, saving model {cur_model_dir}/best_model.pt")
                     torch.save(maml.state_dict(), os.path.join(cur_model_dir, f'best_model.pt'))
 
-
+                wandb.log({"dice": accs[-1][0], "f2": accs[-1][1], "iou": accs[-1][2], "recall": accs[-1][3], "specificity": accs[-1][4], "precision": accs[-1][5], "euclidean": accs[-1][6], "loss": accs[-1][7]})
                 # writer.add_scalar('dice/test', accs[-1][0], counter)
                 # writer.add_scalar('f2/test', accs[-1][1], counter)
                 # writer.add_scalar('iou/test', accs[-1][2], counter)
@@ -206,7 +206,7 @@ def main_test_only(config, string):
 if __name__ == '__main__':
 
     argparser = argparse.ArgumentParser()
-    argparser.add_argument('--epoch', type=int, help='epoch number', default=100)
+    argparser.add_argument('--epoch', type=int, help='epoch number', default=1000)
     argparser.add_argument('--n_way', type=int, help='n way', default=1)
     argparser.add_argument('--k_spt', type=int, help='k shot for support set', default=10) # slightly better than k_s=1, k_q = 15
     argparser.add_argument('--k_qry', type=int, help='k shot for query set', default=20)
@@ -215,7 +215,7 @@ if __name__ == '__main__':
     argparser.add_argument('--imgc', type=int, help='imgc', default=3)
     argparser.add_argument('--task_num', type=int, help='meta batch size, namely task num', default=4)
     argparser.add_argument('--meta_lr', type=float, help='meta-level outer learning rate', default=1e-3)
-    argparser.add_argument('--update_lr', type=float, help='task-level inner update learning rate', default=0.01)
+    argparser.add_argument('--update_lr', type=float, help='task-level inner update learning rate', default=1e-3)
     argparser.add_argument('--update_step', type=int, help='task-level inner update steps', default=5)
     argparser.add_argument('--update_step_test', type=int, help='update steps for finetunning', default=10) # 10
     argparser.add_argument('--main_length', type=int, help='this length is the length to be returned for segmentation', default=50) # this length is the output length of the model
@@ -252,12 +252,12 @@ if __name__ == '__main__':
     # main_test_only(string+'_')
     
 
-    string = 'EXACT_SPAR_testSPAR9x'
-    config = EXACT_config
+    string = 'BASELINE_config'
+    config = BASELINE_config #EXACT_config
     args.midnoise = -1
     args.side_noise = -1
     args.augmentation = 1.0
-    args.seed = 222
+    args.seed = 42
     main(args, config, string)
 
     # string = 'EXACT_SPAR_testSPAR9x_Noise0.5'

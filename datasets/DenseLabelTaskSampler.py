@@ -150,6 +150,9 @@ class DenseLabelTaskSampler(Sampler):
         # print(support_labels)
         query_labels = torch.where(query_labels == self._cur_task, 1, 0)
         support_labels = torch.where(support_labels == self._cur_task, 1, 0)
+        # switch shape 0 and 1:
+        # support_images = support_images.permute(1, 0, 2, 3)
+        # query_images = query_images.permute(1, 0, 2, 3)
         return (
             support_images,
             support_labels,

@@ -40,9 +40,9 @@ if __name__ == "__main__":
     train_sampler = DenseLabelTaskSampler(
         dataset,
         n_way=2,
-        n_shot=4,
-        batch_size=4,
-        n_query=4,
+        n_shot=1,
+        batch_size=64,
+        n_query=1,
         n_tasks=dataset.NUM_TASKS,
         threshold_ratio=0.25,
     )
@@ -53,23 +53,23 @@ if __name__ == "__main__":
         pin_memory=True,
         collate_fn=train_sampler.episodic_collate_fn,
     )
-    
-    # print(
-    #     support_images.shape,
-    #     support_labels.shape,
-    #     query_images.shape,
-    #     query_labels.shape,
-    #     true_class_ids,
-    # )
-    for (
-        support_images,
-        support_labels,
-        query_images,
-        query_labels,
+    support_images, support_labels, query_images, query_labels, true_class_ids = next(iter(train_loader))
+    print(
+        support_images.shape,
+        support_labels.shape,
+        query_images.shape,
+        query_labels.shape,
         true_class_ids,
-    )  in train_loader:
-        # print(true_class_ids)
-        # for i in range(8):
-        plt.plot(support_images[0,0])
-        plt.plot(support_labels[0,0])
-        plt.show()
+    )
+    # for (
+    #     support_images,
+    #     support_labels,
+    #     query_images,
+    #     query_labels,
+    #     true_class_ids,
+    # )  in train_loader:
+    #     # print(true_class_ids)
+    #     # for i in range(8):
+    #     plt.plot(support_images[0,0])
+    #     plt.plot(support_labels[0,0])
+    #     plt.show()

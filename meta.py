@@ -50,7 +50,7 @@ class Meta(nn.Module):
         self.update_step_test = args.update_step_test
         self.segmentation = args.segmentation
         if args.segmentation == True:
-            self.loss_fn = smooth_l1_loss # AdjustSmoothL1Loss(num_features=args.main_length) #mse_loss 
+            self.loss_fn = bce_loss #mse_loss  #smooth_l1_loss # AdjustSmoothL1Loss(num_features=args.main_length) #mse_loss 
             self.correct_fn = compute_alls_in_segmentation
         else:
             self.loss_fn = F.cross_entropy
@@ -97,7 +97,6 @@ class Meta(nn.Module):
         """
         # NOTE: time series has 4 size and no reisze
         task_num, setsz, c_, h = x_spt.size()
-
         # task_num, setsz, c_, h, w = x_spt.size()
         querysz = x_qry.size(1)
 
