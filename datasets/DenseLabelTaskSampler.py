@@ -42,17 +42,20 @@ class DenseLabelTaskSampler(Sampler):
         )
         self._cur_task = -1
         self.dataset = dataset
-        self.items_per_label: Dict[int, List[int]] = {}
-
+        self.items_per_exer_label: Dict[int, List[int]] = {}
+        self.idx_to_label: Dict[int, List[int]] = (
+            {}
+        )  # TODO: trend of thoughts lost here!
         # Build a dictionary mapping each label to a list of indices for dense labeling
         for item_idx, (input_data, label, exer_label) in enumerate(dataset):
             # print(label)
-            valid_label = exer_label #self._get_label(label)
+            valid_label = exer_label  # self._get_label(label)
             if valid_label is not None:
-                if valid_label in self.items_per_label:
-                    self.items_per_label[valid_label].append(item_idx)
+                if valid_label in self.items_per_exer_label:
+                    self.items_per_exer_label[valid_label].append(item_idx)
                 else:
-                    self.items_per_label[valid_label] = [item_idx]
+                    self.items_per_exer_label[valid_label] = [item_idx]
+                # self.idx_to_label[item_idx] = self._get_label(label)
 
         # self._check_dataset_size_fits_sampler_parameters()
 
@@ -72,20 +75,19 @@ class DenseLabelTaskSampler(Sampler):
                 [
                     torch.tensor(
                         np.random.choice(
-                            self.items_per_label[label],
+                            self.items_per_exer_label[label],
                             (self.n_shot + self.n_query) * self.batch_size,
-                        replace=True) # original: random.sample(..., replace=False)
+                            replace=True,
+                        )  # original: random.sample(..., replace=False)
                     )
                     for label in random.sample(
-                        sorted(self.items_per_label.keys()), self.n_way
+                        sorted(self.items_per_exer_label.keys()), self.n_way
                     )
                     # if label = cur_task, then the label is 1 else 0
-                    
                 ]
-                
             )
             self._cur_task = cur_task
-            
+
             yield sampled_task_indices.tolist()
 
     def episodic_collate_fn(
@@ -106,8 +108,11 @@ class DenseLabelTaskSampler(Sampler):
                 - true_class_ids: The true class IDs of the classes sampled in the episode.
         """
         # print(input_data)
+        # true_class_ids = list(
+        #     {self._classify_label(x[1]) for x in input_data}
+        # )  # Use max value to identify class IDs in dense labels
         true_class_ids = list(
-            {self._classify_label(x[1]) for x in input_data}
+            {int(x[2]) for x in input_data}
         )  # Use max value to identify class IDs in dense labels
         all_images = torch.cat(
             [x[0].unsqueeze(0) for x in input_data]
@@ -163,8 +168,10 @@ class DenseLabelTaskSampler(Sampler):
             query_labels,
             true_class_ids,
         )
+
     def _get_label(self, label: Tensor) -> int:
         return label.mode().values.item()
+
     def _classify_label(self, label: Tensor) -> Union[int, None]:
         """
         Classify the label as 0 or 1 based on the threshold ratio of non-background (non-0) elements.
@@ -193,15 +200,15 @@ class DenseLabelTaskSampler(Sampler):
         self._check_dataset_has_enough_items_per_label()
 
     def _check_dataset_has_enough_labels(self):
-        if self.n_way > len(self.items_per_label):
+        if self.n_way > len(self.items_per_exer_label):
             raise ValueError(
-                f"The number of labels in the dataset ({len(self.items_per_label)}) must be greater or equal to n_way ({self.n_way})."
+                f"The number of labels in the dataset ({len(self.items_per_exer_label)}) must be greater or equal to n_way ({self.n_way})."
             )
 
     def _check_dataset_has_enough_items_per_label(self):
         number_of_samples_per_label = [
             len(items_for_label)
-            for items_for_label in self.items_per_label.values()
+            for items_for_label in self.items_per_exer_label.values()
         ]
         minimum_number_of_samples_per_label = min(number_of_samples_per_label)
         label_with_minimum_number_of_samples = (

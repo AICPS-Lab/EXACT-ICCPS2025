@@ -205,6 +205,7 @@ class PhysiQ(QueryDataset):
         res_label = torch.cat(res_label, axis=0)
         res_exer_label = torch.cat(res_exer_label, axis=0)
         
+        
         return res_data, res_label, res_exer_label
             
     def if_npy_exists(self, split):
