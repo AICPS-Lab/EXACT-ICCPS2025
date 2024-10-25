@@ -94,14 +94,14 @@ def iou_time_series(pred, gt):
     # Compute element-wise maximum
     union = torch.sum(torch.max(pred, gt), dim=1)
     
-    # Calculate IOU
-    iou = intersection / union
-
+    # Avoid division by zero by adding a small epsilon
+    eps = 1e-6
+    iou = intersection / (union + eps)
+    
     # Average over the batch dimension
     avg_iou = torch.mean(iou)
     
     return avg_iou
-
 
 def recall_time_series(pred, gt, threshold=0.5):
     # Convert to binary form using threshold
@@ -189,10 +189,11 @@ def dice_coefficient_time_series(pred, gt, threshold=0.5):
 
     # Calculate Dice coefficient
     dice = (2 * TP) / (2 * TP + FP + FN + 1e-8)
-    # plt.plot(pred[0].detach().cpu().numpy())
-    # plt.plot(gt[0].detach().cpu().numpy())
-    # plt.show()
-    # print('dice', dice)
+
+    # Handle the case where both pred and gt are all zeros
+    both_zero_mask = (torch.sum(gt_binary, dim=1) == 0) & (torch.sum(pred_binary, dim=1) == 0)
+    dice[both_zero_mask] = 1.0
+
     # Average over the batch dimension
     avg_dice = torch.mean(dice, dim=0)
     

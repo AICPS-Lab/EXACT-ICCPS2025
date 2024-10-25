@@ -40,23 +40,47 @@ def get_device():
 
 class sliding_windows(torch.nn.Module):
     def __init__(self, width, step):
-        # https://stackoverflow.com/questions/53972159/how-does-pytorchs-fold-and-unfold-work
         super(sliding_windows, self).__init__()
         self.width = width
         self.step = step
 
     def forward(self, input_time_series, labels):
-        input_transformed = torch.swapaxes(input_time_series.unfold(-2, size=self.width, step=self.step), -2, -1)
-        # For labels, we only have one dimension, so we unfold along that dimension
-        if labels != None:
+        # Calculate number of sliding windows
+        num_windows = self.get_num_sliding_windows(input_time_series.size(-2))
+
+        # Calculate the required total length to fit exact sliding windows
+        required_length = num_windows * self.step + self.width - self.step
+        total_length = input_time_series.size(-2)
+
+        # If needed, pad the input_time_series by repeating the initial segment
+        if total_length < required_length:
+            num_pads = required_length - total_length
+            if num_pads > 0:
+                padding = input_time_series[:num_pads]  # Pad from the beginning
+                input_time_series = torch.cat((input_time_series, padding), dim=0)
+
+        # Create sliding windows for input
+        input_transformed = torch.swapaxes(
+            input_time_series.unfold(-2, size=self.width, step=self.step), -2, -1
+        )
+
+        # Handle labels similarly
+        if labels is not None:
+            total_labels_length = labels.size(0)
+            if total_labels_length < required_length:
+                num_pads = required_length - total_labels_length
+                if num_pads > 0:
+                    padding_labels = labels[:num_pads]
+                    labels = torch.cat((labels, padding_labels), dim=0)
             labels_transformed = labels.unfold(0, self.width, self.step)
         else:
             labels_transformed = None
+
         return input_transformed, labels_transformed
 
     def get_num_sliding_windows(self, total_length):
-        return round((total_length - (self.width - self.step)) / self.step)
-    
+        return max(1, round((total_length - (self.width - self.step)) / self.step))
+
     
 def printc(*args, color='red'):
     colors = {

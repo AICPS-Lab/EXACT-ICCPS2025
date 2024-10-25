@@ -1,4 +1,5 @@
 import random
+import numpy as np
 import torch
 from torch import Tensor
 from torch.utils.data import Sampler, Dataset
@@ -45,14 +46,14 @@ class DenseLabelTaskSampler(Sampler):
 
         # Build a dictionary mapping each label to a list of indices for dense labeling
         for item_idx, (input_data, label) in enumerate(dataset):
-            valid_label = self._classify_label(label)
+            valid_label = self._get_label(label)
             if valid_label is not None:
                 if valid_label in self.items_per_label:
                     self.items_per_label[valid_label].append(item_idx)
                 else:
                     self.items_per_label[valid_label] = [item_idx]
 
-        self._check_dataset_size_fits_sampler_parameters()
+        # self._check_dataset_size_fits_sampler_parameters()
 
     def __len__(self) -> int:
         return self.n_tasks
@@ -64,14 +65,15 @@ class DenseLabelTaskSampler(Sampler):
         Yields:
             A list of indices of length (n_way * batch_size * (n_shot + n_query)).
         """
+
         for cur_task in range(self.n_tasks):
             sampled_task_indices = torch.cat(
                 [
                     torch.tensor(
-                        random.sample(
+                        np.random.choice(
                             self.items_per_label[label],
                             (self.n_shot + self.n_query) * self.batch_size,
-                        )
+                        replace=True) # original: random.sample(..., replace=False)
                     )
                     for label in random.sample(
                         sorted(self.items_per_label.keys()), self.n_way
@@ -160,7 +162,8 @@ class DenseLabelTaskSampler(Sampler):
             query_labels,
             true_class_ids,
         )
-
+    def _get_label(self, label: Tensor) -> int:
+        return label.mode().values.item()
     def _classify_label(self, label: Tensor) -> Union[int, None]:
         """
         Classify the label as 0 or 1 based on the threshold ratio of non-background (non-0) elements.

@@ -35,7 +35,7 @@ if __name__ == "__main__":
     # test the dataset
 
     dataset = PhysiQ(
-        root="data", N_way=2, split="train", window_size=200, bg_fg=None
+        root="data", N_way=2, split="train", window_size=1000, bg_fg=None
     )
     train_sampler = DenseLabelTaskSampler(
         dataset,
@@ -54,22 +54,22 @@ if __name__ == "__main__":
         collate_fn=train_sampler.episodic_collate_fn,
     )
     support_images, support_labels, query_images, query_labels, true_class_ids = next(iter(train_loader))
-    print(
-        support_images.shape,
-        support_labels.shape,
-        query_images.shape,
-        query_labels.shape,
-        true_class_ids,
-    )
-    # for (
-    #     support_images,
-    #     support_labels,
-    #     query_images,
-    #     query_labels,
+    # print(
+    #     support_images.shape,
+    #     support_labels.shape,
+    #     query_images.shape,
+    #     query_labels.shape,
     #     true_class_ids,
-    # )  in train_loader:
-    #     # print(true_class_ids)
-    #     # for i in range(8):
-    #     plt.plot(support_images[0,0])
-    #     plt.plot(support_labels[0,0])
-    #     plt.show()
+    # )
+    for (
+        support_images,
+        support_labels,
+        query_images,
+        query_labels,
+        true_class_ids,
+    )  in train_loader:
+        # print(true_class_ids)
+        # for i in range(8):
+        plt.plot(support_images[0,0])
+        plt.plot(support_labels[0,0])
+        plt.show()

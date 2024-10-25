@@ -183,11 +183,10 @@ class PhysiQ(QueryDataset):
             file = np.concatenate(file, axis=0)
             dense_label = np.concatenate(dense_label, axis=0)
             sfile, sdense_label = self.sw(torch.tensor(file), torch.tensor(dense_label))
-            # print(sfile.shape, sdense_label.shape)
             res_data.append(sfile)
             res_label.append(sdense_label)
-        res_data = torch.cat(res_data, axis=0)
-        res_label = torch.cat(res_label, axis=0)
+        res_data = torch.cat(res_data, axis=0).float()
+        res_label = torch.cat(res_label, axis=0).float()
         return res_data, res_label
             
     def if_npy_exists(self, split):
