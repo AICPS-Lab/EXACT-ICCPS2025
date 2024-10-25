@@ -33,7 +33,7 @@ class QueryDataset(Dataset):
             self._process_data()
 
         self.data = self.load_data(split)
-        self.data, self.label = self.concanetate_data()
+        self.data, self.label, self.res_exer_label = self.concanetate_data()
 
     def concanetate_data(self):
         raise NotImplementedError
@@ -51,4 +51,4 @@ class QueryDataset(Dataset):
         return len(self.data)
 
     def __getitem__(self, idx):
-        return self.data[idx], self.label[idx]
+        return self.data[idx], self.label[idx], self.res_exer_label[idx]

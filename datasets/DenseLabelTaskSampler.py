@@ -45,8 +45,9 @@ class DenseLabelTaskSampler(Sampler):
         self.items_per_label: Dict[int, List[int]] = {}
 
         # Build a dictionary mapping each label to a list of indices for dense labeling
-        for item_idx, (input_data, label) in enumerate(dataset):
-            valid_label = self._get_label(label)
+        for item_idx, (input_data, label, exer_label) in enumerate(dataset):
+            # print(label)
+            valid_label = exer_label #self._get_label(label)
             if valid_label is not None:
                 if valid_label in self.items_per_label:
                     self.items_per_label[valid_label].append(item_idx)

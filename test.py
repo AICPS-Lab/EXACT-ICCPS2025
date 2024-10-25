@@ -37,6 +37,7 @@ if __name__ == "__main__":
     dataset = PhysiQ(
         root="data", N_way=2, split="train", window_size=1000, bg_fg=None
     )
+
     train_sampler = DenseLabelTaskSampler(
         dataset,
         n_way=2,
