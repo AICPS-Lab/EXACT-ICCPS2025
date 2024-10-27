@@ -249,7 +249,7 @@ def main(args):
     args.meta_opt = torch.optim.Adam(model.parameters(), lr=args.lr)
 
     # Training loop
-    for epoch in range(args.epochs):
+    for epoch in range(args.n_epochs):
         # args.epoch = epoch  # Update epoch in args
         train(
             iter(train_loader),
