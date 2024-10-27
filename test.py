@@ -34,17 +34,18 @@ import random
 if __name__ == "__main__":
     # test the dataset
 
-    dataset = PhysiQ(
-        root="data", N_way=2, split="train", window_size=1000, bg_fg=None
-    )
+    dataset = PhysiQ(root="data", split="train", window_size=1000, bg_fg=None)
+
+    # for i in range(len(dataset)):
+    #     print(dataset[i][1].unique())
 
     train_sampler = DenseLabelTaskSampler(
         dataset,
-        n_way=2,
+        # n_way=1,
         n_shot=1,
         batch_size=64,
         n_query=1,
-        n_tasks=dataset.NUM_TASKS,
+        n_tasks=5,
         threshold_ratio=0.25,
     )
     train_loader = DataLoader(
@@ -54,23 +55,30 @@ if __name__ == "__main__":
         pin_memory=True,
         collate_fn=train_sampler.episodic_collate_fn,
     )
-    support_images, support_labels, query_images, query_labels, true_class_ids = next(iter(train_loader))
-    print(
-        support_images.shape,
-        support_labels.shape,
-        query_images.shape,
-        query_labels.shape,
-        true_class_ids,
-    )
-    # for (
-    #     support_images,
-    #     support_labels,
-    #     query_images,
-    #     query_labels,
+    # support_images, support_labels, query_images, query_labels, true_class_ids = next(iter(train_loader))
+    # print(
+    #     support_images.shape,
+    #     support_labels.shape,
+    #     query_images.shape,
+    #     query_labels.shape,
     #     true_class_ids,
-    # )  in train_loader:
-    #     # print(true_class_ids)
-    #     # for i in range(8):
-    #     plt.plot(support_images[0,0])
-    #     plt.plot(support_labels[0,0])
-    #     plt.show()
+    # )
+    for (
+        support_images,
+        support_labels,
+        query_images,
+        query_labels,
+        true_class_ids,
+    ) in train_loader:
+        print(
+            support_images.shape,
+            support_labels.shape,
+            query_images.shape,
+            query_labels.shape,
+            true_class_ids,
+        )
+        # print(true_class_ids)
+        # for i in range(8):
+        plt.plot(support_images[0,0])
+        plt.plot(support_labels[0,0])
+        plt.show()

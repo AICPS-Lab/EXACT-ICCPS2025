@@ -29,15 +29,15 @@ class PhysiQ(QueryDataset):
     def __init__(
         self,
         root="data",
-        N_way=2,
         split="train",
         window_size=300,
         window_step=50,
         bg_fg=None,
     ):
         super(PhysiQ, self).__init__(
-            root, N_way, split, window_size, window_step, bg_fg
+            root, split, window_size, window_step, bg_fg
         )
+        
 
     def _process_data(self):
         folders = [
@@ -86,7 +86,6 @@ class PhysiQ(QueryDataset):
                             unique_indices.append(ind_label)
         # print("subject: ", subject)
         # print("Indices: ", unique_indices)
-        print(len(subjLabel_to_data.keys()))
         seed(self.args.dataset_seed)
         train = {}
         test = {}
@@ -98,7 +97,7 @@ class PhysiQ(QueryDataset):
         for k, v in subjLabel_to_data.items():
             # randomly sample 20 percent of the data for testing:
             random_indices = random.sample(range(len(v)), int(0.2 * len(v)))
-            subj = (k[0], k[1]) # k[0]
+            subj = (k[0], k[1]) #NOTE: k[0]
             ind_label = (k[1], k[2])
             if subj not in train_data:
                 train_data[subj] = []
@@ -160,19 +159,16 @@ class PhysiQ(QueryDataset):
         data = self.data['data']
         label = self.data['label']
         label_to_exer_rom = self.data['label_to_exer_rom']
-        # print(label_to_exer_rom)
         exercise_label = []
         for i in range(len(label_to_exer_rom)):
             if label_to_exer_rom[i][0] not in exercise_label:
                 exercise_label.append(label_to_exer_rom[i][0])
-        print(exercise_label)
         res_data = []
         res_label = []
         res_exer_label = []
         for k,v in data.items():
             file = []
             dense_label = []
-            exer_label = []
             k_label = label[k]
             if self.args.shuffle == 'random':
                 combined = list(zip(v, k_label))
@@ -186,13 +182,10 @@ class PhysiQ(QueryDataset):
                 file.append(df_np)
                 
                 if self.bg_fg is not None: 
-                    dense_label.append([1 if original_label == self.bg_fg else 0] * df_np.shape[0])
+                    pass
+                    # dense_label.append([1 if original_label == self.bg_fg else 0] * df_np.shape[0])
                 else:
                     dense_label.append([original_label] * df_np.shape[0])
-                # print()
-                exer_label.append(exercise_label.index(label_to_exer_rom[original_label][0]))
-                
-                
                 
             file = np.concatenate(file, axis=0)
             dense_label = np.concatenate(dense_label, axis=0)
@@ -200,12 +193,12 @@ class PhysiQ(QueryDataset):
             sfile, sdense_label = self.sw(torch.tensor(file), torch.tensor(dense_label))
             res_data.append(sfile)
             res_label.append(sdense_label)
-            res_exer_label.append(torch.tensor(exer_label))
+            res_exer_label.append(torch.tensor([exercise_label.index(label_to_exer_rom[original_label][0])] * sfile.shape[0]))
         res_data = torch.cat(res_data, axis=0)
         res_label = torch.cat(res_label, axis=0)
+        
         res_exer_label = torch.cat(res_exer_label, axis=0)
-        
-        
+
         return res_data, res_label, res_exer_label
             
     def if_npy_exists(self, split):

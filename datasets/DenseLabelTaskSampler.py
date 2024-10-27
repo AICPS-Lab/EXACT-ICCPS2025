@@ -5,16 +5,14 @@ from torch import Tensor
 from torch.utils.data import Sampler, Dataset
 from typing import Dict, Iterator, List, Tuple, Union
 
-
 class DenseLabelTaskSampler(Sampler):
     """
-    Samples batches for few-shot tasks in a dense labeling setup with threshold-based label classification.
+    Samples batches for one-way few-shot tasks, focusing on one variation of the exercise per iteration.
     """
 
     def __init__(
         self,
         dataset: Dataset,
-        n_way: int,
         n_shot: int,
         batch_size: int,
         n_query: int,
@@ -24,70 +22,53 @@ class DenseLabelTaskSampler(Sampler):
         """
         Args:
             dataset: The dataset from which to sample.
-            n_way: Number of different classes per task (i.e., the number of unique classes to sample in each task).
             n_shot: Number of examples per class in the support set.
             batch_size: Number of batches.
             n_query: Number of examples per class in the query set.
             n_tasks: Number of tasks to sample.
-            threshold_ratio: The minimum ratio of non-background labels required to consider a label valid (e.g., 50/300).
+            threshold_ratio: The minimum ratio of non-background labels required to consider a label valid.
         """
         super().__init__(data_source=None)
-        self.n_way = n_way
         self.n_shot = n_shot
         self.batch_size = batch_size
         self.n_query = n_query
         self.n_tasks = n_tasks
-        self.threshold_ratio = (
-            threshold_ratio  # Ratio for non-background labels
-        )
+        self.threshold_ratio = threshold_ratio
         self._cur_task = -1
         self.dataset = dataset
-        self.items_per_exer_label: Dict[int, List[int]] = {}
-        self.idx_to_label: Dict[int, List[int]] = (
-            {}
-        )  # TODO: trend of thoughts lost here!
+        self.items_per_label: Dict[int, List[int]] = {}
+
         # Build a dictionary mapping each label to a list of indices for dense labeling
         for item_idx, (input_data, label, exer_label) in enumerate(dataset):
-            # print(label)
-            valid_label = exer_label  # self._get_label(label)
+            valid_label = self._get_label(label)
             if valid_label is not None:
-                if valid_label in self.items_per_exer_label:
-                    self.items_per_exer_label[valid_label].append(item_idx)
+                if valid_label in self.items_per_label:
+                    self.items_per_label[valid_label].append(item_idx)
                 else:
-                    self.items_per_exer_label[valid_label] = [item_idx]
-                # self.idx_to_label[item_idx] = self._get_label(label)
-
-        # self._check_dataset_size_fits_sampler_parameters()
+                    self.items_per_label[valid_label] = [item_idx]
 
     def __len__(self) -> int:
         return self.n_tasks
 
     def __iter__(self) -> Iterator[List[int]]:
         """
-        Sample `n_way` labels, and for each label, sample `n_shot` + `n_query` items.
-        Only labels that meet the threshold condition will be sampled.
+        Sample items for one variation of the exercise per task.
         Yields:
-            A list of indices of length (n_way * batch_size * (n_shot + n_query)).
+            A list of indices of length (batch_size * (n_shot + n_query)).
         """
-
+        print(self.items_per_label.keys())
         for cur_task in range(self.n_tasks):
-            sampled_task_indices = torch.cat(
-                [
-                    torch.tensor(
-                        np.random.choice(
-                            self.items_per_exer_label[label],
-                            (self.n_shot + self.n_query) * self.batch_size,
-                            replace=True,
-                        )  # original: random.sample(..., replace=False)
-                    )
-                    for label in random.sample(
-                        sorted(self.items_per_exer_label.keys()), self.n_way
-                    )
-                    # if label = cur_task, then the label is 1 else 0
-                ]
-            )
-            self._cur_task = cur_task
+            # Randomly select one variation (target class) for this task
+            target_variation = random.choice(list(self.items_per_label.keys()))
 
+            sampled_task_indices = torch.tensor(
+                np.random.choice(
+                    self.items_per_label[target_variation],
+                    (self.n_shot + self.n_query) * self.batch_size,
+                    replace=True,
+                )
+            )
+            self._cur_task = target_variation
             yield sampled_task_indices.tolist()
 
     def episodic_collate_fn(
@@ -95,93 +76,34 @@ class DenseLabelTaskSampler(Sampler):
     ) -> Tuple[Tensor, Tensor, Tensor, Tensor, List[int]]:
         """
         Collate function for episodic data loaders in dense labeling problems.
-        Args:
-            input_data: List of tuples where each element contains:
-                - An input sample as a torch Tensor (e.g., image or time series).
-                - A corresponding dense label as a torch Tensor (e.g., segmentation mask).
-        Returns:
-            Tuple containing:
-                - support_images: Support set inputs of shape (n_way * n_shot * batch_size, channels, height, width).
-                - support_labels: Support set dense labels of the same shape as the input (n_way * n_shot * batch_size, height, width).
-                - query_images: Query set inputs of shape (n_way * n_query * batch_size, channels, height, width).
-                - query_labels: Query set dense labels of the same shape as the input (n_way * n_query * batch_size, height, width).
-                - true_class_ids: The true class IDs of the classes sampled in the episode.
         """
-        # print(input_data)
-        # true_class_ids = list(
-        #     {self._classify_label(x[1]) for x in input_data}
-        # )  # Use max value to identify class IDs in dense labels
-        true_class_ids = list(
-            {int(x[2]) for x in input_data}
-        )  # Use max value to identify class IDs in dense labels
-        all_images = torch.cat(
-            [x[0].unsqueeze(0) for x in input_data]
-        )  # Stack all input samples
-        all_labels = torch.cat(
-            [x[1].unsqueeze(0) for x in input_data]
-        )  # Stack all dense labels
+        all_images = torch.cat([x[0].unsqueeze(0) for x in input_data])
+        all_labels = torch.cat([x[1].unsqueeze(0) for x in input_data])
 
         all_images = all_images.reshape(
-            (
-                self.n_way,
-                self.n_shot + self.n_query,
-                self.batch_size,
-                *all_images.shape[1:],
-            )
+            (1, self.n_shot + self.n_query, self.batch_size, *all_images.shape[1:])
         )
         all_labels = all_labels.reshape(
-            (
-                self.n_way,
-                self.n_shot + self.n_query,
-                self.batch_size,
-                *all_labels.shape[1:],
-            )
+            (1, self.n_shot + self.n_query, self.batch_size, *all_labels.shape[1:])
         )
 
         # Separate support and query sets
-        support_images = all_images[:, : self.n_shot].reshape(
-            (-1, *all_images.shape[2:])
-        )
-        query_images = all_images[:, self.n_shot :].reshape(
-            (-1, *all_images.shape[2:])
-        )
+        support_images = all_images[:, :self.n_shot].reshape((-1, *all_images.shape[2:]))
+        query_images = all_images[:, self.n_shot:].reshape((-1, *all_images.shape[2:]))
 
-        support_labels = all_labels[:, : self.n_shot].reshape(
-            (-1, *all_labels.shape[2:])
-        )
-        query_labels = all_labels[:, self.n_shot :].reshape(
-            (-1, *all_labels.shape[2:])
-        )
-        # query labels and support labels where == _cur_task, is 1 else 0
-        # print(self._cur_task)
-        # print(query_labels)
-        # print(support_labels)
+        support_labels = all_labels[:, :self.n_shot].reshape((-1, *all_labels.shape[2:]))
+        query_labels = all_labels[:, self.n_shot:].reshape((-1, *all_labels.shape[2:]))
+
+        # Adjust labels to binary based on the current target variation
         query_labels = torch.where(query_labels == self._cur_task, 1, 0)
         support_labels = torch.where(support_labels == self._cur_task, 1, 0)
-        # switch shape 0 and 1:
-        # support_images = support_images.permute(1, 0, 2, 3)
-        # query_images = query_images.permute(1, 0, 2, 3)
-        return (
-            support_images,
-            support_labels,
-            query_images,
-            query_labels,
-            true_class_ids,
-        )
+
+        return support_images, support_labels, query_images, query_labels, [self._cur_task]
 
     def _get_label(self, label: Tensor) -> int:
         return label.mode().values.item()
 
     def _classify_label(self, label: Tensor) -> Union[int, None]:
-        """
-        Classify the label as 0 or 1 based on the threshold ratio of non-background (non-0) elements.
-        Args:
-            label: A tensor representing the dense label for a sample.
-        Returns:
-            - 1 if the label contains a sufficient percentage of non-background elements (above threshold).
-            - 0 if the label is entirely background (below threshold).
-            - None if the label is ignored due to being between 0 and the threshold.
-        """
         total_elements = label.numel()
         non_bg_elements = (label > 0).sum().item()
 
@@ -192,34 +114,220 @@ class DenseLabelTaskSampler(Sampler):
         else:
             return None  # Ignore this label
 
-    def _check_dataset_size_fits_sampler_parameters(self):
-        """
-        Check that the dataset size is compatible with the sampler parameters.
-        """
-        self._check_dataset_has_enough_labels()
-        self._check_dataset_has_enough_items_per_label()
 
-    def _check_dataset_has_enough_labels(self):
-        if self.n_way > len(self.items_per_exer_label):
-            raise ValueError(
-                f"The number of labels in the dataset ({len(self.items_per_exer_label)}) must be greater or equal to n_way ({self.n_way})."
-            )
+# class DenseLabelTaskSampler(Sampler):
+#     """
+#     Samples batches for few-shot tasks in a dense labeling setup with threshold-based label classification.
+#     """
 
-    def _check_dataset_has_enough_items_per_label(self):
-        number_of_samples_per_label = [
-            len(items_for_label)
-            for items_for_label in self.items_per_exer_label.values()
-        ]
-        minimum_number_of_samples_per_label = min(number_of_samples_per_label)
-        label_with_minimum_number_of_samples = (
-            number_of_samples_per_label.index(
-                minimum_number_of_samples_per_label
-            )
-        )
-        if (
-            self.n_shot + self.n_query
-        ) * self.batch_size > minimum_number_of_samples_per_label:
-            raise ValueError(
-                f"Label {label_with_minimum_number_of_samples} has only {minimum_number_of_samples_per_label} samples, "
-                f"but all classes must have at least n_shot + n_query ({self.n_shot + self.n_query}) samples."
-            )
+#     def __init__(
+#         self,
+#         dataset: Dataset,
+#         n_way: int,
+#         n_shot: int,
+#         batch_size: int,
+#         n_query: int,
+#         n_tasks: int,
+#         threshold_ratio: float,
+#     ):
+#         """
+#         Args:
+#             dataset: The dataset from which to sample.
+#             n_way: Number of different classes per task (i.e., the number of unique classes to sample in each task).
+#             n_shot: Number of examples per class in the support set.
+#             batch_size: Number of batches.
+#             n_query: Number of examples per class in the query set.
+#             n_tasks: Number of tasks to sample.
+#             threshold_ratio: The minimum ratio of non-background labels required to consider a label valid (e.g., 50/300).
+#         """
+#         super().__init__(data_source=None)
+#         self.n_way = n_way
+#         self.n_shot = n_shot
+#         self.batch_size = batch_size
+#         self.n_query = n_query
+#         self.n_tasks = n_tasks
+#         self.threshold_ratio = (
+#             threshold_ratio  # Ratio for non-background labels
+#         )
+#         self._cur_task = -1
+#         self.dataset = dataset
+#         self.items_per_label: Dict[int, List[int]] = {}
+#         self.idx_to_label: Dict[int, List[int]] = (
+#             {}
+#         )  # TODO: trend of thoughts lost here!
+#         # Build a dictionary mapping each label to a list of indices for dense labeling
+#         for item_idx, (input_data, label, exer_label) in enumerate(dataset):
+#             valid_label = self._get_label(label)  # self._get_label(label)
+#             if valid_label is not None:
+#                 if valid_label in self.items_per_label:
+#                     self.items_per_label[valid_label].append(item_idx)
+#                 else:
+#                     self.items_per_label[valid_label] = [item_idx]
+#                 # self.idx_to_label[item_idx] = self._get_label(label)
+#         print(self.items_per_label.keys())
+#         # self._check_dataset_size_fits_sampler_parameters()
+
+#     def __len__(self) -> int:
+#         return self.n_tasks
+
+#     def __iter__(self) -> Iterator[List[int]]:
+#         """
+#         Sample `n_way` labels, and for each label, sample `n_shot` + `n_query` items.
+#         Only labels that meet the threshold condition will be sampled.
+#         Yields:
+#             A list of indices of length (n_way * batch_size * (n_shot + n_query)).
+#         """
+
+#         for cur_task in range(self.n_tasks):
+#             sampled_task_indices = torch.cat(
+#                 [
+#                     torch.tensor(
+#                         np.random.choice(
+#                             self.items_per_label[label],
+#                             (self.n_shot + self.n_query) * self.batch_size,
+#                             replace=True,
+#                         )  # original: random.sample(..., replace=False)
+#                     )
+#                     for label in random.sample(
+#                         sorted(self.items_per_label.keys()), self.n_way
+#                     )
+#                     # if label = cur_task, then the label is 1 else 0
+#                 ]
+#             )
+#             self._cur_task = cur_task
+
+#             yield sampled_task_indices.tolist()
+
+#     def episodic_collate_fn(
+#         self, input_data: List[Tuple[Tensor, Tensor]]
+#     ) -> Tuple[Tensor, Tensor, Tensor, Tensor, List[int]]:
+#         """
+#         Collate function for episodic data loaders in dense labeling problems.
+#         Args:
+#             input_data: List of tuples where each element contains:
+#                 - An input sample as a torch Tensor (e.g., image or time series).
+#                 - A corresponding dense label as a torch Tensor (e.g., segmentation mask).
+#         Returns:
+#             Tuple containing:
+#                 - support_images: Support set inputs of shape (n_way * n_shot * batch_size, channels, height, width).
+#                 - support_labels: Support set dense labels of the same shape as the input (n_way * n_shot * batch_size, height, width).
+#                 - query_images: Query set inputs of shape (n_way * n_query * batch_size, channels, height, width).
+#                 - query_labels: Query set dense labels of the same shape as the input (n_way * n_query * batch_size, height, width).
+#                 - true_class_ids: The true class IDs of the classes sampled in the episode.
+#         """
+#         # print(input_data)
+#         # true_class_ids = list(
+#         #     {self._classify_label(x[1]) for x in input_data}
+#         # )  # Use max value to identify class IDs in dense labels
+#         true_class_ids = list(
+#             {self._get_label(x[1]) for x in input_data}
+#         )  # Use max value to identify class IDs in dense labels
+#         all_images = torch.cat(
+#             [x[0].unsqueeze(0) for x in input_data]
+#         )  # Stack all input samples
+#         all_labels = torch.cat(
+#             [x[1].unsqueeze(0) for x in input_data]
+#         )  # Stack all dense labels
+
+#         all_images = all_images.reshape(
+#             (
+#                 self.n_way,
+#                 self.n_shot + self.n_query,
+#                 self.batch_size,
+#                 *all_images.shape[1:],
+#             )
+#         )
+#         all_labels = all_labels.reshape(
+#             (
+#                 self.n_way,
+#                 self.n_shot + self.n_query,
+#                 self.batch_size,
+#                 *all_labels.shape[1:],
+#             )
+#         )
+
+#         # Separate support and query sets
+#         support_images = all_images[:, : self.n_shot].reshape(
+#             (-1, *all_images.shape[2:])
+#         )
+#         query_images = all_images[:, self.n_shot :].reshape(
+#             (-1, *all_images.shape[2:])
+#         )
+
+#         support_labels = all_labels[:, : self.n_shot].reshape(
+#             (-1, *all_labels.shape[2:])
+#         )
+#         query_labels = all_labels[:, self.n_shot :].reshape(
+#             (-1, *all_labels.shape[2:])
+#         )
+#         # query labels and support labels where == _cur_task, is 1 else 0
+#         # print(self._cur_task)
+#         # print(query_labels)
+#         # print(support_labels)
+#         query_labels = torch.where(query_labels == self._cur_task, 1, 0)
+#         support_labels = torch.where(support_labels == self._cur_task, 1, 0)
+#         # switch shape 0 and 1:
+#         # support_images = support_images.permute(1, 0, 2, 3)
+#         # query_images = query_images.permute(1, 0, 2, 3)
+#         return (
+#             support_images,
+#             support_labels,
+#             query_images,
+#             query_labels,
+#             true_class_ids,
+#         )
+
+#     def _get_label(self, label: Tensor) -> int:
+#         return label.mode().values.item()
+
+#     def _classify_label(self, label: Tensor) -> Union[int, None]:
+#         """
+#         Classify the label as 0 or 1 based on the threshold ratio of non-background (non-0) elements.
+#         Args:
+#             label: A tensor representing the dense label for a sample.
+#         Returns:
+#             - 1 if the label contains a sufficient percentage of non-background elements (above threshold).
+#             - 0 if the label is entirely background (below threshold).
+#             - None if the label is ignored due to being between 0 and the threshold.
+#         """
+#         total_elements = label.numel()
+#         non_bg_elements = (label > 0).sum().item()
+
+#         if non_bg_elements == 0:
+#             return 0  # Entirely background
+#         elif non_bg_elements / total_elements >= self.threshold_ratio:
+#             return 1  # Sufficient non-background elements
+#         else:
+#             return None  # Ignore this label
+
+#     def _check_dataset_size_fits_sampler_parameters(self):
+#         """
+#         Check that the dataset size is compatible with the sampler parameters.
+#         """
+#         self._check_dataset_has_enough_labels()
+#         self._check_dataset_has_enough_items_per_label()
+
+#     def _check_dataset_has_enough_labels(self):
+#         if self.n_way > len(self.items_per_label):
+#             raise ValueError(
+#                 f"The number of labels in the dataset ({len(self.items_per_label)}) must be greater or equal to n_way ({self.n_way})."
+#             )
+
+#     def _check_dataset_has_enough_items_per_label(self):
+#         number_of_samples_per_label = [
+#             len(items_for_label)
+#             for items_for_label in self.items_per_label.values()
+#         ]
+#         minimum_number_of_samples_per_label = min(number_of_samples_per_label)
+#         label_with_minimum_number_of_samples = (
+#             number_of_samples_per_label.index(
+#                 minimum_number_of_samples_per_label
+#             )
+#         )
+#         if (
+#             self.n_shot + self.n_query
+#         ) * self.batch_size > minimum_number_of_samples_per_label:
+#             raise ValueError(
+#                 f"Label {label_with_minimum_number_of_samples} has only {minimum_number_of_samples_per_label} samples, "
+#                 f"but all classes must have at least n_shot + n_query ({self.n_shot + self.n_query}) samples."
+#             )

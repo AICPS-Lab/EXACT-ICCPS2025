@@ -13,28 +13,26 @@ class QueryDataset(Dataset):
     def __init__(
         self,
         root="data",
-        N_way=2,
         split="train",
         window_size=300,
         window_step=50,
         bg_fg=None,
     ):
         self.root = root
-        if bg_fg is not None:
-            if N_way != 2:
-                Warning("N_way is set to 2, because bg_fg is set to True")
-            N_way = 2
-        self.N_way = N_way
+        # if bg_fg is not None:
+        #     if N_way != 2:
+        #         Warning("N_way is set to 2, because bg_fg is set to True")
+        #     N_way = 2
+        # self.N_way = N_way
         self.bg_fg = bg_fg
         self.split = split
-        assert self.split in ["train", "test"]
+        assert self.split in ["train", "test"], f"Invalid split: {self.split}"
         self.sw = sliding_windows(window_size, window_step)
         if not self.if_npy_exists(split):
             self._process_data()
 
         self.data = self.load_data(split)
         self.data, self.label, self.res_exer_label = self.concanetate_data()
-
     def concanetate_data(self):
         raise NotImplementedError
 
