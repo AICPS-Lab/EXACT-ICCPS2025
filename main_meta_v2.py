@@ -1,4 +1,5 @@
 import argparse
+import os
 import time
 import typing
 
@@ -27,12 +28,9 @@ from methods import UNet
 from utils_metrics import visualize_softmax
 
 
-def train(db, net, epoch, args):
+def train(db, net, epoch, args, wandb_run):
     # Initialize WandB with the provided project name
-    wandb.init(
-        project=args.wandb_project,
-        job_type='train_model',
-    )
+    
 
     # Move the model to the specified device
     net.to(args.device)
@@ -96,43 +94,40 @@ def train(db, net, epoch, args):
                 f"[Epoch {i:.2f}] Train Loss: {qry_losses:.2f} | Acc: {qry_accs:.2f} | Time: {iter_time:.2f}"
             )
 
-        wandb.log(
+        wandb_run.log(
             {
-                "epoch": i,
-                "loss": qry_losses,
-                "acc": qry_accs,
-                "time": time.time(),
+                "train/epoch": i,
+                "train/loss": qry_losses,
+                "train/acc": qry_accs,
+                "train/time": time.time(),
             }
         )
+    # wandb.finish()
     return 
 
-def test(db, net, epoch, args):
+def test(db, net, epoch, args, wandb_r):
     # Crucially in our testing procedure here, we do *not* fine-tune
     # the model during testing for simplicity.
     # Most research papers using MAML for this task do an extra
     # stage of fine-tuning here that should be added if you are
     # adapting this code for research.
-    wandb.init(
-        project=args.wandb_project,
-        job_type='evaluate_model',
-    )
-
+    
     net.to(args.device)
     net.train()
-    n_test_iter = db.x_test.shape[0] // db.batchsz
+    n_test_iter = args.n_train_iter
 
     qry_losses = []
     qry_accs = []
 
     for batch_idx in range(n_test_iter):
         # Sample a batch of support and query images and labels
-        x_spt, y_spt, x_qry, y_qry = db.next('test')
+        x_spt, y_spt, x_qry, y_qry, _ = next(db)
 
         # Move data to the specified device
         x_spt, y_spt = x_spt.to(args.device), y_spt.to(args.device)
         x_qry, y_qry = x_qry.to(args.device), y_qry.to(args.device)
 
-        task_num, setsz, c_, h, w = x_spt.size()
+        task_num, setsz, h, w  = x_spt.size()
         querysz = x_qry.size(1)
 
         # Initialize the inner optimizer for adaptation
@@ -150,19 +145,24 @@ def test(db, net, epoch, args):
                 qry_logits = fnet(x_qry[i]).detach()
                 qry_loss = F.cross_entropy(qry_logits, y_qry[i], reduction='none')
                 qry_losses.append(qry_loss.detach())
-                qry_accs.append((qry_logits.argmax(dim=1) == y_qry[i]).detach())
+                softmax_qry = F.softmax(qry_logits, dim=1)
+                softmax_qry = torch.argmax(softmax_qry, dim=1)
+                Dice_score = dice_coefficient_time_series(
+                    softmax_qry, y_qry[i].long()
+                )
+                qry_accs.append(Dice_score)
 
     qry_losses = torch.cat(qry_losses).mean().item()
-    qry_accs = 100. * torch.cat(qry_accs).float().mean().item()
+    qry_accs = 100.0 * sum(qry_accs) / task_num / n_test_iter
 
     print(f'[Epoch {epoch + 1:.2f}] Test Loss: {qry_losses:.2f} | Acc: {qry_accs:.2f}')
     
     # Log results
-    wandb.log({
-        'epoch': epoch + 1,
-        'loss': qry_losses,
-        'acc': qry_accs,
-        'time': time.time(),
+    wandb_r.log({
+        'test/epoch': epoch + 1,
+        'test/loss': qry_losses,
+        'test/acc': qry_accs,
+        'test/time': time.time(),
     })
 
 def main(args):
@@ -199,6 +199,13 @@ def main(args):
         num_workers=args.num_workers,
         pin_memory=args.pin_memory,
         collate_fn=train_sampler.episodic_collate_fn,
+    )
+    test_loader = DataLoader(
+        test_dataset,
+        batch_sampler=test_sampler,
+        num_workers=args.num_workers,
+        pin_memory=args.pin_memory,
+        collate_fn=test_sampler.episodic_collate_fn,
     )
 
     # Define the model architecture
@@ -247,7 +254,10 @@ def main(args):
 
     # Initialize meta optimizer
     args.meta_opt = torch.optim.Adam(model.parameters(), lr=args.lr)
-
+    run = wandb.init(
+        project=args.wandb_project,
+    )
+    
     # Training loop
     for epoch in range(args.n_epochs):
         # args.epoch = epoch  # Update epoch in args
@@ -255,16 +265,20 @@ def main(args):
             iter(train_loader),
             model,
             epoch,
-            args
+            args,
+            run
         )
         test(
-            test_sampler,
+            iter(test_loader),
             model,
             epoch,
-            args
+            args,
+            run
         )
 
 
 if __name__ == "__main__":
     args = get_args()  # Get arguments from the argparse
+    args.wandb_group = "experiment-" + wandb.util.generate_id()
+    print(args.wandb_group)
     main(args)
