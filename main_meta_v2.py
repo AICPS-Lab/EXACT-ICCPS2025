@@ -12,6 +12,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 import higher
+import wandb
 
 from datasets.DenseLabelTaskSampler import DenseLabelTaskSampler
 from datasets.PhysiQ import PhysiQ
@@ -27,6 +28,10 @@ from utils_metrics import visualize_softmax
 
 
 def train(db, net, device, meta_opt, epoch, log, n_train_iter):
+    wandb.init(
+        # set the wandb project where this run will be logged
+        project="EXACT", 
+    )
     net.train()
     # n_train_iter = db.x_train.shape[0] // db.batchsz
 
@@ -91,8 +96,9 @@ def train(db, net, device, meta_opt, epoch, log, n_train_iter):
             print(
                 f"[Epoch {i:.2f}] Train Loss: {qry_losses:.2f} | Acc: {qry_accs:.2f} | Time: {iter_time:.2f}"
             )
+            
 
-        log.append(
+        wandb.log(
             {
                 "epoch": i,
                 "loss": qry_losses,
