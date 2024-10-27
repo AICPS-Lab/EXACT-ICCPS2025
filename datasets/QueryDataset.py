@@ -17,6 +17,7 @@ class QueryDataset(Dataset):
         window_size=300,
         window_step=50,
         bg_fg=None,
+        args=None,
     ):
         self.root = root
         # if bg_fg is not None:
@@ -24,15 +25,20 @@ class QueryDataset(Dataset):
         #         Warning("N_way is set to 2, because bg_fg is set to True")
         #     N_way = 2
         # self.N_way = N_way
+        assert split in ["train", "test"], f"Invalid split: {split}"
         self.bg_fg = bg_fg
         self.split = split
-        assert self.split in ["train", "test"], f"Invalid split: {self.split}"
+        self.window_size = window_size
+        self.window_step = window_step
+        self.args = args
+
         self.sw = sliding_windows(window_size, window_step)
         if not self.if_npy_exists(split):
             self._process_data()
 
         self.data = self.load_data(split)
         self.data, self.label, self.res_exer_label = self.concanetate_data()
+
     def concanetate_data(self):
         raise NotImplementedError
 
