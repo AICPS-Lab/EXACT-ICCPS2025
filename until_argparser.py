@@ -91,7 +91,7 @@ def get_args():
         help="Number of inner-loop iterations",
     )
     parser.add_argument(
-        "--epochs", type=int, default=100, help="Number of training epochs"
+        "--n_epochs", type=int, default=100, help="Number of training epochs"
     )
     parser.add_argument(
         "--n_train_iter",

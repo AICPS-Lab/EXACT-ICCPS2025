@@ -27,10 +27,11 @@ from methods import UNet
 from utils_metrics import visualize_softmax
 
 
-def train(db, net, args):
+def train(db, net, epoch, args):
     # Initialize WandB with the provided project name
     wandb.init(
         project=args.wandb_project,
+        job_type='train_model',
     )
 
     # Move the model to the specified device
@@ -87,7 +88,7 @@ def train(db, net, args):
 
         qry_losses = sum(qry_losses) / task_num
         qry_accs = 100.0 * sum(qry_accs) / task_num
-        i = args.epoch + float(batch_idx) / args.n_train_iter
+        i = epoch + float(batch_idx) / args.n_train_iter
         iter_time = time.time() - start_time
 
         if batch_idx % args.log_interval == 0:
@@ -100,12 +101,69 @@ def train(db, net, args):
                 "epoch": i,
                 "loss": qry_losses,
                 "acc": qry_accs,
-                "mode": "train",
                 "time": time.time(),
             }
         )
     return 
 
+def test(db, net, epoch, args):
+    # Crucially in our testing procedure here, we do *not* fine-tune
+    # the model during testing for simplicity.
+    # Most research papers using MAML for this task do an extra
+    # stage of fine-tuning here that should be added if you are
+    # adapting this code for research.
+    wandb.init(
+        project=args.wandb_project,
+        job_type='evaluate_model',
+    )
+
+    net.to(args.device)
+    net.train()
+    n_test_iter = db.x_test.shape[0] // db.batchsz
+
+    qry_losses = []
+    qry_accs = []
+
+    for batch_idx in range(n_test_iter):
+        # Sample a batch of support and query images and labels
+        x_spt, y_spt, x_qry, y_qry = db.next('test')
+
+        # Move data to the specified device
+        x_spt, y_spt = x_spt.to(args.device), y_spt.to(args.device)
+        x_qry, y_qry = x_qry.to(args.device), y_qry.to(args.device)
+
+        task_num, setsz, c_, h, w = x_spt.size()
+        querysz = x_qry.size(1)
+
+        # Initialize the inner optimizer for adaptation
+        inner_opt = torch.optim.SGD(net.parameters(), lr=args.meta_lr)
+
+        for i in range(task_num):
+            with higher.innerloop_ctx(net, inner_opt, track_higher_grads=False) as (fnet, diffopt):
+                # Inner-loop adaptation
+                for _ in range(args.n_inner_iter):
+                    spt_logits = fnet(x_spt[i])
+                    spt_loss = F.cross_entropy(spt_logits, y_spt[i])
+                    diffopt.step(spt_loss)
+
+                # Compute the query loss and accuracy
+                qry_logits = fnet(x_qry[i]).detach()
+                qry_loss = F.cross_entropy(qry_logits, y_qry[i], reduction='none')
+                qry_losses.append(qry_loss.detach())
+                qry_accs.append((qry_logits.argmax(dim=1) == y_qry[i]).detach())
+
+    qry_losses = torch.cat(qry_losses).mean().item()
+    qry_accs = 100. * torch.cat(qry_accs).float().mean().item()
+
+    print(f'[Epoch {epoch + 1:.2f}] Test Loss: {qry_losses:.2f} | Acc: {qry_accs:.2f}')
+    
+    # Log results
+    wandb.log({
+        'epoch': epoch + 1,
+        'loss': qry_losses,
+        'acc': qry_accs,
+        'time': time.time(),
+    })
 
 def main(args):
     # Initialize datasets
@@ -192,10 +250,17 @@ def main(args):
 
     # Training loop
     for epoch in range(args.epochs):
-        args.epoch = epoch  # Update epoch in args
+        # args.epoch = epoch  # Update epoch in args
         train(
             iter(train_loader),
             model,
+            epoch,
+            args
+        )
+        test(
+            test_sampler,
+            model,
+            epoch,
             args
         )
 
