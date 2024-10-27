@@ -112,10 +112,10 @@ def train(db, net, device, meta_opt, epoch, log, n_train_iter):
 
 if __name__ == "__main__":
     train_dataset = PhysiQ(
-        root="data", N_way=2, split="train", window_size=200, bg_fg=None
+        root="data", split="train", window_size=200, bg_fg=None
     )
     test_dataset = PhysiQ(
-        root="data", N_way=2, split="test", window_size=200, bg_fg=None
+        root="data", split="test", window_size=200, bg_fg=None
     )
     train_sampler = DenseLabelTaskSampler(
         train_dataset,
