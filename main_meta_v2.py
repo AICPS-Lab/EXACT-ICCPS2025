@@ -44,7 +44,7 @@ def train(db, net, device, meta_opt, epoch, log, n_train_iter):
         # Initialize the inner optimizer to adapt the parameters to
         # the support set.
         n_inner_iter = 5
-        inner_opt = torch.optim.SGD(net.parameters(), lr=1e-1)
+        inner_opt = torch.optim.SGD(net.parameters(), lr=1e-2)
 
         qry_losses = []
         qry_accs = []
@@ -120,9 +120,9 @@ if __name__ == "__main__":
     train_sampler = DenseLabelTaskSampler(
         train_dataset,
         n_shot=1,
-        batch_size=64,
+        batch_size=32,
         n_query=1,
-        n_tasks=5,
+        n_tasks=1000,
         threshold_ratio=0.25,
     )
     test_sampler = DenseLabelTaskSampler(
@@ -201,5 +201,5 @@ if __name__ == "__main__":
             meta_opt,
             epoch,
             [],
-            n_train_iter=1,
+            n_train_iter=1000,
         )
