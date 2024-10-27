@@ -56,7 +56,6 @@ class DenseLabelTaskSampler(Sampler):
         Yields:
             A list of indices of length (batch_size * (n_shot + n_query)).
         """
-        print(self.items_per_label.keys())
         for cur_task in range(self.n_tasks):
             # Randomly select one variation (target class) for this task
             target_variation = random.choice(list(self.items_per_label.keys()))
