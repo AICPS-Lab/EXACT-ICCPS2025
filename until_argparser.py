@@ -87,7 +87,7 @@ def get_args():
     parser.add_argument(
         "--n_inner_iter",
         type=int,
-        default=5,
+        default=1,
         help="Number of inner-loop iterations",
     )
     parser.add_argument(

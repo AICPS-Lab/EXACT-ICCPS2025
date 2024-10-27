@@ -130,7 +130,7 @@ def main(args):
         n_shot=args.n_shot,
         batch_size=args.batch_size,
         n_query=args.n_query,
-        n_tasks=5,
+        n_tasks=args.n_tasks,
         threshold_ratio=args.threshold_ratio,
     )
 
