@@ -210,7 +210,7 @@ class ASPP(nn.Module):
 
 
 class EXACT_UNet(nn.Module):
-    def __init__(self, in_channels=6, out_channels=2, aspp_dim=[6, 12, 18]):
+    def __init__(self, in_channels=6, out_channels=2, aspp_dim=[6, 12]):
         super(EXACT_UNet, self).__init__()
         # Temporal and Positional Encoding
         self.tpe = TemporalPositionalEncoding(time_steps=200, d_model=in_channels)
