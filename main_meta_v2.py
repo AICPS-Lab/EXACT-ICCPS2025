@@ -255,7 +255,7 @@ def main(args):
     # Initialize meta optimizer
     args.meta_opt = torch.optim.Adam(model.parameters(), lr=args.lr)
     run = wandb.init(
-        project=args.wandb_project,
+        project=args.wandb_project, config=vars(args), 
     )
     
     # Training loop
