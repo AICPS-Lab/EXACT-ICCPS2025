@@ -18,6 +18,7 @@ import wandb
 from datasets.DenseLabelTaskSampler import DenseLabelTaskSampler
 from datasets.PhysiQ import PhysiQ
 from torch.utils.data import DataLoader
+from methods.unet import EXACT_UNet
 from until_argparser import get_args
 from loss_fn import (
     dice_coefficient_time_series,
@@ -209,38 +210,11 @@ def main(args):
     )
 
     # Define the model architecture
-    net = nn.Sequential(
-        nn.Conv1d(in_channels=args.in_channels, out_channels=64, kernel_size=3, padding=1),
-        nn.ReLU(),
-        nn.Conv1d(64, 64, 3, padding=1),
-        nn.ReLU(),
-        nn.MaxPool1d(2, return_indices=False),
-        nn.Conv1d(64, 64, 3, padding=1),
-        nn.ReLU(),
-        nn.Conv1d(64, 64, 3, padding=1),
-        nn.ReLU(),
-        nn.Upsample(scale_factor=2, mode="linear", align_corners=True),
-        nn.Conv1d(64, 64, 3, padding=1),
-        nn.ReLU(),
-        nn.Conv1d(64, args.out_channels, 1),
-        nn.Softmax(dim=1),
-    )
-
-    class SegmentationModel(nn.Module):
-        def __init__(self):
-            super(SegmentationModel, self).__init__()
-            self.net = net
-
-        def forward(self, x):
-            x = x.float()
-            x = x.permute(0, 2, 1)
-            x = self.net(x)
-            return x.squeeze(1)
 
     class UNet_wrapper(nn.Module):
         def __init__(self, in_channels, out_channels):
             super(UNet_wrapper, self).__init__()
-            self.net = UNet(in_channels=in_channels, out_channels=out_channels)
+            self.net = EXACT_UNet(in_channels=in_channels, out_channels=out_channels)
 
         def forward(self, x):
             x = x.float()
