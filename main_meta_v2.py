@@ -266,9 +266,13 @@ def main(args):
         qry_loss, qry_acc = test(iter(test_loader), model, epoch, args, run)
         if qry_loss < loss:
             loss = qry_loss
-            artifact = wandb.Artifact('model', type='model')
-            artifact.add_file(f'{run.name}.pth')
-            run.log_artifact(artifact)
+            torch.save(model.state_dict(), 'saved_model/' + run.name + '.pth')
+
+    artifact = wandb.Artifact('model', type='model')
+    artifact.add_file('saved_model/' + run.name + '.pth')
+    run.log_artifact(artifact)
+    
+    run.finish()
 
         
 
