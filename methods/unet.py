@@ -43,7 +43,14 @@ class UpConv(nn.Module):
 
 
 class UNet(nn.Module):
-    def __init__(self, in_channels, out_channels):
+    @staticmethod
+    def add_args(parser):
+        parser.add_argument("--in_channels", type=int, default=6, help="Input channels for the model")
+        parser.add_argument("--out_channels", type=int, default=2, help="Output channels for the model")
+        return parser
+    def __init__(self, args):
+        in_channels = args.in_channels
+        out_channels = args.out_channels
         super(UNet, self).__init__()
         self.conv1 = ConvBlock(in_channels, 64)
         self.pool1 = nn.MaxPool1d(kernel_size=2, stride=2)
@@ -210,7 +217,19 @@ class ASPP(nn.Module):
 
 
 class EXACT_UNet(nn.Module):
-    def __init__(self, in_channels=6, out_channels=2, aspp_dim=[6, 12]):
+    @staticmethod
+    def add_args(parser):
+        parser.add_argument("--in_channels", type=int, default=6, help="Input channels for the model")
+        parser.add_argument("--out_channels", type=int, default=2, help="Output channels for the model")
+        parser.add_argument("--aspp_dim", type=int, nargs='+', default=[6, 12], help="ASPP dimensions")
+        return parser
+    
+    
+    
+    def __init__(self, args):
+        in_channels = args.in_channels
+        out_channels = args.out_channels
+        aspp_dim = args.aspp_dim
         super(EXACT_UNet, self).__init__()
         # Temporal and Positional Encoding
         self.tpe = TemporalPositionalEncoding(time_steps=200, d_model=in_channels)

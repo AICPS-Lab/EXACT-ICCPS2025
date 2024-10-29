@@ -9,8 +9,36 @@ import torch.nn.functional as F
 # from utilities import printc
 class TransformerModel(nn.Module):
     """Container module with an encoder, a recurrent or transformer module, and a decoder."""
+    
+    @staticmethod
+    def add_args(parser):
+        parser.add_argument(
+            "--num_classes",
+            type=int,
+            default=2,
+            help="Number of classes in the dataset")
+        parser.add_argument("--in_channels", type=int, default=6, help="Input channels for the model")
+        parser.add_argument("--ninp", type=int, default=64, help="Input channels for the model")
+        parser.add_argument("--num_heads", type=int, default=1, help="Number of heads in the transformer")
+        parser.add_argument("--embed_dims", type=int, default=256, help="Embedding dimensions in the transformer")
+        parser.add_argument("--num_layers", type=int, default=6, help="Number of layers in the transformer")
+        parser.add_argument("--dropout", type=float, default=0.1, help="Dropout in the transformer")
+        parser.add_argument("--init_std", type=float, default=0.02, help="Initialization standard deviation")
+        parser.add_argument("--activation", type=str, default='relu', help="Activation function in the transformer")
+        return parser
+        
 
-    def __init__(self, num_classes=5, in_channels=6, ninp=64, num_heads=1, embed_dims=256, num_layers=6, dropout=0.1, init_std=.02, activation='relu'):
+    def __init__(self, args):
+        num_classes = args.num_classes
+        in_channels = args.in_channels
+        ninp = args.ninp
+        num_heads = args.num_heads
+        embed_dims = args.embed_dims
+        num_layers = args.num_layers
+        dropout = args.dropout
+        init_std = args.init_std
+        activation = args.activation
+        
         super(TransformerModel, self).__init__()
         self.input_emb = nn.Linear(in_channels, ninp)
         self.ninp = ninp

@@ -1,6 +1,19 @@
 import argparse
 
 from datasets.PhysiQ import PhysiQ
+from methods.transformer import TransformerModel
+from methods.unet import EXACT_UNet, UNet
+
+
+def get_model_args(args):
+    model = args.parse_args().model.lower()
+    if model == "unet":
+        args = UNet.add_args(args)
+    elif model == "exact_unet":
+        args = EXACT_UNet.add_args(args)
+    elif model == "transformer":
+        args = TransformerModel.add_args(args)
+    return args
 
 
 def get_args():
@@ -57,20 +70,6 @@ def get_args():
         help="Use pinned memory for DataLoader",
     )
 
-    # Model parameters
-    parser.add_argument(
-        "--in_channels",
-        type=int,
-        default=6,
-        help="Input channels for the model",
-    )
-    parser.add_argument(
-        "--out_channels",
-        type=int,
-        default=2,
-        help="Output channels for the model",
-    )
-
     # Training parameters
     parser.add_argument(
         "--lr",
@@ -116,8 +115,18 @@ def get_args():
     parser.add_argument(
         "--wandb_project", type=str, default="EXACT", help="WandB project name"
     )
-    
+
+    parser.add_argument(
+        "-m",
+        "--model",
+        type=str,
+        default="unet",
+        help="Model to use for training",
+    )
+
     # Add PhysiQ-specific arguments
     parser = PhysiQ.add_args(parser)
+    parser = get_model_args(parser)
+    # model = get_model(parser.parse_args())
 
     return parser.parse_args()

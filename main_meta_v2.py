@@ -18,6 +18,7 @@ import wandb
 from datasets.DenseLabelTaskSampler import DenseLabelTaskSampler
 from datasets.PhysiQ import PhysiQ
 from torch.utils.data import DataLoader
+from methods.transformer import TransformerModel
 from methods.unet import EXACT_UNet
 from until_argparser import get_args
 from loss_fn import (
@@ -31,7 +32,6 @@ from utils_metrics import visualize_softmax
 
 def train(db, net, epoch, args, wandb_run):
     # Initialize WandB with the provided project name
-    
 
     # Move the model to the specified device
     net.to(args.device)
@@ -104,17 +104,16 @@ def train(db, net, epoch, args, wandb_run):
             }
         )
     # wandb.finish()
-    return 
+    return
+
 
 def test(db, net, epoch, args, wandb_r):
-    # Crucially in our testing procedure here, we do *not* fine-tune
-    # the model during testing for simplicity.
-    # Most research papers using MAML for this task do an extra
-    # stage of fine-tuning here that should be added if you are
-    # adapting this code for research.
-    
+    """
+    Test the model with an additional fine-tuning step on the support set before evaluating on the query set.
+    """
+    # Move the model to the specified device
     net.to(args.device)
-    net.train()
+    net.train()  # Set model to training mode
     n_test_iter = args.n_train_iter
 
     qry_losses = []
@@ -128,24 +127,36 @@ def test(db, net, epoch, args, wandb_r):
         x_spt, y_spt = x_spt.to(args.device), y_spt.to(args.device)
         x_qry, y_qry = x_qry.to(args.device), y_qry.to(args.device)
 
-        task_num, setsz, h, w  = x_spt.size()
+        task_num, setsz, h, w = x_spt.size()
         querysz = x_qry.size(1)
 
         # Initialize the inner optimizer for adaptation
-        inner_opt = torch.optim.SGD(net.parameters(), lr=args.meta_lr)
+        inner_opt = torch.optim.SGD(net.parameters(), lr=args.inner_lr)
 
         for i in range(task_num):
-            with higher.innerloop_ctx(net, inner_opt, track_higher_grads=False) as (fnet, diffopt):
-                # Inner-loop adaptation
+            # Use higher to perform fine-tuning in the inner loop
+            with higher.innerloop_ctx(
+                net, inner_opt, track_higher_grads=False
+            ) as (fnet, diffopt):
+                # Fine-tune on the support set
                 for _ in range(args.n_inner_iter):
+                    spt_logits = fnet(x_spt[i])
+                    spt_loss = F.cross_entropy(spt_logits, y_spt[i])
+                    diffopt.step(spt_loss)
+
+                # Additional fine-tuning step for testing
+                for _ in range(args.n_test_fine_tune_iter):
                     spt_logits = fnet(x_spt[i])
                     spt_loss = F.cross_entropy(spt_logits, y_spt[i])
                     diffopt.step(spt_loss)
 
                 # Compute the query loss and accuracy
                 qry_logits = fnet(x_qry[i]).detach()
-                qry_loss = F.cross_entropy(qry_logits, y_qry[i], reduction='none')
+                qry_loss = F.cross_entropy(
+                    qry_logits, y_qry[i], reduction="none"
+                )
                 qry_losses.append(qry_loss.detach())
+
                 softmax_qry = F.softmax(qry_logits, dim=1)
                 softmax_qry = torch.argmax(softmax_qry, dim=1)
                 Dice_score = dice_coefficient_time_series(
@@ -156,23 +167,62 @@ def test(db, net, epoch, args, wandb_r):
     qry_losses = torch.cat(qry_losses).mean().item()
     qry_accs = 100.0 * sum(qry_accs) / task_num / n_test_iter
 
-    print(f'[Epoch {epoch + 1:.2f}] Test Loss: {qry_losses:.2f} | Acc: {qry_accs:.2f}')
-    
+    print(
+        f"[Epoch {epoch + 1:.2f}] Test Loss: {qry_losses:.2f} | Acc: {qry_accs:.2f}"
+    )
+
     # Log results
-    wandb_r.log({
-        'test/epoch': epoch + 1,
-        'test/loss': qry_losses,
-        'test/acc': qry_accs,
-        'test/time': time.time(),
-    })
+    wandb_r.log(
+        {
+            "test/epoch": epoch + 1,
+            "test/loss": qry_losses,
+            "test/acc": qry_accs,
+            "test/time": time.time(),
+        }
+    )
+    return qry_losses, qry_accs
+
+
+def get_model(args):
+    args.model = args.model.lower()
+    if args.model == "unet":
+        model = UNet
+    elif args.model == "exact_unet":
+        model = EXACT_UNet
+    elif args.model == "transformer":
+        model = TransformerModel
+
+    class UNet_wrapper(nn.Module):
+        def __init__(self):
+            super(UNet_wrapper, self).__init__()
+            self.net = model(args)
+
+        def forward(self, x):
+            x = x.float()
+            x = self.net(x)
+            x = x.permute(0, 2, 1)
+            return x.squeeze(1)
+
+    # Initialize model
+    model = UNet_wrapper().float()
+    return model
+
 
 def main(args):
     # Initialize datasets
     train_dataset = PhysiQ(
-        root=args.data_root, split="train", window_size=args.window_size, bg_fg=None, args=args
+        root=args.data_root,
+        split="train",
+        window_size=args.window_size,
+        bg_fg=None,
+        args=args,
     )
     test_dataset = PhysiQ(
-        root=args.data_root, split="test", window_size=args.window_size, bg_fg=None, args=args
+        root=args.data_root,
+        split="test",
+        window_size=args.window_size,
+        bg_fg=None,
+        args=args,
     )
 
     # Initialize samplers
@@ -210,49 +260,34 @@ def main(args):
     )
 
     # Define the model architecture
+    model = get_model(args)
 
-    class UNet_wrapper(nn.Module):
-        def __init__(self, in_channels, out_channels):
-            super(UNet_wrapper, self).__init__()
-            self.net = EXACT_UNet(in_channels=in_channels, out_channels=out_channels)
-
-        def forward(self, x):
-            x = x.float()
-            x = self.net(x)
-            x = x.permute(0, 2, 1)
-            return x.squeeze(1)
-
-    # Initialize model
-    model = UNet_wrapper(in_channels=args.in_channels, out_channels=args.out_channels).float()
     model.to(args.device)  # Move model to specified device
 
     # Initialize meta optimizer
     args.meta_opt = torch.optim.Adam(model.parameters(), lr=args.lr)
     run = wandb.init(
-        project=args.wandb_project, config=vars(args), 
+        project=args.wandb_project,
+        config=vars(args),
     )
-    
+    run.name = args.model + "-" + run.name
+
     # Training loop
+    loss = np.inf
     for epoch in range(args.n_epochs):
         # args.epoch = epoch  # Update epoch in args
-        train(
-            iter(train_loader),
-            model,
-            epoch,
-            args,
-            run
-        )
-        test(
-            iter(test_loader),
-            model,
-            epoch,
-            args,
-            run
-        )
+        train(iter(train_loader), model, epoch, args, run)
+        qry_loss, qry_acc = test(iter(test_loader), model, epoch, args, run)
+        if qry_loss < loss:
+            loss = qry_loss
+            artifact = wandb.Artifact('model', type='model')
+            artifact.add_file(f'{run.name}.pth')
+            run.log_artifact(artifact)
+
+        
 
 
 if __name__ == "__main__":
     args = get_args()  # Get arguments from the argparse
     args.wandb_group = "experiment-" + wandb.util.generate_id()
-    print(args.wandb_group)
     main(args)
