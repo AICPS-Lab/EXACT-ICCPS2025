@@ -108,12 +108,14 @@ def train(db, net, epoch, args, wandb_run):
 
 
 def test(db, net, epoch, args, wandb_r):
-    """
-    Test the model with an additional fine-tuning step on the support set before evaluating on the query set.
-    """
-    # Move the model to the specified device
+    # Crucially in our testing procedure here, we do *not* fine-tune
+    # the model during testing for simplicity.
+    # Most research papers using MAML for this task do an extra
+    # stage of fine-tuning here that should be added if you are
+    # adapting this code for research.
+    
     net.to(args.device)
-    net.train()  # Set model to training mode
+    net.train()
     n_test_iter = args.n_train_iter
 
     qry_losses = []
@@ -127,36 +129,24 @@ def test(db, net, epoch, args, wandb_r):
         x_spt, y_spt = x_spt.to(args.device), y_spt.to(args.device)
         x_qry, y_qry = x_qry.to(args.device), y_qry.to(args.device)
 
-        task_num, setsz, h, w = x_spt.size()
+        task_num, setsz, h, w  = x_spt.size()
         querysz = x_qry.size(1)
 
         # Initialize the inner optimizer for adaptation
-        inner_opt = torch.optim.SGD(net.parameters(), lr=args.inner_lr)
+        inner_opt = torch.optim.SGD(net.parameters(), lr=args.meta_lr)
 
         for i in range(task_num):
-            # Use higher to perform fine-tuning in the inner loop
-            with higher.innerloop_ctx(
-                net, inner_opt, track_higher_grads=False
-            ) as (fnet, diffopt):
-                # Fine-tune on the support set
+            with higher.innerloop_ctx(net, inner_opt, track_higher_grads=False) as (fnet, diffopt):
+                # Inner-loop adaptation
                 for _ in range(args.n_inner_iter):
-                    spt_logits = fnet(x_spt[i])
-                    spt_loss = F.cross_entropy(spt_logits, y_spt[i])
-                    diffopt.step(spt_loss)
-
-                # Additional fine-tuning step for testing
-                for _ in range(args.n_test_fine_tune_iter):
                     spt_logits = fnet(x_spt[i])
                     spt_loss = F.cross_entropy(spt_logits, y_spt[i])
                     diffopt.step(spt_loss)
 
                 # Compute the query loss and accuracy
                 qry_logits = fnet(x_qry[i]).detach()
-                qry_loss = F.cross_entropy(
-                    qry_logits, y_qry[i], reduction="none"
-                )
+                qry_loss = F.cross_entropy(qry_logits, y_qry[i], reduction='none')
                 qry_losses.append(qry_loss.detach())
-
                 softmax_qry = F.softmax(qry_logits, dim=1)
                 softmax_qry = torch.argmax(softmax_qry, dim=1)
                 Dice_score = dice_coefficient_time_series(
@@ -167,20 +157,15 @@ def test(db, net, epoch, args, wandb_r):
     qry_losses = torch.cat(qry_losses).mean().item()
     qry_accs = 100.0 * sum(qry_accs) / task_num / n_test_iter
 
-    print(
-        f"[Epoch {epoch + 1:.2f}] Test Loss: {qry_losses:.2f} | Acc: {qry_accs:.2f}"
-    )
-
+    print(f'[Epoch {epoch + 1:.2f}] Test Loss: {qry_losses:.2f} | Acc: {qry_accs:.2f}')
+    
     # Log results
-    wandb_r.log(
-        {
-            "test/epoch": epoch + 1,
-            "test/loss": qry_losses,
-            "test/acc": qry_accs,
-            "test/time": time.time(),
-        }
-    )
-    return qry_losses, qry_accs
+    wandb_r.log({
+        'test/epoch': epoch + 1,
+        'test/loss': qry_losses,
+        'test/acc': qry_accs,
+        'test/time': time.time(),
+    })
 
 
 def get_model(args):
