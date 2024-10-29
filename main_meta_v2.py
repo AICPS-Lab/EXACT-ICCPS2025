@@ -166,6 +166,7 @@ def test(db, net, epoch, args, wandb_r):
         'test/acc': qry_accs,
         'test/time': time.time(),
     })
+    return qry_losses, qry_accs
 
 
 def get_model(args):
