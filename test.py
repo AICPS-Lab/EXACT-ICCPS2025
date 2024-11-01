@@ -5,6 +5,9 @@ from torch.utils.data import Dataset, DataLoader
 import wandb
 import random
 
+from datasets.Transforms import RotationAugmentation
+from until_argparser import get_args
+
 # start a new wandb run to track this script
 # wandb.init(
 #     # set the wandb project where this run will be logged
@@ -34,7 +37,15 @@ import random
 if __name__ == "__main__":
     # test the dataset
 
-    dataset = PhysiQ(root="data", split="train", window_size=1000, bg_fg=None)
+    args = get_args()  # Get arguments from the argparse
+    dataset = PhysiQ(
+        root="data",
+        split="train",
+        window_size=1000,
+        bg_fg=None,
+        args=args,
+        transforms=RotationAugmentation(random_chance=0),
+    )
 
     # for i in range(len(dataset)):
     #     print(dataset[i][1].unique())
@@ -79,6 +90,6 @@ if __name__ == "__main__":
         )
         # print(true_class_ids)
         # for i in range(8):
-        plt.plot(support_images[0,0])
-        plt.plot(support_labels[0,0])
+        plt.plot(support_images[0, 0])
+        plt.plot(support_labels[0, 0])
         plt.show()

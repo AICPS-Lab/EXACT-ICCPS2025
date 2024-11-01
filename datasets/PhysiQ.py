@@ -27,9 +27,10 @@ class PhysiQ(QueryDataset):
         window_step=50,
         bg_fg=None,
         args=None,
+        transforms=None,
     ):
         super(PhysiQ, self).__init__(
-            root, split, window_size, window_step, bg_fg, args
+            root, split, window_size, window_step, bg_fg, args, transforms
         )
 
     def _process_data(self):
@@ -226,4 +227,12 @@ class PhysiQ(QueryDataset):
         return len(self.data)
 
     def __getitem__(self, idx):
+        if self.transforms is not None:
+            return (
+                self.transforms(self.data[idx]),
+                self.label[idx],
+                self.res_exer_label[idx],
+            )
+        # print(self.data[idx].shape, self.transforms(self.data[idx]).shape)
+        
         return self.data[idx], self.label[idx], self.res_exer_label[idx]

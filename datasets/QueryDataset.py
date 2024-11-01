@@ -18,6 +18,7 @@ class QueryDataset(Dataset):
         window_step=50,
         bg_fg=None,
         args=None,
+        transforms=None,
     ):
         self.root = root
         # if bg_fg is not None:
@@ -31,6 +32,7 @@ class QueryDataset(Dataset):
         self.window_size = window_size
         self.window_step = window_step
         self.args = args
+        self.transforms = transforms
 
         self.sw = sliding_windows(window_size, window_step)
         if not self.if_npy_exists(split):
