@@ -37,7 +37,7 @@ def train(db, net, epoch, args, wandb_run):
     net.to(args.device)
     net.train()
 
-    for batch_idx in range(args.n_train_iter):
+    for batch_idx in range(args.n_tasks):
         start_time = time.time()
 
         # Sample a batch of support and query images and labels
@@ -114,7 +114,7 @@ def test(db, net, epoch, args, wandb_r):
     # Most research papers using MAML for this task do an extra
     # stage of fine-tuning here that should be added if you are
     # adapting this code for research.
-    
+
     net.to(args.device)
     net.train()
     n_test_iter = args.n_train_iter
@@ -130,14 +130,16 @@ def test(db, net, epoch, args, wandb_r):
         x_spt, y_spt = x_spt.to(args.device), y_spt.to(args.device)
         x_qry, y_qry = x_qry.to(args.device), y_qry.to(args.device)
 
-        task_num, setsz, h, w  = x_spt.size()
+        task_num, setsz, h, w = x_spt.size()
         querysz = x_qry.size(1)
 
         # Initialize the inner optimizer for adaptation
         inner_opt = torch.optim.SGD(net.parameters(), lr=args.meta_lr)
 
         for i in range(task_num):
-            with higher.innerloop_ctx(net, inner_opt, track_higher_grads=False) as (fnet, diffopt):
+            with higher.innerloop_ctx(
+                net, inner_opt, track_higher_grads=False
+            ) as (fnet, diffopt):
                 # Inner-loop adaptation
                 for _ in range(args.n_inner_iter):
                     spt_logits = fnet(x_spt[i])
@@ -146,7 +148,9 @@ def test(db, net, epoch, args, wandb_r):
 
                 # Compute the query loss and accuracy
                 qry_logits = fnet(x_qry[i]).detach()
-                qry_loss = F.cross_entropy(qry_logits, y_qry[i], reduction='none')
+                qry_loss = F.cross_entropy(
+                    qry_logits, y_qry[i], reduction="none"
+                )
                 qry_losses.append(qry_loss.detach())
                 softmax_qry = F.softmax(qry_logits, dim=1)
                 softmax_qry = torch.argmax(softmax_qry, dim=1)
@@ -158,15 +162,19 @@ def test(db, net, epoch, args, wandb_r):
     qry_losses = torch.cat(qry_losses).mean().item()
     qry_accs = 100.0 * sum(qry_accs) / task_num / n_test_iter
 
-    print(f'[Epoch {epoch + 1:.2f}] Test Loss: {qry_losses:.2f} | Acc: {qry_accs:.2f}')
-    
+    print(
+        f"[Epoch {epoch + 1:.2f}] Test Loss: {qry_losses:.2f} | Acc: {qry_accs:.2f}"
+    )
+
     # Log results
-    wandb_r.log({
-        'test/epoch': epoch + 1,
-        'test/loss': qry_losses,
-        'test/acc': qry_accs,
-        'test/time': time.time(),
-    })
+    wandb_r.log(
+        {
+            "test/epoch": epoch + 1,
+            "test/loss": qry_losses,
+            "test/acc": qry_accs,
+            "test/time": time.time(),
+        }
+    )
     return qry_losses, qry_accs
 
 
@@ -267,15 +275,13 @@ def main(args):
         qry_loss, qry_acc = test(iter(test_loader), model, epoch, args, run)
         if qry_loss < loss:
             loss = qry_loss
-            torch.save(model.state_dict(), 'saved_model/' + run.name + '.pth')
+            torch.save(model.state_dict(), "saved_model/" + run.name + ".pth")
 
-    artifact = wandb.Artifact('model', type='model')
-    artifact.add_file('saved_model/' + run.name + '.pth')
+    artifact = wandb.Artifact("model", type="model")
+    artifact.add_file("saved_model/" + run.name + ".pth")
     run.log_artifact(artifact)
-    
-    run.finish()
 
-        
+    run.finish()
 
 
 if __name__ == "__main__":

@@ -166,6 +166,8 @@ class PhysiQ(QueryDataset):
         return data
 
     def concanetate_data(self):
+        # TODO: SIWOO: add noise in between the data (differnet kinda of user noise we could have and differnet lengths)
+        # noise would be 0 and the rest of the labels would be starting from 1...
         seed(self.args.dataset_seed)
         data = self.data["data"]
         label = self.data["label"]
@@ -234,5 +236,5 @@ class PhysiQ(QueryDataset):
                 self.res_exer_label[idx],
             )
         # print(self.data[idx].shape, self.transforms(self.data[idx]).shape)
-        
+
         return self.data[idx], self.label[idx], self.res_exer_label[idx]
