@@ -59,7 +59,7 @@ def train(db, net, epoch, args, wandb_run):
         args.meta_opt.zero_grad()
 
         for i in range(task_num):
-            # utilize the sec-derivative gradient informaiton for the inner loop
+            # utilize the sec-derivative gradient information for the inner loop
             with higher.innerloop_ctx(
                 net, inner_opt, copy_initial_weights=False
             ) as (fnet, diffopt):
