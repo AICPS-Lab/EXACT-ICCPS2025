@@ -158,7 +158,7 @@ class PhysiQ(QueryDataset):
         )
         parser.add_argument(
             "--add_random_noise",
-            help="Add random noise to the data",
+            help="Add random noise to the data on each side",
             action="store_true"
         )
         parser.add_argument(
@@ -205,7 +205,7 @@ class PhysiQ(QueryDataset):
                 file.append(df_np)
 
                 if self.bg_fg is not None:
-                    pass
+                    raise NotImplementedError 
                     # dense_label.append([1 if original_label == self.bg_fg else 0] * df_np.shape[0])
                 else:
                     dense_label.append([original_label] * df_np.shape[0])
@@ -263,6 +263,8 @@ class PhysiQ(QueryDataset):
         if self.args.noise_type == "white":
             # random length = float from 0 to 2
             noise = np.random.normal(mu, sigma, noise_shape)
+        else:
+            raise NotImplementedError(f"Noise type {self.args.noise_type} is not implemented")
             
         return noise
         

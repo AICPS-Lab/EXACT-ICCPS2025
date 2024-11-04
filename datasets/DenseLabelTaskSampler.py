@@ -18,6 +18,7 @@ class DenseLabelTaskSampler(Sampler):
         n_query: int,
         n_tasks: int,
         threshold_ratio: float,
+        has_side_noise: bool,
     ):
         """
         Args:
@@ -40,7 +41,8 @@ class DenseLabelTaskSampler(Sampler):
 
         # Build a dictionary mapping each label to a list of indices for dense labeling
         for item_idx, (input_data, label, exer_label) in enumerate(dataset):
-            valid_label = self._get_label(label)
+            #NOTE: QUESTION should we consider in the label of variation or the label of the exercise?
+            valid_label = exer_label #self._get_label(label)
             if valid_label is not None:
                 if valid_label in self.items_per_label:
                     self.items_per_label[valid_label].append(item_idx)
@@ -56,18 +58,19 @@ class DenseLabelTaskSampler(Sampler):
         Yields:
             A list of indices of length (batch_size * (n_shot + n_query)).
         """
+
         for cur_task in range(self.n_tasks):
             # Randomly select one variation (target class) for this task
-            target_variation = random.choice(list(self.items_per_label.keys()))
+            target_label = random.choice(list(self.items_per_label.keys()))
 
             sampled_task_indices = torch.tensor(
                 np.random.choice(
-                    self.items_per_label[target_variation],
+                    self.items_per_label[target_label],
                     (self.n_shot + self.n_query) * self.batch_size,
                     replace=True,
                 )
             )
-            self._cur_task = target_variation
+            self._cur_task = target_label
             yield sampled_task_indices.tolist()
 
     def episodic_collate_fn(
@@ -112,6 +115,9 @@ class DenseLabelTaskSampler(Sampler):
             return 1  # Sufficient non-background elements
         else:
             return None  # Ignore this label
+
+
+
 
 
 
