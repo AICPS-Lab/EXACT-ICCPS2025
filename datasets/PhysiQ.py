@@ -159,7 +159,7 @@ class PhysiQ(QueryDataset):
         parser.add_argument(
             "--add_side_noise",
             help="Add random noise to the data on each side",
-            action="store_false",
+            action="store_true",
         )
         parser.add_argument(
             "--noise_type",
