@@ -5,7 +5,7 @@ from torch.utils.data import Dataset, DataLoader
 import wandb
 import random
 
-from datasets.Transforms import RotationAugmentation
+from datasets.Transforms import IMUAugmentation
 from until_argparser import get_args
 
 # start a new wandb run to track this script
@@ -44,7 +44,7 @@ if __name__ == "__main__":
         window_size=1000,
         bg_fg=None,
         args=args,
-        transforms=RotationAugmentation(random_chance=0),
+        transforms=IMUAugmentation(rotation_chance=0),
     )
 
     # for i in range(len(dataset)):

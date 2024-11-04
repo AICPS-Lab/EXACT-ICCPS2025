@@ -18,6 +18,7 @@ import wandb
 from datasets.DenseLabelTaskSampler import DenseLabelTaskSampler
 from datasets.PhysiQ import PhysiQ
 from torch.utils.data import DataLoader
+from datasets.Transforms import IMUAugmentation
 from methods.transformer import TransformerModel
 from methods.unet import EXACT_UNet
 from until_argparser import get_args
@@ -211,6 +212,7 @@ def main(args):
         window_size=args.window_size,
         bg_fg=None,
         args=args,
+        transforms=IMUAugmentation(rotation_chance=0)
     )
     test_dataset = PhysiQ(
         root=args.data_root,
