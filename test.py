@@ -36,8 +36,9 @@ from until_argparser import get_args
 # wandb.finish()
 if __name__ == "__main__":
     # test the dataset
-
+    # seed(42)
     args = get_args()  # Get arguments from the argparse
+
     dataset = PhysiQ(
         root="data",
         split="train",
@@ -58,6 +59,7 @@ if __name__ == "__main__":
         n_query=1,
         n_tasks=5,
         threshold_ratio=0.25,
+        add_side_noise=args.add_side_noise,
     )
     train_loader = DataLoader(
         dataset,

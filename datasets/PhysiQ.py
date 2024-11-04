@@ -157,15 +157,15 @@ class PhysiQ(QueryDataset):
             help="Seed for shuffling the data",
         )
         parser.add_argument(
-            "--add_random_noise",
+            "--add_side_noise",
             help="Add random noise to the data on each side",
-            action="store_true"
+            action="store_false",
         )
         parser.add_argument(
             "--noise_type",
             type=str,
             default="white",
-            help="Type of noise to add to the data"
+            help="Type of noise to add to the data",
         )
         return parser
 
@@ -201,26 +201,29 @@ class PhysiQ(QueryDataset):
                 combined = list(zip(v, k_label))
 
             for ind, (filename, original_label) in enumerate(combined):
-                df_np = pd.read_csv(filename).to_numpy()[:, 1:7] # (T, 6), 1 repetition
+                df_np = pd.read_csv(filename).to_numpy()[
+                    :, 1:7
+                ]  # (T, 6), 1 repetition
                 file.append(df_np)
 
                 if self.bg_fg is not None:
-                    raise NotImplementedError 
+                    raise NotImplementedError
                     # dense_label.append([1 if original_label == self.bg_fg else 0] * df_np.shape[0])
                 else:
                     dense_label.append([original_label] * df_np.shape[0])
-                
-                if self.args.add_random_noise:
+
+                if self.args.add_side_noise:
                     noise = self.generate_noise(df_np.shape)
                     file.append(noise)
                     dense_label.append([-1] * noise.shape[0])
 
-            
             file = np.concatenate(file, axis=0)
             dense_label = np.concatenate(dense_label, axis=0)
-            
-            if self.args.add_random_noise:
-                dense_label = dense_label + 1 # from [-1, 0, 1, 2, 3 ...] to [0, 1, 2, 3, 4 ...]
+
+            if self.args.add_side_noise:
+                dense_label = (
+                    dense_label + 1
+                )  # from [-1, 0, 1, 2, 3 ...] to [0, 1, 2, 3, 4 ...]
 
             sfile, sdense_label = self.sw(
                 torch.tensor(file), torch.tensor(dense_label)
@@ -239,35 +242,43 @@ class PhysiQ(QueryDataset):
         res_exer_label = torch.cat(res_exer_label, axis=0)
 
         return res_data, res_label, res_exer_label
-    
-    def generate_noise(self,
-                       noise_shape,
-                       length_mult_min=0,
-                       length_mult_max=2,
-                       mu=0,
-                       sigma=0.1):
+
+    def generate_noise(
+        self,
+        noise_shape,
+        length_mult_min=0,
+        length_mult_max=2,
+        mu=0,
+        sigma=0.05,
+    ):
         """
         generate noise with given shape
         length of noise can be varied by multiplying the length of the noise with a random number between length_mult_min and length_mult_max
-        
+
         noise_shape: tuple (T, 6) base shape of the noise
         length_mult_min: float minimum multiplier for the length of the noise
         length_mult_max: float maximum multiplier for the length of the noise
         mu: float mean of the noise
         sigma: float standard deviation of the noise
         """
-        random_length_multiplier = np.random.uniform(length_mult_min, length_mult_max)
-        noise_shape = (int(random_length_multiplier * noise_shape[0]), noise_shape[1])
-        
+        random_length_multiplier = np.random.uniform(
+            length_mult_min, length_mult_max
+        )
+        noise_shape = (
+            int(random_length_multiplier * noise_shape[0]),
+            noise_shape[1],
+        )
+        noise_shape = (min(50, noise_shape[0]), noise_shape[1])
         # generate white noise
         if self.args.noise_type == "white":
             # random length = float from 0 to 2
             noise = np.random.normal(mu, sigma, noise_shape)
         else:
-            raise NotImplementedError(f"Noise type {self.args.noise_type} is not implemented")
-            
+            raise NotImplementedError(
+                f"Noise type {self.args.noise_type} is not implemented"
+            )
+
         return noise
-        
 
     def if_npy_exists(self, split):
         return os.path.exists(

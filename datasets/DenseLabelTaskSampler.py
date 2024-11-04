@@ -18,7 +18,7 @@ class DenseLabelTaskSampler(Sampler):
         n_query: int,
         n_tasks: int,
         threshold_ratio: float,
-        has_side_noise: bool,
+        add_side_noise: bool,
     ):
         """
         Args:
@@ -38,6 +38,7 @@ class DenseLabelTaskSampler(Sampler):
         self._cur_task = -1
         self.dataset = dataset
         self.items_per_label: Dict[int, List[int]] = {}
+        self.add_side_noise = add_side_noise
 
         # Build a dictionary mapping each label to a list of indices for dense labeling
         for item_idx, (input_data, label, exer_label) in enumerate(dataset):
@@ -95,10 +96,15 @@ class DenseLabelTaskSampler(Sampler):
 
         support_labels = all_labels[:, :self.n_shot].reshape((-1, *all_labels.shape[2:]))
         query_labels = all_labels[:, self.n_shot:].reshape((-1, *all_labels.shape[2:]))
-
-        # Adjust labels to binary based on the current target variation
-        query_labels = torch.where(query_labels == self._cur_task, 1, 0)
-        support_labels = torch.where(support_labels == self._cur_task, 1, 0)
+        if self.add_side_noise:
+            # if it has side noise, label 0 is the side noise, and other label is original label +1:
+            # so if the label is not 0, its 1 (1 as >0)
+            query_labels = torch.where(query_labels > 0, 1, 0)
+            support_labels = torch.where(support_labels > 0, 1, 0)
+        else:
+            # Adjust labels to binary based on the current target variation
+            query_labels = torch.where(query_labels == self._cur_task, 1, 0)
+            support_labels = torch.where(support_labels == self._cur_task, 1, 0)
 
         return support_images, support_labels, query_images, query_labels, [self._cur_task]
 
