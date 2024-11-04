@@ -230,6 +230,7 @@ def main(args):
         n_query=args.n_query,
         n_tasks=args.n_tasks,
         threshold_ratio=args.threshold_ratio,
+        add_side_noise=args.add_side_noise,
     )
     test_sampler = DenseLabelTaskSampler(
         test_dataset,
@@ -238,6 +239,7 @@ def main(args):
         n_query=args.n_query,
         n_tasks=args.n_tasks,
         threshold_ratio=args.threshold_ratio,
+        add_side_noise=args.add_side_noise,
     )
 
     # Initialize DataLoader
