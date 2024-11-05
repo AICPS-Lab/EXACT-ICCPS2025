@@ -2,7 +2,7 @@ from matplotlib import pyplot as plt
 import torch
 from config import Config
 from archives.dataset import default_splitter
-from models import CNNModel, TransformerModel
+from methods import CNNModel, TransformerModel
 from utilities import Normalize, get_device
 import torchvision.transforms as transforms
 

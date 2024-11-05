@@ -4,7 +4,7 @@ import  torch
 from    torch import nn
 from    torch.nn import functional as F
 import  numpy as np
-from models import ASPP, aspp, TemporalPositionalEmbedding
+from methods import ASPP, aspp, TemporalPositionalEmbedding
 from torch.nn import MultiheadAttention
 from torch.nn import LSTM
 # torch.__version__ = '2.1.0+cu121'
