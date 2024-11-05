@@ -187,6 +187,148 @@ class StandardTransform(torch.nn.Module):
         return self
 
 
+import numpy as np
+from scipy.spatial.transform import Rotation as R
+
+
+def generate_patterned_imu_noise(
+    data,
+    reference_length=5,
+    max_length=25,
+    noise_type="static_pause",
+    range_percentage=0.05,
+    peak_intensity=1.0,  # Fixed peak intensity
+    peak_probability=0.1,
+    directional_bias=0.1,
+):
+    """
+    Generate IMU noise that follows the pattern of initial data, with optional idle movements and directional trends.
+
+    Parameters:
+        initial_data (array): Initial set of values representing current position.
+        max_length (int): Length of the generated noise segment.
+        noise_type (str): Type of movement to simulate ("static_pause", "sudden_change", or "directional_shift").
+        range_percentage (float): Percentage of the data range to set fluctuation level for static pauses.
+        peak_intensity (float): Fixed intensity for sudden peaks.
+        peak_probability (float): Probability of a peak occurring within the noise.
+        directional_bias (float): Bias to simulate a gradual directional trend.
+
+    Returns:
+        array: Combined accelerometer and gyroscope noise segment following the initial pattern.
+    """
+    # Separate accelerometer and gyroscope data from the initial pattern
+    accel_baseline = data[-reference_length:, 0:3]
+    gyro_baseline = data[-reference_length:, 3:6]
+
+    # Calculate the mean and range for static pause fluctuation level
+    accel_mean = accel_baseline.mean(axis=0)
+    gyro_mean = gyro_baseline.mean(axis=0)
+    accel_range = accel_baseline.max(axis=0) - accel_baseline.min(axis=0)
+    gyro_range = gyro_baseline.max(axis=0) - gyro_baseline.min(axis=0)
+
+    # Set fluctuation level based on a percentage of the range (for static pause)
+    fluctuation_level_accel = range_percentage * accel_range
+    fluctuation_level_gyro = range_percentage * gyro_range
+
+    # Initialize storage for generated accelerometer and gyroscope noise
+    accel_data = []
+    gyro_data = []
+    current_orientation = R.from_euler("xyz", [0, 0, 0]).as_quat()
+
+    # Generate a directional trend over time
+    T = np.random.randint(max_length // 5, max_length)
+    directional_trend = (
+        directional_bias
+        * np.linspace(0, 1, T).reshape(-1, 1)
+        * np.random.choice([-1, 1], size=(1, 3))
+    )
+    counter = (0, -1, -1)  # number of times, acc-axis, gyro-axis
+    for t in range(T):
+        if (
+            noise_type == "sudden_change"
+            and np.random.rand() < peak_probability
+            or (counter[0] < 5 and counter[1] >= 0)
+        ):
+            # Generate a single, high-intensity peak and not using uniform but generate ONE or TWO random value for each axis different from the original data:
+            # and if peaks happen in that axis it should continue to have for a few time steps
+            if counter[1] < 0:
+                counter = (counter[0], np.random.randint(0, 3), counter[2])
+            if counter[2] < 0:
+                counter = (counter[0], counter[1], np.random.randint(0, 3))
+            accel_fluctuation = np.random.uniform(
+                -fluctuation_level_accel, fluctuation_level_accel
+            )
+            gyro_fluctuation = np.random.uniform(
+                -fluctuation_level_gyro, fluctuation_level_gyro
+            )
+            counter = (counter[0] + 1, counter[1], counter[2])
+            accel_fluctuation[counter[1]] = np.random.uniform(
+                -peak_intensity, peak_intensity
+            )
+            gyro_fluctuation[counter[2]] = np.random.uniform(
+                -peak_intensity, peak_intensity
+            )
+
+            # Apply the peak fluctuation to baseline mean
+            accel_sample = accel_mean + accel_fluctuation
+            gyro_sample = gyro_mean + gyro_fluctuation
+            if counter[0] == 5:
+                counter = (0, -1, -1)
+
+        elif noise_type == "directional_shift":
+            # Directional shift with small fluctuations plus directional trend
+            accel_fluctuation = np.random.uniform(
+                -fluctuation_level_accel, fluctuation_level_accel
+            )
+            gyro_fluctuation = np.random.uniform(
+                -fluctuation_level_gyro, fluctuation_level_gyro
+            )
+
+            # Add the directional trend to the baseline mean
+            accel_sample = (
+                accel_mean + directional_trend[t, :] + accel_fluctuation
+            )
+            gyro_sample = gyro_mean + directional_trend[t, :] + gyro_fluctuation
+
+        else:  # Static pause or default case with small fluctuations
+            accel_fluctuation = np.random.uniform(
+                -fluctuation_level_accel, fluctuation_level_accel
+            )
+            gyro_fluctuation = np.random.uniform(
+                -fluctuation_level_gyro, fluctuation_level_gyro
+            )
+
+            # Apply fluctuations around the baseline without any directional trend
+            accel_sample = accel_mean + accel_fluctuation
+            gyro_sample = gyro_mean + gyro_fluctuation
+
+        # Quaternion rotation for accelerometer data
+        random_axis = np.random.uniform(-1, 1, 3)
+        random_axis /= np.linalg.norm(random_axis)  # Normalize the axis
+        rotation_angle = np.random.uniform(
+            -fluctuation_level_accel.mean(), fluctuation_level_accel.mean()
+        )
+        rotation_quat = R.from_rotvec(rotation_angle * random_axis).as_quat()
+        accel_orientation = R.from_quat(current_orientation) * R.from_quat(
+            rotation_quat
+        )
+        rotated_accel = accel_orientation.apply(accel_sample)
+
+        # Append the generated data
+        accel_data.append(rotated_accel)
+        gyro_data.append(gyro_sample)
+
+        # Update the current orientation for continuous rotation
+        current_orientation = accel_orientation.as_quat()
+
+    # Convert to arrays and stack accelerometer and gyroscope data
+    accel_data = np.array(accel_data)
+    gyro_data = np.array(gyro_data)
+    imu_noise_segment = np.hstack([accel_data, gyro_data])
+
+    return imu_noise_segment
+
+
 def static_pause(data, reference_length, noise_shape):
     """
     Generate static pause noise based on a reference range from the data.
@@ -199,82 +341,73 @@ def static_pause(data, reference_length, noise_shape):
     Returns:
         array: Generated static pause noise.
     """
-    # Calculate baseline min and max from the last `reference_length` rows
-    baseline_min = data[-reference_length:, :].min(axis=0, keepdims=True)
-    baseline_max = data[-reference_length:, :].max(axis=0, keepdims=True)
+    imu_noise_segment = generate_patterned_imu_noise(
+        data,
+        reference_length=reference_length,
+        noise_type="static_pause",
+        max_length=noise_shape[0],
+        range_percentage=0.5,
+        peak_probability=0
+    )
 
-    # Generate uniform fluctuations within the baseline range
-    fluctuation = np.random.uniform(baseline_min, baseline_max, noise_shape)
-    baseline_mean = data[-reference_length:, :].mean(axis=0, keepdims=True)
-    noise = np.full(noise_shape, baseline_mean) + fluctuation
-
-    return noise
+    return imu_noise_segment
 
 
-def idle_movement(noise, reference_length, noise_shape, directional_bias=0.1):
+def idle_movement(noise, reference_length, noise_shape):
     """
     Generate idle movement noise with more variability and slight directional trends.
-    
+
     Parameters:
         noise (array): Base noise array to reference recent sensor values.
         reference_length (int): Number of rows to calculate baseline mean.
         noise_shape (tuple): Shape of the generated idle movement noise (T, D), where T is time steps, D is the number of IMU axes.
-        
+
     Returns:
         array: Generated idle movement noise segment.
     """
-    if noise_shape is None:
-        raise ValueError("noise_shape must be provided to generate idle movement")
+    imu_noise_segment = generate_patterned_imu_noise(
+        noise,
+        reference_length=reference_length,
+        noise_type="directional_shift",
+        max_length=noise_shape[0],
+        range_percentage=0.5,
+        peak_probability=0)
 
-    # Calculate baseline from the last few rows of noise
-    baseline_mean = noise[-reference_length:, :].mean(axis=0, keepdims=True)
-    
-
-    # Define a slightly larger fluctuation range for idle movements
-    fluctuation_range = 0.1  # Larger than static pause for more noticeable idle movements
-    fluctuation = np.random.uniform(
-        -fluctuation_range, fluctuation_range, noise_shape
-    )
-
-    # Add a small directional trend to simulate a shift (e.g., leaning or adjusting posture)
-    trend = np.linspace(0, directional_bias, noise_shape[0]).reshape(-1, 1) * np.random.choice([-1, 1], size=(1, noise.shape[1]))
-    idle_movement = np.full(noise_shape, baseline_mean) + fluctuation + trend
-
-    return idle_movement
+    return imu_noise_segment
 
 
-def incident_movement(noise, reference_length, noise_shape, directional_bias=0.1):
+def incident_movement(
+    noise, reference_length, noise_shape, directional_bias=0.1
+):
     raise NotImplementedError
 
-def environmental_movement(noise, reference_length, noise_shape, directional_bias=0.1):
+
+def environmental_movement(
+    noise, reference_length, noise_shape, directional_bias=0.1
+):
     raise NotImplementedError
 
-def generate_sudden_change(noise, noise_shape, intensity=2.0, peak_duration=5):
+
+def generate_sudden_change(noise, noise_length):
     """
     Generate a sudden change or quick peak noise segment.
-    
+
     Parameters:
         noise (array): Base noise array to reference recent sensor values.
-        noise_shape (tuple): Desired shape of the generated sudden change segment.
+        noise_length (int): Length of the generated noise segment.
         intensity (float): Multiplier to control the magnitude of the peak.
         peak_duration (int): Duration of the peak within the noise_shape.
-        
+
     Returns:
         array: Generated sudden change noise segment.
     """
-    # Calculate baseline from the last few rows for smooth transition
-    baseline_mean = noise[-5:, :].mean(axis=0, keepdims=True)
-
-    # Initialize the sudden change segment with baseline values
-    sudden_change = np.full(noise_shape, baseline_mean)
-    print(noise_shape[0], peak_duration)
-    # Determine the start of the peak within the segment
-    peak_start = np.random.randint(0, noise_shape[0] - peak_duration)
-
-    # Generate a sharp, sudden peak in a random direction on each axis
-    peak_values = intensity * np.random.uniform(-1, 1, (peak_duration, noise_shape[1]))
-
-    # Insert the peak into the sudden change segment
-    sudden_change[peak_start:peak_start + peak_duration, :] += peak_values
-
-    return sudden_change
+    imu_noise_segment = generate_patterned_imu_noise(
+        noise,
+        reference_length=5,
+        noise_type="sudden_change",
+        max_length=noise_length,
+        range_percentage=0.5, # rest position
+        peak_probability=.5,
+        peak_intensity=0.3,
+    )
+    return imu_noise_segment

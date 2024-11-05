@@ -216,7 +216,6 @@ class PhysiQ(QueryDataset):
                     noise = self.generate_noise(df_np, self.args.noise_type)
                     file.append(noise)
                     dense_label.append([-1] * noise.shape[0])
-
             file = np.concatenate(file, axis=0)
             dense_label = np.concatenate(dense_label, axis=0)
 
@@ -266,7 +265,7 @@ class PhysiQ(QueryDataset):
         """
         # Define the shape of the new noise array with a random length up to max_length
         noise_shape = (
-            np.random.randint(1, max_length + 1),  # Random length between 1 and max_length
+            np.random.randint(max_length //5, max_length + 1),  # Random length between 1 and max_length
             noise.shape[1],
         )
 
@@ -279,11 +278,11 @@ class PhysiQ(QueryDataset):
             noise = static_pause(noise, reference_length, noise_shape)
         elif noise_type == "idle":
             noise = idle_movement(noise, reference_length, noise_shape)
-        elif noise_type == "incident_movement":
-            noise = incident_movement(noise, reference_length, noise_shape)
+        elif noise_type == "sudden":
+            noise = generate_sudden_change(noise, max_length) # max_length
         elif noise_type == "all":
             # randomly pick one:
-            noise_type = random.choice(["white", "static", "idle"])
+            noise_type = random.choice(["white", "static", "idle", "sudden"])
             noise = self.generate_noise(noise, noise_type, max_length, reference_length, mu, sigma)
             
         else:
