@@ -129,7 +129,7 @@ class MultiHeadCrossAttention1D(nn.Module):
 class EX(nn.Module):
     @staticmethod
     def add_args(parser):
-        parser.add_argument("--embed_dim", type=int, default=256)
+        parser.add_argument("--embed_dim", type=int, default=128)
         parser.add_argument("--num_heads", type=int, default=8)
         return parser
     def __init__(self, args):

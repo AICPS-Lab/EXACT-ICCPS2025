@@ -197,25 +197,10 @@ def generate_patterned_imu_noise(
     max_length=25,
     noise_type="static_pause",
     range_percentage=0.05,
-    peak_intensity=1.0,  # Fixed peak intensity
+    peak_intensity=1.0,
     peak_probability=0.1,
     directional_bias=0.1,
 ):
-    """
-    Generate IMU noise that follows the pattern of initial data, with optional idle movements and directional trends.
-
-    Parameters:
-        initial_data (array): Initial set of values representing current position.
-        max_length (int): Length of the generated noise segment.
-        noise_type (str): Type of movement to simulate ("static_pause", "sudden_change", or "directional_shift").
-        range_percentage (float): Percentage of the data range to set fluctuation level for static pauses.
-        peak_intensity (float): Fixed intensity for sudden peaks.
-        peak_probability (float): Probability of a peak occurring within the noise.
-        directional_bias (float): Bias to simulate a gradual directional trend.
-
-    Returns:
-        array: Combined accelerometer and gyroscope noise segment following the initial pattern.
-    """
     # Separate accelerometer and gyroscope data from the initial pattern
     accel_baseline = data[-reference_length:, 0:3]
     gyro_baseline = data[-reference_length:, 3:6]
@@ -226,105 +211,56 @@ def generate_patterned_imu_noise(
     accel_range = accel_baseline.max(axis=0) - accel_baseline.min(axis=0)
     gyro_range = gyro_baseline.max(axis=0) - gyro_baseline.min(axis=0)
 
-    # Set fluctuation level based on a percentage of the range (for static pause)
+    # Set fluctuation level based on a percentage of the range
     fluctuation_level_accel = range_percentage * accel_range
     fluctuation_level_gyro = range_percentage * gyro_range
 
-    # Initialize storage for generated accelerometer and gyroscope noise
-    accel_data = []
-    gyro_data = []
-    current_orientation = R.from_euler("xyz", [0, 0, 0]).as_quat()
-
-    # Generate a directional trend over time
+    # Number of time steps in the noise segment
     T = np.random.randint(max_length // 5, max_length)
+
+    # Generate directional trend
     directional_trend = (
-        directional_bias
-        * np.linspace(0, 1, T).reshape(-1, 1)
+        directional_bias * np.linspace(0, 1, T).reshape(-1, 1)
         * np.random.choice([-1, 1], size=(1, 3))
     )
-    counter = (0, -1, -1)  # number of times, acc-axis, gyro-axis
-    for t in range(T):
-        if (
-            noise_type == "sudden_change"
-            and np.random.rand() < peak_probability
-            or (counter[0] < 5 and counter[1] >= 0)
-        ):
-            # Generate a single, high-intensity peak and not using uniform but generate ONE or TWO random value for each axis different from the original data:
-            # and if peaks happen in that axis it should continue to have for a few time steps
-            if counter[1] < 0:
-                counter = (counter[0], np.random.randint(0, 3), counter[2])
-            if counter[2] < 0:
-                counter = (counter[0], counter[1], np.random.randint(0, 3))
-            accel_fluctuation = np.random.uniform(
-                -fluctuation_level_accel, fluctuation_level_accel
-            )
-            gyro_fluctuation = np.random.uniform(
-                -fluctuation_level_gyro, fluctuation_level_gyro
-            )
-            counter = (counter[0] + 1, counter[1], counter[2])
-            accel_fluctuation[counter[1]] = np.random.uniform(
-                -peak_intensity, peak_intensity
-            )
-            gyro_fluctuation[counter[2]] = np.random.uniform(
-                -peak_intensity, peak_intensity
-            )
 
-            # Apply the peak fluctuation to baseline mean
-            accel_sample = accel_mean + accel_fluctuation
-            gyro_sample = gyro_mean + gyro_fluctuation
-            if counter[0] == 5:
-                counter = (0, -1, -1)
+    # Generate random fluctuations for accelerometer and gyroscope for each time step
+    accel_fluctuations = np.random.uniform(
+        -fluctuation_level_accel, fluctuation_level_accel, (T, 3)
+    )
+    gyro_fluctuations = np.random.uniform(
+        -fluctuation_level_gyro, fluctuation_level_gyro, (T, 3)
+    )
 
-        elif noise_type == "directional_shift":
-            # Directional shift with small fluctuations plus directional trend
-            accel_fluctuation = np.random.uniform(
-                -fluctuation_level_accel, fluctuation_level_accel
-            )
-            gyro_fluctuation = np.random.uniform(
-                -fluctuation_level_gyro, fluctuation_level_gyro
-            )
+    # Determine peak indices for accelerometer and gyroscope randomly
+    peak_indices = np.random.rand(T) < peak_probability
+    peak_accel = np.random.uniform(-peak_intensity, peak_intensity, (T, 3))
+    peak_gyro = np.random.uniform(-peak_intensity, peak_intensity, (T, 3))
 
-            # Add the directional trend to the baseline mean
-            accel_sample = (
-                accel_mean + directional_trend[t, :] + accel_fluctuation
-            )
-            gyro_sample = gyro_mean + directional_trend[t, :] + gyro_fluctuation
+    # Apply peak intensity only at selected indices
+    accel_fluctuations[peak_indices] = peak_accel[peak_indices]
+    gyro_fluctuations[peak_indices] = peak_gyro[peak_indices]
 
-        else:  # Static pause or default case with small fluctuations
-            accel_fluctuation = np.random.uniform(
-                -fluctuation_level_accel, fluctuation_level_accel
-            )
-            gyro_fluctuation = np.random.uniform(
-                -fluctuation_level_gyro, fluctuation_level_gyro
-            )
+    # Combine trend and fluctuation based on noise type
+    if noise_type == "directional_shift":
+        accel_samples = accel_mean + directional_trend + accel_fluctuations
+        gyro_samples = gyro_mean + directional_trend + gyro_fluctuations
+    else:
+        accel_samples = accel_mean + accel_fluctuations
+        gyro_samples = gyro_mean + gyro_fluctuations
 
-            # Apply fluctuations around the baseline without any directional trend
-            accel_sample = accel_mean + accel_fluctuation
-            gyro_sample = gyro_mean + gyro_fluctuation
+    # Generate random rotation vectors and apply them to the accelerometer data
+    random_axes = np.random.uniform(-1, 1, (T, 3))
+    random_axes /= np.linalg.norm(random_axes, axis=1).reshape(-1, 1)
+    rotation_angles = np.random.uniform(
+        -fluctuation_level_accel.mean(), fluctuation_level_accel.mean(), T
+    )
+    rotation_vectors = random_axes * rotation_angles.reshape(-1, 1)
+    rotations = R.from_rotvec(rotation_vectors)
+    rotated_accel = rotations.apply(accel_samples)
 
-        # Quaternion rotation for accelerometer data
-        random_axis = np.random.uniform(-1, 1, 3)
-        random_axis /= np.linalg.norm(random_axis)  # Normalize the axis
-        rotation_angle = np.random.uniform(
-            -fluctuation_level_accel.mean(), fluctuation_level_accel.mean()
-        )
-        rotation_quat = R.from_rotvec(rotation_angle * random_axis).as_quat()
-        accel_orientation = R.from_quat(current_orientation) * R.from_quat(
-            rotation_quat
-        )
-        rotated_accel = accel_orientation.apply(accel_sample)
-
-        # Append the generated data
-        accel_data.append(rotated_accel)
-        gyro_data.append(gyro_sample)
-
-        # Update the current orientation for continuous rotation
-        current_orientation = accel_orientation.as_quat()
-
-    # Convert to arrays and stack accelerometer and gyroscope data
-    accel_data = np.array(accel_data)
-    gyro_data = np.array(gyro_data)
-    imu_noise_segment = np.hstack([accel_data, gyro_data])
+    # Stack accelerometer and gyroscope data to form the IMU noise segment
+    imu_noise_segment = np.hstack([rotated_accel, gyro_samples])
 
     return imu_noise_segment
 
