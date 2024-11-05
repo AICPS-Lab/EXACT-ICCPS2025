@@ -1,8 +1,11 @@
 import argparse
 
 from datasets.PhysiQ import PhysiQ
+from datasets.Transforms import IMUAugmentation
+from methods.EX import EX
 from methods.transformer import TransformerModel
 from methods.unet import EXACT_UNet, UNet
+import torch.nn as nn
 
 
 def get_model_args(args):
@@ -13,7 +16,68 @@ def get_model_args(args):
         args = EXACT_UNet.add_args(args)
     elif model == "transformer":
         args = TransformerModel.add_args(args)
+    elif model == "ex":
+        args = EX.add_args(args)
     return args
+
+
+def get_dataset_args(args):
+    dataset = args.parse_args().dataset.lower()
+    if dataset == "physiq":
+        args = PhysiQ.add_args(args)
+    return args
+
+
+def get_model(args):
+    args.model = args.model.lower()
+    if args.model == "unet":
+        model = UNet
+    elif args.model == "exact_unet":
+        model = EXACT_UNet
+    elif args.model == "transformer":
+        model = TransformerModel
+    elif args.model == "ex":
+        model = EX
+    else:
+        raise ValueError("Model not supported")
+
+    class UNet_wrapper(nn.Module):
+        def __init__(self):
+            super(UNet_wrapper, self).__init__()
+            self.net = model(args)
+
+        def forward(self, x):
+            x = x.float()
+            x = self.net(x)
+            x = x.permute(0, 2, 1)
+            return x.squeeze(1)
+
+    # Initialize model
+    model = UNet_wrapper().float()
+    return model
+
+
+def get_dataset(args):
+    dataset = args.dataset.lower()
+    if dataset == "physiq":
+        train_dataset = PhysiQ(
+            root=args.data_root,
+            split="train",
+            window_size=args.window_size,
+            bg_fg=None,
+            args=args,
+            transforms=IMUAugmentation(rotation_chance=0),
+        )
+        test_dataset = PhysiQ(
+            root=args.data_root,
+            split="test",
+            window_size=args.window_size,
+            bg_fg=None,
+            args=args,
+        )
+    else:
+        raise ValueError("Dataset not supported")
+    return train_dataset, test_dataset
 
 
 def get_args():
@@ -28,6 +92,25 @@ def get_args():
         default="data",
         help="Root directory for the dataset",
     )
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default="physiq",
+        help="Dataset to use for training",
+    )
+    parser.add_argument(
+        "--in_channels",
+        type=int,
+        default=6,
+        help="Input channels for the model",
+    )
+    parser.add_argument(
+        "--out_channels",
+        type=int,
+        default=2,
+        help="Output channels for the model",
+    )
+    
     parser.add_argument(
         "--window_size",
         type=int,
@@ -110,7 +193,10 @@ def get_args():
         default=4,
         help="Interval for logging training metrics",
     )
-
+    parser.add_argument(
+        "--nowandb",
+        action="store_true",
+    )
     # WandB parameters
     parser.add_argument(
         "--wandb_project", type=str, default="EXACT", help="WandB project name"
@@ -125,7 +211,7 @@ def get_args():
     )
 
     # Add PhysiQ-specific arguments
-    parser = PhysiQ.add_args(parser)
+    parser = get_dataset_args(parser)
     parser = get_model_args(parser)
     # model = get_model(parser.parse_args())
 

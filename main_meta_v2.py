@@ -16,22 +16,19 @@ import higher
 import wandb
 
 from datasets.DenseLabelTaskSampler import DenseLabelTaskSampler
-from datasets.PhysiQ import PhysiQ
 from torch.utils.data import DataLoader
-from datasets.Transforms import IMUAugmentation
-from methods.transformer import TransformerModel
-from methods.unet import EXACT_UNet
-from until_argparser import get_args
+
+from until_argparser import get_args, get_dataset, get_model
 from loss_fn import (
     dice_coefficient_time_series,
     euclidean_distance_time_series,
     iou_time_series,
 )
-from methods import UNet
+from methods import EX, UNet
 from utils_metrics import visualize_softmax
 
 
-def train(db, net, epoch, args, wandb_run):
+def train(db, net, epoch, args, wandb_run=None):
     # Initialize WandB with the provided project name
 
     # Move the model to the specified device
@@ -96,20 +93,20 @@ def train(db, net, epoch, args, wandb_run):
             print(
                 f"[Epoch {i:.2f}] Train Loss: {qry_losses:.2f} | Acc: {qry_accs:.2f} | Time: {iter_time:.2f}"
             )
-
-        wandb_run.log(
-            {
-                "train/epoch": i,
-                "train/loss": qry_losses,
-                "train/acc": qry_accs,
-                "train/time": time.time(),
-            }
-        )
+        if wandb_run is not None:
+            wandb_run.log(
+                {
+                    "train/epoch": i,
+                    "train/loss": qry_losses,
+                    "train/acc": qry_accs,
+                    "train/time": time.time(),
+                }
+            )
     # wandb.finish()
     return
 
 
-def test(db, net, epoch, args, wandb_r):
+def test(db, net, epoch, args, wandb_r=None):
     # Crucially in our testing procedure here, we do *not* fine-tune
     # the model during testing for simplicity.
     # Most research papers using MAML for this task do an extra
@@ -167,60 +164,23 @@ def test(db, net, epoch, args, wandb_r):
         f"[Epoch {epoch + 1:.2f}] Test Loss: {qry_losses:.2f} | Acc: {qry_accs:.2f}"
     )
 
-    # Log results
-    wandb_r.log(
-        {
-            "test/epoch": epoch + 1,
-            "test/loss": qry_losses,
-            "test/acc": qry_accs,
-            "test/time": time.time(),
-        }
-    )
+    if wandb_r is not None:
+        # Log results
+        wandb_r.log(
+            {
+                "test/epoch": epoch + 1,
+                "test/loss": qry_losses,
+                "test/acc": qry_accs,
+                "test/time": time.time(),
+            }
+        )
     return qry_losses, qry_accs
 
-
-def get_model(args):
-    args.model = args.model.lower()
-    if args.model == "unet":
-        model = UNet
-    elif args.model == "exact_unet":
-        model = EXACT_UNet
-    elif args.model == "transformer":
-        model = TransformerModel
-
-    class UNet_wrapper(nn.Module):
-        def __init__(self):
-            super(UNet_wrapper, self).__init__()
-            self.net = model(args)
-
-        def forward(self, x):
-            x = x.float()
-            x = self.net(x)
-            x = x.permute(0, 2, 1)
-            return x.squeeze(1)
-
-    # Initialize model
-    model = UNet_wrapper().float()
-    return model
 
 
 def main(args):
     # Initialize datasets
-    train_dataset = PhysiQ(
-        root=args.data_root,
-        split="train",
-        window_size=args.window_size,
-        bg_fg=None,
-        args=args,
-        transforms=IMUAugmentation(rotation_chance=0)
-    )
-    test_dataset = PhysiQ(
-        root=args.data_root,
-        split="test",
-        window_size=args.window_size,
-        bg_fg=None,
-        args=args,
-    )
+    train_dataset, test_dataset = get_dataset(args)
 
     # Initialize samplers
     train_sampler = DenseLabelTaskSampler(
@@ -260,17 +220,19 @@ def main(args):
 
     # Define the model architecture
     model = get_model(args)
-
+    
     model.to(args.device)  # Move model to specified device
 
     # Initialize meta optimizer
     args.meta_opt = torch.optim.Adam(model.parameters(), lr=args.lr)
-    run = wandb.init(
-        project=args.wandb_project,
-        config=vars(args),
-    )
-    run.name = args.model + "-" + run.name
-
+    if not args.nowandb:
+        run = wandb.init(
+            project=args.wandb_project,
+            config=vars(args),
+        )
+        run.name = args.model + "-" + run.name
+    else:
+        run = None
     # Training loop
     loss = np.inf
     for epoch in range(args.n_epochs):
@@ -280,12 +242,13 @@ def main(args):
         if qry_loss < loss:
             loss = qry_loss
             torch.save(model.state_dict(), "saved_model/" + run.name + ".pth")
+    if not args.nowandb:
+        artifact = wandb.Artifact("model", type="model")
+        artifact.add_file("saved_model/" + run.name + ".pth")
+        run.log_artifact(artifact)
 
-    artifact = wandb.Artifact("model", type="model")
-    artifact.add_file("saved_model/" + run.name + ".pth")
-    run.log_artifact(artifact)
-
-    run.finish()
+        run.finish()
+    return
 
 
 if __name__ == "__main__":

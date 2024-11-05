@@ -127,7 +127,16 @@ class MultiHeadCrossAttention1D(nn.Module):
 
 
 class EX(nn.Module):
-    def __init__(self, in_channels, out_channels, num_heads=8, embed_dim=256):
+    @staticmethod
+    def add_args(parser):
+        parser.add_argument("--embed_dim", type=int, default=256)
+        parser.add_argument("--num_heads", type=int, default=8)
+        return parser
+    def __init__(self, args):
+        embed_dim = args.embed_dim
+        num_heads = args.num_heads
+        in_channels = args.in_channels
+        out_channels = args.out_channels
         super(EX, self).__init__()
         self.embed_dim = embed_dim
 

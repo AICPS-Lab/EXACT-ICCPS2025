@@ -45,9 +45,7 @@ class UpConv(nn.Module):
 class UNet(nn.Module):
     @staticmethod
     def add_args(parser):
-        parser.add_argument("--in_channels", type=int, default=6, help="Input channels for the model")
-        parser.add_argument("--out_channels", type=int, default=2, help="Output channels for the model")
-        return parser
+        pass
     def __init__(self, args):
         in_channels = args.in_channels
         out_channels = args.out_channels
