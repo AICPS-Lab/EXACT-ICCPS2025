@@ -5,7 +5,7 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset
 
-from utilities import seed
+from utilities import *
 from .QueryDataset import QueryDataset
 import os
 import argparse
@@ -213,7 +213,7 @@ class PhysiQ(QueryDataset):
                     dense_label.append([original_label] * df_np.shape[0])
 
                 if self.args.add_side_noise:
-                    noise = self.generate_noise(df_np.shape)
+                    noise = self.generate_noise(df_np, self.args.noise_type)
                     file.append(noise)
                     dense_label.append([-1] * noise.shape[0])
 
@@ -245,37 +245,49 @@ class PhysiQ(QueryDataset):
 
     def generate_noise(
         self,
-        noise_shape,
-        length_mult_min=0,
-        length_mult_max=2,
+        noise,
+        noise_type,
+        max_length=50,
+        reference_length=10,
         mu=0,
         sigma=0.05,
+        
     ):
         """
-        generate noise with given shape
-        length of noise can be varied by multiplying the length of the noise with a random number between length_mult_min and length_mult_max
+        Generate noise with given shape
+        The length of the noise can vary by selecting a random length up to max_length.
 
-        noise_shape: tuple (T, 6) base shape of the noise
-        length_mult_min: float minimum multiplier for the length of the noise
-        length_mult_max: float maximum multiplier for the length of the noise
-        mu: float mean of the noise
-        sigma: float standard deviation of the noise
+        Parameters:
+            noise (array): Base noise array to take reference values from.
+            max_length (int): Maximum possible length of the generated noise.
+            reference_length (int): Number of rows used to calculate the baseline min and max.
+            mu (float): Mean for white noise.
+            sigma (float): Standard deviation for white noise.
         """
-        random_length_multiplier = np.random.uniform(
-            length_mult_min, length_mult_max
-        )
+        # Define the shape of the new noise array with a random length up to max_length
         noise_shape = (
-            int(random_length_multiplier * noise_shape[0]),
-            noise_shape[1],
+            np.random.randint(1, max_length + 1),  # Random length between 1 and max_length
+            noise.shape[1],
         )
-        noise_shape = (min(50, noise_shape[0]), noise_shape[1])
-        # generate white noise
-        if self.args.noise_type == "white":
-            # random length = float from 0 to 2
+
+        # Generate noise based on the selected noise type
+        if noise_type == "white":
+            # Generate white noise with normal distribution
             noise = np.random.normal(mu, sigma, noise_shape)
+        elif noise_type == "static":
+            # Generate static pause noise using the last reference_length rows
+            noise = static_pause(noise, reference_length, noise_shape)
+        elif noise_type == "idle":
+            noise = idle_movement(noise, reference_length, noise_shape)
+            
+        elif noise_type == "all":
+            # randomly pick one:
+            noise_type = random.choice(["white", "static", "idle"])
+            noise = self.generate_noise(noise, noise_type, max_length, reference_length, mu, sigma)
+            
         else:
             raise NotImplementedError(
-                f"Noise type {self.args.noise_type} is not implemented"
+                f"Noise type {noise_type} is not implemented"
             )
 
         return noise
