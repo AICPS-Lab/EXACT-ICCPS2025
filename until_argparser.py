@@ -8,8 +8,8 @@ from methods.unet import EXACT_UNet, UNet
 import torch.nn as nn
 
 
-def get_model_args(args):
-    model = args.parse_args().model.lower()
+def get_model_args(args, preliminary_args):
+    model = preliminary_args.model.lower()
     if model == "unet":
         args = UNet.add_args(args)
     elif model == "exact_unet":
@@ -21,8 +21,9 @@ def get_model_args(args):
     return args
 
 
-def get_dataset_args(args):
-    dataset = args.parse_args().dataset.lower()
+def get_dataset_args(args, preliminary_args):
+    # without parse args to get dataset:
+    dataset = preliminary_args.dataset.lower()
     if dataset == "physiq":
         args = PhysiQ.add_args(args)
     return args
@@ -209,10 +210,15 @@ def get_args():
         default="unet",
         help="Model to use for training",
     )
+    preliminary_parser = argparse.ArgumentParser(add_help=False)
+    preliminary_parser.add_argument("--dataset", type=str, default="physiq", help="Specify the dataset")
+    preliminary_parser.add_argument("--model", type=str, default="unet", help="Specify the model")
+    # Parse known arguments to extract the dataset
+    preliminary_args, _ = preliminary_parser.parse_known_args()
 
     # Add PhysiQ-specific arguments
-    parser = get_dataset_args(parser)
-    parser = get_model_args(parser)
+    parser = get_dataset_args(parser, preliminary_args)
+    parser = get_model_args(parser, preliminary_args)
     # model = get_model(parser.parse_args())
 
     return parser.parse_args()
