@@ -267,7 +267,7 @@ def generate_sudden_change(noise, noise_shape, intensity=2.0, peak_duration=5):
 
     # Initialize the sudden change segment with baseline values
     sudden_change = np.full(noise_shape, baseline_mean)
-
+    print(noise_shape[0], peak_duration)
     # Determine the start of the peak within the segment
     peak_start = np.random.randint(0, noise_shape[0] - peak_duration)
 
