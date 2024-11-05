@@ -279,7 +279,8 @@ class PhysiQ(QueryDataset):
             noise = static_pause(noise, reference_length, noise_shape)
         elif noise_type == "idle":
             noise = idle_movement(noise, reference_length, noise_shape)
-            
+        elif noise_type == "incident_movement":
+            noise = incident_movement(noise, reference_length, noise_shape)
         elif noise_type == "all":
             # randomly pick one:
             noise_type = random.choice(["white", "static", "idle"])
@@ -289,7 +290,6 @@ class PhysiQ(QueryDataset):
             raise NotImplementedError(
                 f"Noise type {noise_type} is not implemented"
             )
-
         return noise
 
     def if_npy_exists(self, split):

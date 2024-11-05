@@ -248,3 +248,33 @@ def incident_movement(noise, reference_length, noise_shape, directional_bias=0.1
 
 def environmental_movement(noise, reference_length, noise_shape, directional_bias=0.1):
     raise NotImplementedError
+
+def generate_sudden_change(noise, noise_shape, intensity=2.0, peak_duration=5):
+    """
+    Generate a sudden change or quick peak noise segment.
+    
+    Parameters:
+        noise (array): Base noise array to reference recent sensor values.
+        noise_shape (tuple): Desired shape of the generated sudden change segment.
+        intensity (float): Multiplier to control the magnitude of the peak.
+        peak_duration (int): Duration of the peak within the noise_shape.
+        
+    Returns:
+        array: Generated sudden change noise segment.
+    """
+    # Calculate baseline from the last few rows for smooth transition
+    baseline_mean = noise[-5:, :].mean(axis=0, keepdims=True)
+
+    # Initialize the sudden change segment with baseline values
+    sudden_change = np.full(noise_shape, baseline_mean)
+
+    # Determine the start of the peak within the segment
+    peak_start = np.random.randint(0, noise_shape[0] - peak_duration)
+
+    # Generate a sharp, sudden peak in a random direction on each axis
+    peak_values = intensity * np.random.uniform(-1, 1, (peak_duration, noise_shape[1]))
+
+    # Insert the peak into the sudden change segment
+    sudden_change[peak_start:peak_start + peak_duration, :] += peak_values
+
+    return sudden_change
