@@ -89,7 +89,7 @@ def train(db, net, epoch, args, wandb_run=None):
         i = epoch + float(batch_idx) / args.n_tasks
         iter_time = time.time() - start_time
 
-        if batch_idx % args.log_interval == 0:
+        if wandb_run is None and batch_idx % args.log_interval == 0:
             print(
                 f"[Epoch {i:.2f}] Train Loss: {qry_losses:.2f} | Acc: {qry_accs:.2f} | Time: {iter_time:.2f}"
             )
@@ -222,7 +222,7 @@ def main(args):
     model = get_model(args)
     
     model.to(args.device)  # Move model to specified device
-
+    print("trainnable parameters: ", sum(p.numel() for p in model.parameters() if p.requires_grad))
     # Initialize meta optimizer
     args.meta_opt = torch.optim.Adam(model.parameters(), lr=args.lr)
     if not args.nowandb:
