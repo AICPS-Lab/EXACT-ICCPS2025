@@ -7,6 +7,8 @@ from methods.transformer import TransformerModel
 from methods.unet import EXACT_UNet, UNet
 import torch.nn as nn
 
+from utilities import seed
+
 
 def get_model_args(args, preliminary_args):
     model = preliminary_args.model.lower()
@@ -78,6 +80,7 @@ def get_dataset(args):
         )
     else:
         raise ValueError("Dataset not supported")
+    seed(args.seed)
     return train_dataset, test_dataset
 
 
@@ -99,13 +102,19 @@ def get_args():
         default="physiq",
         help="Dataset to use for training",
     )
-    
+
     """Add dataset-specific arguments to the parser."""
     parser.add_argument(
         "--shuffle",
         type=str,
         default="random",
         help="Shuffle the data on each subject",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="Seed for shuffling the data",
     )
     parser.add_argument(
         "--dataset_seed",
@@ -121,11 +130,10 @@ def get_args():
     parser.add_argument(
         "--noise_type",
         type=str,
-        default="white",
+        default="all",
         help="Type of noise to add to the data",
     )
-    
-    
+
     parser.add_argument(
         "--in_channels",
         type=int,
@@ -138,7 +146,7 @@ def get_args():
         default=2,
         help="Output channels for the model",
     )
-    
+
     parser.add_argument(
         "--window_size",
         type=int,
@@ -215,15 +223,15 @@ def get_args():
         default=4,
         help="Interval for logging training metrics",
     )
-    
+
     # WandB parameters
     parser.add_argument(
         "--wandb_project", type=str, default="EXACT", help="WandB project name"
     )
     parser.add_argument(
-            "--nowandb",
-            action="store_true",
-        )
+        "--nowandb",
+        action="store_true",
+    )
     parser.add_argument(
         "-m",
         "--model",
@@ -232,8 +240,12 @@ def get_args():
         help="Model to use for training",
     )
     preliminary_parser = argparse.ArgumentParser(add_help=False)
-    preliminary_parser.add_argument("--dataset", type=str, default="physiq", help="Specify the dataset")
-    preliminary_parser.add_argument("--model", type=str, default="unet", help="Specify the model")
+    preliminary_parser.add_argument(
+        "--dataset", type=str, default="physiq", help="Specify the dataset"
+    )
+    preliminary_parser.add_argument(
+        "--model", type=str, default="unet", help="Specify the model"
+    )
     # Parse known arguments to extract the dataset
     preliminary_args, _ = preliminary_parser.parse_known_args()
 

@@ -15,7 +15,7 @@ DEFAULT_INFO = "data is a dictionary with keys as subject and values as list of 
 
 class PhysiQ(QueryDataset):
     # TODO: for testing we should also have per subject fsl cross validation basically
-
+    """PhysiQ dataset has [S1]_[E1]_[left-right hand]_[variation (ragen of motion)]_[stability]_[repetition_id].csv files"""
     DATASET_NAME = "physiq"
 
     def __init__(
@@ -63,7 +63,7 @@ class PhysiQ(QueryDataset):
                             file.split("_")[0],
                             file.split("_")[1],
                             file.split("_")[3],
-                        ) # unique identifier (subject, exercise, rom)
+                        )  # unique identifier (subject, exercise, rom)
                         if unique_identifier not in subjLabel_to_data:
                             subjLabel_to_data[unique_identifier] = []
                         subjLabel_to_data[unique_identifier].append(
@@ -84,8 +84,13 @@ class PhysiQ(QueryDataset):
         for k, v in subjLabel_to_data.items():
             # randomly sample 20 percent of the data for testing:
             random_indices = random.sample(range(len(v)), int(0.2 * len(v)))
-            subj = (k[0], k[1])  # NOTE: k[0]
-            ind_label = (k[1], k[2])
+            # this is used to separate the data for sliding windows,
+            # most important for how it would be separated and combined:
+            subj = (k[0], k[1])
+            ind_label = (
+                k[1],
+                k[2],
+            )  # this is used to create a medium level of labels
             if subj not in train_data:
                 train_data[subj] = []
                 train_label[subj] = []
@@ -165,8 +170,8 @@ class PhysiQ(QueryDataset):
             if self.args.shuffle == "random":
                 combined = list(zip(v, k_label))
                 random.shuffle(combined)
-                #TODO: sorted by increasing rom value so that it is creating a pt progression of the exercise
-                
+                # TODO: sorted by increasing rom value so that it is creating a pt progression of the exercise
+
             else:
                 combined = list(zip(v, k_label))
 
@@ -211,7 +216,6 @@ class PhysiQ(QueryDataset):
         res_exer_label = torch.cat(res_exer_label, axis=0)
 
         return res_data, res_label, res_exer_label
-
 
     def if_npy_exists(self, split):
         return os.path.exists(

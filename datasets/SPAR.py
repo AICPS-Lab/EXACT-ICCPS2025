@@ -15,6 +15,8 @@ DEFAULT_INFO = "data is a dictionary with keys as subject and values as list of 
 
 class SPAR(QueryDataset):
     DATASET_NAME = "spar"
+    """SPAR dataset has [Subject]_[Exercise]_[left-right hand]_[repetition].csv files
+    """
 
     def __init__(
         self,
@@ -66,8 +68,15 @@ class SPAR(QueryDataset):
         test_label = {}
         for k, v in subjLabel_to_data.items():
             random_indices = random.sample(range(len(v)), int(0.2 * len(v)))
-            subj = (k[0], k[1])
-            ind_label = (k[1], k[2])
+            subj = (
+                k[0],
+                k[1],
+                k[2],
+            )  # this is used to separate the data for sliding windows
+            ind_label = (
+                k[1],
+                k[2],
+            )  # this is used to create a medium level of labels
             if subj not in train_data:
                 train_data[subj] = []
                 train_label[subj] = []
@@ -138,10 +147,11 @@ class SPAR(QueryDataset):
             if self.args.shuffle == "random":
                 # bc there isnt a variation we cant shuffle on hand but only on the id:
                 combined = list(zip(v, k_label))
-            else:  # sorted
-
+            elif self.args.shuffle == "sorted":
                 combined = list(zip(v, k_label))  # zip the data and the label
                 combined = sort_filename(combined)
+            else:
+                raise NotImplementedError
             for ind, (filename, original_label) in enumerate(combined):
                 df_np = pd.read_csv(filename).to_numpy()[
                     :, 1:7
@@ -166,7 +176,11 @@ class SPAR(QueryDataset):
             res_label.append(sdense_label)
             res_exer_label.append(
                 torch.tensor(
-                    [exercise_label.index(label_to_exer_hand[original_label][0])]
+                    [
+                        exercise_label.index(
+                            label_to_exer_hand[original_label][0]
+                        )
+                    ]
                     * sfile.shape[0]
                 )
             )

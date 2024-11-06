@@ -25,7 +25,7 @@ from loss_fn import (
     iou_time_series,
 )
 from methods import EX, UNet
-from utilities import model_exception_handler
+from utilities import model_exception_handler, seed
 from utils_metrics import visualize_softmax
 
 
@@ -181,7 +181,7 @@ def test(db, net, epoch, args, wandb_r=None):
 def main(args):
     # Initialize datasets
     train_dataset, test_dataset = get_dataset(args)
-
+    seed(args.seed)
     # Initialize samplers
     train_sampler = DenseLabelTaskSampler(
         train_dataset,
