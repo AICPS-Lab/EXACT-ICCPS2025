@@ -141,62 +141,63 @@ class EX(nn.Module):
         self.embed_dim = embed_dim
 
         # Encoder with Channel Attention
-        self.encoder1 = AttentionConvBlock1D(in_channels, 64)
-        self.encoder2 = AttentionConvBlock1D(64, 128)
-        self.encoder3 = AttentionConvBlock1D(128, 256)
-        self.encoder4 = AttentionConvBlock1D(256, embed_dim)
+        self.encoder1 = AttentionConvBlock1D(in_channels, embed_dim)
+        self.encoder2 = AttentionConvBlock1D(embed_dim, embed_dim *2)
+        self.encoder3 = AttentionConvBlock1D(embed_dim *2, embed_dim *4)
+        self.encoder4 = AttentionConvBlock1D(embed_dim *4, embed_dim)
 
         self.pool = nn.MaxPool1d(2, 2)
 
         # Attention modules
         self.mhsa = MultiHeadSelfAttention1D(embed_dim, num_heads)
         self.mhca4 = MultiHeadCrossAttention1D(
-            embed_dim, 256, embed_dim, num_heads
+            embed_dim, embed_dim *4, embed_dim, num_heads
         )
-        self.mhca3 = MultiHeadCrossAttention1D(256, 128, embed_dim, num_heads)
-        self.mhca2 = MultiHeadCrossAttention1D(128, 64, embed_dim, num_heads)
+        self.mhca3 = MultiHeadCrossAttention1D(embed_dim *4, embed_dim *2, embed_dim, num_heads)
+        self.mhca2 = MultiHeadCrossAttention1D(embed_dim *2, embed_dim, embed_dim, num_heads)
 
         # Decoder with Channel Attention
-        self.decoder4 = AttentionConvBlock1D(embed_dim + 256, 256)
-        self.decoder3 = AttentionConvBlock1D(embed_dim + 128, 128)
-        self.decoder2 = AttentionConvBlock1D(embed_dim + 64, 64)
-        self.decoder1 = nn.Conv1d(64, out_channels, kernel_size=1)
+        self.decoder4 = AttentionConvBlock1D(self.embed_dim + embed_dim *4, embed_dim *4)
+        self.decoder3 = AttentionConvBlock1D(embed_dim * 2 + embed_dim * 2, embed_dim * 2)
+# embed_dim * 2 + embed_dim * 2 = 128 + 128 = 256
+        self.decoder2 = AttentionConvBlock1D(embed_dim *2 + embed_dim, embed_dim)
+        self.decoder1 = nn.Conv1d(embed_dim, out_channels, kernel_size=1)
 
         # Upsampling layers
         self.upconv4 = nn.ConvTranspose1d(
             embed_dim, embed_dim, kernel_size=2, stride=2
         )
-        self.upconv3 = nn.ConvTranspose1d(256, 256, kernel_size=2, stride=2)
-        self.upconv2 = nn.ConvTranspose1d(128, 128, kernel_size=2, stride=2)
+        self.upconv3 = nn.ConvTranspose1d(embed_dim*4, embed_dim*2, kernel_size=2, stride=2)
+        self.upconv2 = nn.ConvTranspose1d(embed_dim*2, embed_dim*2, kernel_size=2, stride=2)
 
     def forward(self, x):
-        x = x.permute(0, 2, 1)  # [B, S, in_channels]
+        x = x.permute(0, 2, 1)  # [B, in_channels, S]
+ 
         # Encoder
-        e1 = self.encoder1(x)  # [B, 64, S]
-        e2 = self.encoder2(self.pool(e1))  # [B, 128, S/2]
-        e3 = self.encoder3(self.pool(e2))  # [B, 256, S/4]
-        e4 = self.encoder4(self.pool(e3))  # [B, embed_dim, S/8]
+        e1 = self.encoder1(x)                        # [B, 64, S]
+        e2 = self.encoder2(self.pool(e1))            # [B, 128, S/2]
 
-        # Self-Attention in Bottleneck
-        e4 = self.mhsa(e4)  # [B, embed_dim, S/8]
+        e3 = self.encoder3(self.pool(e2))            # [B, 256, S/4]
+        e4 = self.encoder4(self.pool(e3))            # [B, embed_dim, S/8]
 
-        # Decoder with Cross-Attention
-        d4 = self.upconv4(e4)  # [B, embed_dim, S/4]
-        e3_mhca = self.mhca4(d4, e3)  # e3_mhca: [B, embed_dim, S/4]
-        d4 = torch.cat([e3_mhca, e3], dim=1)  # [B, embed_dim + 256, S/4]
-        d4 = self.decoder4(d4)  # [B, 256, S/4]
+        # Self-Attention in Bottleneck (optional)
+        e4 = self.mhsa(e4)                           # [B, embed_dim, S/8]
 
-        d3 = self.upconv3(d4)  # [B, 256, S/2]
-        e2_mhca = self.mhca3(d3, e2)  # e2_mhca: [B, embed_dim, S/2]
-        d3 = torch.cat([e2_mhca, e2], dim=1)  # [B, embed_dim + 128, S/2]
-        d3 = self.decoder3(d3)  # [B, 128, S/2]
+        # Decoder with Skip Connections
+        d4 = self.upconv4(e4)                        # [B, embed_dim, S/4]
+        d4 = torch.cat([d4, e3], dim=1)              # [B, embed_dim + 256, S/4]
 
-        d2 = self.upconv2(d3)  # [B, 128, S]
-        e1_mhca = self.mhca2(d2, e1)  # e1_mhca: [B, embed_dim, S]
-        d2 = torch.cat([e1_mhca, e1], dim=1)  # [B, embed_dim + 64, S]
-        d2 = self.decoder2(d2)  # [B, 64, S]
+        d4 = self.decoder4(d4)                       # [B, 256, S/4]
+
+        d3 = self.upconv3(d4)                        # [B, 256, S/2]
+        d3 = torch.cat([d3, e2], dim=1)              # [B, 256 + 128, S/2]
+        d3 = self.decoder3(d3)                       # [B, 128, S/2]
+
+        d2 = self.upconv2(d3)                        # [B, 128, S]
+        d2 = torch.cat([d2, e1], dim=1)              # [B, 128 + 64, S]
+        d2 = self.decoder2(d2)                       # [B, 64, S]
 
         # Final output layer
-        d1 = self.decoder1(d2)  # [B, out_channels, S]
-        d1 = d1.permute(0, 2, 1)
+        d1 = self.decoder1(d2)                       # [B, out_channels, S]
+        d1 = d1.permute(0, 2, 1)                     # [B, S, out_channels]
         return d1

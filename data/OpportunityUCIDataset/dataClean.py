@@ -24,37 +24,37 @@ activities = {1: 'stand',
 
 def read_files():
     #pick partial data from dataset
-    list_of_files = ['./datasets/OpportunityUCIDataset/dataset/S1-ADL1.dat',
-                     './datasets/OpportunityUCIDataset/dataset/S1-ADL2.dat',
-                     './datasets/OpportunityUCIDataset/dataset/S1-ADL3.dat',
-                     './datasets/OpportunityUCIDataset/dataset/S1-ADL4.dat',
-                     './datasets/OpportunityUCIDataset/dataset/S2-ADL1.dat',
-                     './datasets/OpportunityUCIDataset/dataset/S2-ADL2.dat',
-                     './datasets/OpportunityUCIDataset/dataset/S2-ADL3.dat',
-                     './datasets/OpportunityUCIDataset/dataset/S2-ADL4.dat',
-                     './datasets/OpportunityUCIDataset/dataset/S3-ADL1.dat',
-                     './datasets/OpportunityUCIDataset/dataset/S3-ADL2.dat',
-                     './datasets/OpportunityUCIDataset/dataset/S3-ADL3.dat',
-                     './datasets/OpportunityUCIDataset/dataset/S3-ADL4.dat',
-                     './datasets/OpportunityUCIDataset/dataset/S4-ADL1.dat',
-                     './datasets/OpportunityUCIDataset/dataset/S4-ADL2.dat',
-                     './datasets/OpportunityUCIDataset/dataset/S4-ADL3.dat',
-                     './datasets/OpportunityUCIDataset/dataset/S4-ADL4.dat',                 
+    list_of_files = ['./data/OpportunityUCIDataset/dataset/S1-ADL1.dat',
+                     './data/OpportunityUCIDataset/dataset/S1-ADL2.dat',
+                     './data/OpportunityUCIDataset/dataset/S1-ADL3.dat',
+                     './data/OpportunityUCIDataset/dataset/S1-ADL4.dat',
+                     './data/OpportunityUCIDataset/dataset/S2-ADL1.dat',
+                     './data/OpportunityUCIDataset/dataset/S2-ADL2.dat',
+                     './data/OpportunityUCIDataset/dataset/S2-ADL3.dat',
+                     './data/OpportunityUCIDataset/dataset/S2-ADL4.dat',
+                     './data/OpportunityUCIDataset/dataset/S3-ADL1.dat',
+                     './data/OpportunityUCIDataset/dataset/S3-ADL2.dat',
+                     './data/OpportunityUCIDataset/dataset/S3-ADL3.dat',
+                     './data/OpportunityUCIDataset/dataset/S3-ADL4.dat',
+                     './data/OpportunityUCIDataset/dataset/S4-ADL1.dat',
+                     './data/OpportunityUCIDataset/dataset/S4-ADL2.dat',
+                     './data/OpportunityUCIDataset/dataset/S4-ADL3.dat',
+                     './data/OpportunityUCIDataset/dataset/S4-ADL4.dat',                 
                      ]
     
-    list_of_drill = ['./datasets/OpportunityUCIDataset/dataset/S1-Drill.dat',
-                     './datasets/OpportunityUCIDataset/dataset/S2-Drill.dat',
-                     './datasets/OpportunityUCIDataset/dataset/S3-Drill.dat',
-                     './datasets/OpportunityUCIDataset/dataset/S4-Drill.dat',
+    list_of_drill = ['./data/OpportunityUCIDataset/dataset/S1-Drill.dat',
+                     './data/OpportunityUCIDataset/dataset/S2-Drill.dat',
+                     './data/OpportunityUCIDataset/dataset/S3-Drill.dat',
+                     './data/OpportunityUCIDataset/dataset/S4-Drill.dat',
                      ]
     col_names = []
-    with open('./datasets/OpportunityUCIDataset/col_names_original','r') as f:# a file with all column names was created
+    with open('./data/OpportunityUCIDataset/col_names_original','r') as f:# a file with all column names was created
         lines = f.read().splitlines()
         for line in lines:
             col_names.append(line)
     print(len(col_names))
     kept_col_names = []
-    with open('./datasets/OpportunityUCIDataset/col_names','r') as f:# a file with only kept column names was created
+    with open('./data/OpportunityUCIDataset/col_names','r') as f:# a file with only kept column names was created
         lines = f.read().splitlines()
         for line in lines:
             kept_col_names.append(line)
@@ -260,8 +260,8 @@ if __name__ == "__main__":
     axs[1].set_title('inputs g')
     axs[2].plot(data_loco['labels'])
     axs[2].set_title('labels')
-    plt.show()
-    np.save('./datasets/OpportunityUCIDataset/loco_2_mask.npy', data_loco)
+    # plt.show()
+    # np.save('./datasets/OpportunityUCIDataset/loco_2_mask.npy', data_loco)
     
     # save_data(data_loco,loco_filename)
     
