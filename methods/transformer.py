@@ -13,7 +13,7 @@ class TransformerModel(nn.Module):
     @staticmethod
     def add_args(parser):
         parser.add_argument("--ninp", type=int, default=64, help="Input channels for the model")
-        parser.add_argument("--num_heads", type=int, default=1, help="Number of heads in the transformer")
+        parser.add_argument("--num_heads", type=int, default=4, help="Number of heads in the transformer")
         parser.add_argument("--embed_dims", type=int, default=256, help="Embedding dimensions in the transformer")
         parser.add_argument("--num_layers", type=int, default=6, help="Number of layers in the transformer")
         parser.add_argument("--dropout", type=float, default=0.1, help="Dropout in the transformer")
