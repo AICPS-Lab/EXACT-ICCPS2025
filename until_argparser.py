@@ -250,7 +250,7 @@ def get_args():
     preliminary_args, _ = preliminary_parser.parse_known_args()
 
     # Add PhysiQ-specific arguments
-    parser = get_dataset_args(parser, preliminary_args)
+    # parser = get_dataset_args(parser, preliminary_args)
     parser = get_model_args(parser, preliminary_args)
     # model = get_model(parser.parse_args())
 

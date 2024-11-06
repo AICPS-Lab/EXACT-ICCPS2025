@@ -40,7 +40,18 @@ if __name__ == "__main__":
     # seed(42)
     args = get_args()  # Get arguments from the argparse
 
-    # dataset = PhysiQ(
+    dataset = PhysiQ(
+        root="data",
+        split="train",
+        window_size=1000,
+        bg_fg=None,
+        args=args,
+        transforms=IMUAugmentation(rotation_chance=0),
+        test_subject=1,
+        loocv=True
+    )
+    
+    # dataset = SPAR(
     #     root="data",
     #     split="train",
     #     window_size=1000,
@@ -48,15 +59,6 @@ if __name__ == "__main__":
     #     args=args,
     #     transforms=IMUAugmentation(rotation_chance=0),
     # )
-    
-    dataset = SPAR(
-        root="data",
-        split="train",
-        window_size=1000,
-        bg_fg=None,
-        args=args,
-        transforms=IMUAugmentation(rotation_chance=0),
-    )
 
     # for i in range(len(dataset)):
     #     print(dataset[i][1].unique())

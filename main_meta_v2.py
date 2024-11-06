@@ -20,9 +20,7 @@ from torch.utils.data import DataLoader
 
 from until_argparser import get_args, get_dataset, get_model
 from loss_fn import (
-    dice_coefficient_time_series,
-    euclidean_distance_time_series,
-    iou_time_series,
+    MetricsAccumulator,
 )
 from methods import EX, UNet
 from utilities import model_exception_handler, seed
@@ -35,6 +33,7 @@ def train(db, net, epoch, args, wandb_run=None):
     # Move the model to the specified device
     net.to(args.device)
     net.train()
+    compute_metrics = MetricsAccumulator(dir_name="train")
 
     for batch_idx in range(args.n_tasks):
         start_time = time.time()
@@ -53,7 +52,6 @@ def train(db, net, epoch, args, wandb_run=None):
         inner_opt = torch.optim.SGD(net.parameters(), lr=args.meta_lr)
 
         qry_losses = []
-        qry_accs = []
         args.meta_opt.zero_grad()
 
         for i in range(task_num):
@@ -71,38 +69,36 @@ def train(db, net, epoch, args, wandb_run=None):
                 qry_logits = fnet(x_qry[i])
                 qry_loss = F.cross_entropy(qry_logits, y_qry[i].long())
                 qry_losses.append(qry_loss.detach())
-
-                softmax_qry = F.softmax(qry_logits, dim=1)
-                softmax_qry = torch.argmax(softmax_qry, dim=1)
-                Dice_score = dice_coefficient_time_series(
-                    softmax_qry, y_qry[i].long()
+                string_score, score = compute_metrics.update(
+                    y_qry[i].long(), qry_logits
                 )
-
-                qry_accs.append(Dice_score)
-
                 # Backpropagation on query loss
                 qry_loss.backward()
 
         args.meta_opt.step()
 
         qry_losses = sum(qry_losses) / task_num
-        qry_accs = 100.0 * sum(qry_accs) / task_num
         i = epoch + float(batch_idx) / args.n_tasks
         iter_time = time.time() - start_time
 
         if wandb_run is None and batch_idx % args.log_interval == 0:
             print(
-                f"[Epoch {i:.2f}] Train Loss: {qry_losses:.2f} | Acc: {qry_accs:.2f} | Time: {iter_time:.2f}"
+                f"[Epoch {i:.2f}] Train Loss: {qry_losses:.2f} | Time: {iter_time:.2f}",
+                end=" | ",
             )
+            print(string_score)
+
+        res_dict = compute_metrics.compute()
+        res_dict.update(
+            {
+                "train/epoch": i,
+                "train/loss": qry_losses,
+                "train/time": time.time(),
+            }
+        )
         if wandb_run is not None:
-            wandb_run.log(
-                {
-                    "train/epoch": i,
-                    "train/loss": qry_losses,
-                    "train/acc": qry_accs,
-                    "train/time": time.time(),
-                }
-            )
+            wandb_run.log(res_dict)
+        compute_metrics.reset()
     # wandb.finish()
     return
 
@@ -118,8 +114,9 @@ def test(db, net, epoch, args, wandb_r=None):
     net.train()
     n_test_iter = args.n_tasks
 
+    compute_metrics = MetricsAccumulator(dir_name="test")
+
     qry_losses = []
-    qry_accs = []
 
     for batch_idx in range(n_test_iter):
         # Sample a batch of support and query images and labels
@@ -151,31 +148,27 @@ def test(db, net, epoch, args, wandb_r=None):
                     qry_logits, y_qry[i], reduction="none"
                 )
                 qry_losses.append(qry_loss.detach())
-                softmax_qry = F.softmax(qry_logits, dim=1)
-                softmax_qry = torch.argmax(softmax_qry, dim=1)
-                Dice_score = dice_coefficient_time_series(
-                    softmax_qry, y_qry[i].long()
+                string_score, score = compute_metrics.update(
+                    y_qry[i].long(), qry_logits
                 )
-                qry_accs.append(Dice_score)
 
     qry_losses = torch.cat(qry_losses).mean().item()
-    qry_accs = 100.0 * sum(qry_accs) / task_num / n_test_iter
 
-    print(
-        f"[Epoch {epoch + 1:.2f}] Test Loss: {qry_losses:.2f} | Acc: {qry_accs:.2f}"
+    print(f"[Epoch {epoch + 1:.2f}] Test Loss: {qry_losses:.2f}", end=" | ")
+    print(string_score)
+
+    res_dict = compute_metrics.compute()
+    res_dict.update(
+        {
+            "test/epoch": epoch + 1,
+            "test/loss": qry_losses,
+            "test/time": time.time(),
+        }
     )
-
     if wandb_r is not None:
         # Log results
-        wandb_r.log(
-            {
-                "test/epoch": epoch + 1,
-                "test/loss": qry_losses,
-                "test/acc": qry_accs,
-                "test/time": time.time(),
-            }
-        )
-    return qry_losses, qry_accs
+        wandb_r.log(res_dict)
+    return qry_losses, res_dict
 
 
 def main(args):

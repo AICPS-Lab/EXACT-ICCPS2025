@@ -1,21 +1,13 @@
-import random
-from matplotlib import pyplot as plt
-import numpy as np
+DEFAULT_INFO = "data is a dictionary with keys as subject and values as list of data files, label is a dictionary with keys as subject and values as list of labels, label_to_exer_rom is a list of tuples with each tuple as (exercise, rom)"
+
+# PhysiQ.py
+import os
+from .QueryDataset import QueryDataset
 import pandas as pd
 import torch
-from torch.utils.data import Dataset
-
-from utilities import *
-from .QueryDataset import QueryDataset
-import os
-import argparse
-
-DEFAULT_INFO = "data is a dictionary with keys as subject and values as list of data files, label is a dictionary with keys as subject and values as list of labels, label_to_exer_rom is a list of tuples with each tuple as (exercise, rom)"
 
 
 class PhysiQ(QueryDataset):
-    # TODO: for testing we should also have per subject fsl cross validation basically
-    """PhysiQ dataset has [S1]_[E1]_[left-right hand]_[variation (ragen of motion)]_[stability]_[repetition_id].csv files"""
     DATASET_NAME = "physiq"
 
     def __init__(
@@ -27,211 +19,48 @@ class PhysiQ(QueryDataset):
         bg_fg=None,
         args=None,
         transforms=None,
+        test_subject: int =None,
+        loocv=False,
     ):
         super(PhysiQ, self).__init__(
-            root, split, window_size, window_step, bg_fg, args, transforms
+            root=root,
+            split=split,
+            window_size=window_size,
+            window_step=window_step,
+            bg_fg=bg_fg,
+            args=args,
+            transforms=transforms,
+            test_subject=test_subject,
+            loocv=loocv,
         )
 
-    def _process_data(self):
+    def parse_filename(self, filename):
+        # PhysiQ filenames: [S1]_[E1]_[left-right hand]_[variation (range of motion)]_[stability]_[repetition_id].csv
+        parts = filename.rstrip('.csv').split('_')
+        if len(parts) < 6:
+            return None  # Filename does not match expected pattern
+        subj = parts[0]
+        exer = parts[1]
+        rom = parts[3]  # Range of motion
+        ind_label = (exer, rom)
+        unique_identifier = (subj, exer, rom)
+        return {
+            'subject': subj,
+            'ind_label': ind_label,
+            'unique_identifier': unique_identifier,
+        }
+
+    def get_dataset_name(self):
+        return self.DATASET_NAME
+
+    def default_data_folders(self):
+        # The PhysiQ dataset has multiple folders for each exercise
         folders = [
             "segment_sessions_one_repetition_data_E1",
             "segment_sessions_one_repetition_data_E2",
             "segment_sessions_one_repetition_data_E3",
             "segment_sessions_one_repetition_data_E4",
         ]
-        data_folder = os.path.join(self.root, self.DATASET_NAME)
-        # physiq dataset 4 exercises and each contains variation (rom), each variation will be one class
-        data = []
-        subject = []
-        subjLabel_to_data = {}
-        unique_indices = []
-        for folder in folders:
-            dirs = os.path.join(data_folder, folder)
-            # walk through the directory
-            # print(dirs)
-            for root, _, files in os.walk(dirs):
-                for file in files:
-                    # file is csv:
-                    if file.endswith(".csv"):
-                        data.append(os.path.join(root, file))
-                        subject.append(file.split("_")[0])
-                        ind_label = (
-                            file.split("_")[1],
-                            file.split("_")[3],
-                        )  # unique label (exercise, rom)
-                        unique_identifier = (
-                            file.split("_")[0],
-                            file.split("_")[1],
-                            file.split("_")[3],
-                        )  # unique identifier (subject, exercise, rom)
-                        if unique_identifier not in subjLabel_to_data:
-                            subjLabel_to_data[unique_identifier] = []
-                        subjLabel_to_data[unique_identifier].append(
-                            os.path.join(root, file)
-                        )
-                        if ind_label not in unique_indices:
-                            unique_indices.append(ind_label)
-        # print("subject: ", subject)
-        # print("Indices: ", unique_indices)
-        seed(self.args.dataset_seed)
-        train = {}
-        test = {}
-        train_data = {}
-        train_label = {}
-        test_data = {}
-        test_label = {}
+        return [os.path.join(self.root, self.DATASET_NAME, folder) for folder in folders]
 
-        for k, v in subjLabel_to_data.items():
-            # randomly sample 20 percent of the data for testing:
-            random_indices = random.sample(range(len(v)), int(0.2 * len(v)))
-            # this is used to separate the data for sliding windows,
-            # most important for how it would be separated and combined:
-            subj = (k[0], k[1])
-            ind_label = (
-                k[1],
-                k[2],
-            )  # this is used to create a medium level of labels
-            if subj not in train_data:
-                train_data[subj] = []
-                train_label[subj] = []
-                test_data[subj] = []
-                test_label[subj] = []
-            train_data[subj].extend(
-                [v[i] for i in range(len(v)) if i not in random_indices]
-            )
-            train_label[subj].extend(
-                [
-                    unique_indices.index(ind_label)
-                    for i in range(len(v))
-                    if i not in random_indices
-                ]
-            )
-            test_data[subj].extend(
-                [v[i] for i in range(len(v)) if i in random_indices]
-            )
-            test_label[subj].extend(
-                [
-                    unique_indices.index(ind_label)
-                    for i in range(len(v))
-                    if i in random_indices
-                ]
-            )
-        train["data"] = train_data
-        train["label"] = train_label
-        train["label_to_exer_rom"] = unique_indices
-        train["info"] = DEFAULT_INFO
-
-        test["data"] = test_data
-        test["label"] = test_label
-        test["label_to_exer_rom"] = unique_indices
-        test["info"] = DEFAULT_INFO
-        np.save(
-            os.path.join(self.root, self.DATASET_NAME, "train_data.npy"),
-            train,
-            allow_pickle=True,
-        )
-
-        np.save(
-            os.path.join(self.root, self.DATASET_NAME, "test_data.npy"),
-            test,
-            allow_pickle=True,
-        )
-
-        return
-
-    @staticmethod
-    def add_args(parser):
-        return parser
-
-    def load_data(self, split):
-        data = np.load(
-            os.path.join(self.root, self.DATASET_NAME, f"{split}_data.npy"),
-            allow_pickle=True,
-        ).item()
-        return data
-
-    def concanetate_data(self):
-        # TODO: CROSS VALIDATIon
-        seed(self.args.dataset_seed)
-        data = self.data["data"]
-        label = self.data["label"]
-        label_to_exer_rom = self.data["label_to_exer_rom"]
-        exercise_label = []
-        for i in range(len(label_to_exer_rom)):
-            if label_to_exer_rom[i][0] not in exercise_label:
-                exercise_label.append(label_to_exer_rom[i][0])
-        res_data = []
-        res_label = []
-        res_exer_label = []
-        for k, v in data.items():
-            file = []
-            dense_label = []
-            k_label = label[k]
-            if self.args.shuffle == "random":
-                combined = list(zip(v, k_label))
-                random.shuffle(combined)
-                # TODO: sorted by increasing rom value so that it is creating a pt progression of the exercise
-
-            else:
-                combined = list(zip(v, k_label))
-
-            for ind, (filename, original_label) in enumerate(combined):
-                df_np = pd.read_csv(filename).to_numpy()[
-                    :, 1:7
-                ]  # (T, 6), 1 repetition
-                file.append(df_np)
-
-                if self.bg_fg is not None:
-                    raise NotImplementedError
-                    # dense_label.append([1 if original_label == self.bg_fg else 0] * df_np.shape[0])
-                else:
-                    dense_label.append([original_label] * df_np.shape[0])
-
-                if self.args.add_side_noise:
-                    noise = self.generate_noise(df_np, self.args.noise_type)
-                    file.append(noise)
-                    dense_label.append([-1] * noise.shape[0])
-            file = np.concatenate(file, axis=0)
-            dense_label = np.concatenate(dense_label, axis=0)
-
-            if self.args.add_side_noise:
-                dense_label = (
-                    dense_label + 1
-                )  # from [-1, 0, 1, 2, 3 ...] to [0, 1, 2, 3, 4 ...]
-
-            sfile, sdense_label = self.sw(
-                torch.tensor(file), torch.tensor(dense_label)
-            )
-            res_data.append(sfile)
-            res_label.append(sdense_label)
-            res_exer_label.append(
-                torch.tensor(
-                    [exercise_label.index(label_to_exer_rom[original_label][0])]
-                    * sfile.shape[0]
-                )
-            )
-        res_data = torch.cat(res_data, axis=0)
-        res_label = torch.cat(res_label, axis=0)
-
-        res_exer_label = torch.cat(res_exer_label, axis=0)
-
-        return res_data, res_label, res_exer_label
-
-    def if_npy_exists(self, split):
-        return os.path.exists(
-            os.path.join(self.root, self.DATASET_NAME, f"{split}_data.npy")
-        )
-
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, idx):
-        if self.transforms is not None:
-            return (
-                self.transforms(self.data[idx]),
-                self.label[idx],
-                self.res_exer_label[idx],
-            )
-        # print(self.data[idx].shape, self.transforms(self.data[idx]).shape)
-
-        return self.data[idx], self.label[idx], self.res_exer_label[idx]
+    # Implement any dataset-specific methods if needed.

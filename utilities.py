@@ -359,20 +359,93 @@ def generate_sudden_change(noise, noise_length):
         peak_intensity=0.3,
     )
     return imu_noise_segment
-
-
-def generate_nonexercise(max_length=50):
+from scipy.spatial.transform import Slerp
+def interpolate_transition(data_start, data_end, num_steps):
+    """
+    Interpolates between two data points with quaternion slerp for orientation and
+    linear interpolation for accelerometer data.
     
+    Parameters:
+        data_start (array): Starting data point, shape (6,)
+        data_end (array): Ending data point, shape (6,)
+        num_steps (int): Number of interpolation steps.
+        
+    Returns:
+        array: Interpolated transition data, shape (num_steps, 6)
+    """
+    # Separate accelerometer and gyroscope/orientation data
+    accel_start, gyro_start = data_start[:3], data_start[3:]
+    accel_end, gyro_end = data_end[:3], data_end[3:]
+    
+    # Linear interpolation for accelerometer
+    accel_interp = np.linspace(accel_start, accel_end, num_steps)
+    
+    # Quaternion interpolation for gyroscope/orientation (using slerp)
+    rot_start = R.from_rotvec(gyro_start)
+    rot_end = R.from_rotvec(gyro_end)
+    slerp = Slerp([0, 1], R.from_rotvec([gyro_start, gyro_end])) #NOTE: use slerp to interpolate between two rotations
+    rotations_interp = slerp(np.linspace(0, 1, num_steps))
+    gyro_interp = rotations_interp.as_rotvec()
+    
+    # Combine interpolated accelerometer and gyroscope data
+    transition_data = np.hstack([accel_interp, gyro_interp])
+    return transition_data
+
+def generate_nonexercise(max_length=50, interpolate_steps=10):
+    """
+    Generate a random non-exercise segment with smooth transitions.
+    
+    Parameters:
+        max_length (int): Maximum length of the non-exercise segment.
+        interpolate_steps (int): Number of steps for smooth interpolation.
+        
+    Returns:
+        array: Generated non-exercise segment with smooth transitions, shape (variable, 6)
+    """
+    # Load the dataset
     pickle_filename = './datasets/OpportunityUCIDataset/loco_2_mask.npy'
-    data = np.load(pickle_filename, allow_pickle=True)
-    data = data.item()
-    inp = data['inputs']/ 9.98
+    data = np.load(pickle_filename, allow_pickle=True).item()
+    inp = data['inputs'] / 9.98  # Normalize data
     labels = data['labels']
-    #randomly select a segment of size max_length only from labels 0, 1, 2,3 (not 4 as iti is lying down)
+    
+    # Filter data indices for the target labels (0, 1, 2, 3)
     indices = np.where(labels < 4)[0]
-    start = np.random.choice(indices)
-    end = start + np.random.randint(max_length // 5, max_length)
-    return inp[start:end, :]
+    
+    # Initialize storage for the final segment
+    generated_segment = []
+    current_length = 0
+    
+    while current_length < max_length:
+        # Randomly select a starting point in the filtered data
+        start = np.random.choice(indices)
+        end = start + np.random.randint(max_length // 5, max_length // 2)
+        
+        # Clip end index to avoid overflow
+        end = min(end, len(inp))
+        
+        # Extract the selected segment and check the length
+        segment = inp[start:end, :]
+        if len(segment) < 2:  # Skip if too short for interpolation
+            continue
+        
+        # Add the segment to the generated data
+        generated_segment.append(segment)
+        current_length += len(segment)
+        
+        # Add interpolated transition if still within max length
+        if current_length < max_length:
+            # Create a transition between the end of this segment and the start of the next
+            next_start = np.random.choice(indices)
+            next_segment = inp[next_start:next_start + 1, :]
+            if len(next_segment) > 0:
+                transition_data = interpolate_transition(segment[-1], next_segment[0], interpolate_steps)
+                generated_segment.append(transition_data)
+                current_length += len(transition_data)
+
+    # Concatenate all segments and transitions into a single array
+    generated_segment = np.vstack(generated_segment)[:max_length]  # Trim to max_length if necessary
+    return generated_segment
+
 
 
 def model_exception_handler(model_path):
