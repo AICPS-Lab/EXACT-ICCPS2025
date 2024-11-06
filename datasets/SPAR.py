@@ -139,8 +139,9 @@ class SPAR(QueryDataset):
                 # bc there isnt a variation we cant shuffle on hand but only on the id:
                 combined = list(zip(v, k_label))
             else:  # sorted
-                v = sort_filename(v, order=-1)
+
                 combined = list(zip(v, k_label))  # zip the data and the label
+                combined = sort_filename(combined)
             for ind, (filename, original_label) in enumerate(combined):
                 df_np = pd.read_csv(filename).to_numpy()[
                     :, 1:7

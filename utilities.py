@@ -102,8 +102,8 @@ def sort_filename(files, order=-1):
     """
     first_order = order
     # return the file order expected to be 0, 1, 2, 3; but not 0, 10, 11, 12, 2, 3 following by all the other things:
-    return sorted(files, key=lambda x: ("_".join(x.split(".")[0].split("_")[0:first_order]),
-                                        int(x.split(".")[0].split("/")[-1].split("_")[first_order])))
+    return sorted(files, key=lambda x: ("_".join(x[0].split(".")[0].split("_")[0:first_order]),
+                                        int(x[0].split(".")[0].split("/")[-1].split("_")[first_order])))
 
 
 def printc(*args, color="red"):
