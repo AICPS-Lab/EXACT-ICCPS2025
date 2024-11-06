@@ -39,7 +39,7 @@ if __name__ == "__main__":
     # test the dataset
     # seed(42)
     args = get_args()  # Get arguments from the argparse
-
+    args.add_side_noise = True
     dataset = PhysiQ(
         root="data",
         split="train",

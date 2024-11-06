@@ -188,7 +188,12 @@ def get_args():
         action="store_true",
         help="Use pinned memory for DataLoader",
     )
-
+    
+    parser.add_argument(
+        "--loocv",
+        action="store_true",
+        help="Leave-one-out cross-validation",
+    )
     # Training parameters
     parser.add_argument(
         "--lr",
