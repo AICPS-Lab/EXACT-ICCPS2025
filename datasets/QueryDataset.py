@@ -100,7 +100,7 @@ class QueryDataset(Dataset):
         elif noise_type == "sudden":
             noise = generate_sudden_change(noise, max_length)  # max_length
         elif noise_type == "nonexercise":
-            noise = generate_nonexercise(max_length)
+            noise = generate_nonexercise(max_length*3) #NOTE: Should be longer than max_length
         elif noise_type == "all":
             # randomly pick one:
             noise_type = random.choice(

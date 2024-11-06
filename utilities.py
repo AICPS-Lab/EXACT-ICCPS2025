@@ -369,5 +369,4 @@ def generate_nonexercise(max_length=50):
     indices = np.where(labels < 4)[0]
     start = np.random.choice(indices)
     end = start + np.random.randint(max_length // 5, max_length)
-    print(labels[start:end])
     return inp[start:end, :]

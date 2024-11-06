@@ -165,6 +165,8 @@ class PhysiQ(QueryDataset):
             if self.args.shuffle == "random":
                 combined = list(zip(v, k_label))
                 random.shuffle(combined)
+                #TODO: sorted by increasing rom value so that it is creating a pt progression of the exercise
+                
             else:
                 combined = list(zip(v, k_label))
 
