@@ -5,7 +5,8 @@ from torch.utils.data import DataLoader
 import torch
 from torch.nn.modules.transformer import TransformerEncoder, TransformerEncoderLayer
 import torch.nn.functional as F
-
+# Disable efficient attention kernels
+torch.backends.cuda.sdp_kernel(enable_flash=False, enable_mem_efficient=False)
 # from utilities import printc
 class TransformerModel(nn.Module):
     """Container module with an encoder, a recurrent or transformer module, and a decoder."""
