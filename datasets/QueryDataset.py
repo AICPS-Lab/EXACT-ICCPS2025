@@ -18,14 +18,13 @@ class QueryDataset(Dataset):
         args=None,
         transforms=None,
         test_subject: int = None,
-        loocv: bool = False,
     ):
         assert split in [
             "train",
             "test",
         ], "Split must be either 'train' or 'test'"
         assert not (
-            loocv and test_subject is None
+            args.loocv and test_subject is None
         ), "Test subject must be specified for LOOCV"
         assert (
             isinstance(test_subject, int) or test_subject is None
@@ -38,7 +37,7 @@ class QueryDataset(Dataset):
         self.args = args
         self.transforms = transforms
         self.test_subject = test_subject
-        self.loocv = loocv
+        self.loocv = args.loocv
         self.DATASET_NAME = self.get_dataset_name()
 
         self.sw = sliding_windows(window_size, window_step)
@@ -69,6 +68,20 @@ class QueryDataset(Dataset):
         """
         Parses the filename and returns a dictionary with keys:
         'subject', 'ind_label', 'unique_identifier'
+        Must be implemented by subclasses.
+        """
+        raise NotImplementedError
+    
+    def get_subject(self):
+        """
+        Returns the index of the subject in the filename.
+        Must be implemented by subclasses.
+        """
+        raise NotImplementedError
+    
+    def get_ind_label(self):
+        """
+        Returns the index of the label in the filename.
         Must be implemented by subclasses.
         """
         raise NotImplementedError
@@ -106,8 +119,8 @@ class QueryDataset(Dataset):
         test_label = {}
         for k, v in subjLabel_to_data.items():
             random_indices = random.sample(range(len(v)), int(0.2 * len(v)))
-            subj = k[0]  # Adjust based on unique_identifier structure
-            ind_label = k[1:]  # Adjust as needed
+            subj = tuple([k[i] for i in self.get_subject()])
+            ind_label = tuple([k[i] for i in self.get_ind_label()])
             if subj not in train_data:
                 train_data[subj] = []
                 train_label[subj] = []
@@ -245,7 +258,6 @@ class QueryDataset(Dataset):
         res_data = []
         res_label = []
         res_exer_label = []
-
         for k, v in data.items():
             file = []
             dense_label = []
@@ -362,6 +374,9 @@ class QueryDataset(Dataset):
 
             if self.args.shuffle == "random":
                 random.shuffle(combined)
+                for f, o in combined:
+                    print(f, 0)
+                input()
             elif self.args.shuffle == "sorted":
                 combined = sort_filename(combined)
             else:
@@ -375,9 +390,10 @@ class QueryDataset(Dataset):
                 dense_label.append([original_label] * df_np.shape[0])
 
                 if self.args.add_side_noise:
-                    noise = self.generate_noise(df_np, self.args.noise_type)
-                    file.append(noise)
-                    dense_label.append([-1] * noise.shape[0])
+                    if random.random() < 0.5:
+                        noise = self.generate_noise(df_np, self.args.noise_type)
+                        file.append(noise)
+                        dense_label.append([-1] * noise.shape[0])
 
             file = np.concatenate(file, axis=0)
             dense_label = np.concatenate(dense_label, axis=0)

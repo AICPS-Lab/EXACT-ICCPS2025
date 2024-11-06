@@ -40,6 +40,7 @@ if __name__ == "__main__":
     # seed(42)
     args = get_args()  # Get arguments from the argparse
     args.add_side_noise = True
+    print(args.loocv)
     dataset = PhysiQ(
         root="data",
         split="train",
@@ -48,7 +49,6 @@ if __name__ == "__main__":
         args=args,
         transforms=IMUAugmentation(rotation_chance=0),
         test_subject=1,
-        loocv=True
     )
     
     # dataset = SPAR(

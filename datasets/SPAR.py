@@ -21,7 +21,6 @@ class SPAR(QueryDataset):
         args=None,
         transforms=None,
         test_subject=None,
-        loocv=False,
     ):
         super(SPAR, self).__init__(
             root=root,
@@ -32,7 +31,6 @@ class SPAR(QueryDataset):
             args=args,
             transforms=transforms,
             test_subject=test_subject,
-            loocv=loocv,
         )
 
     def parse_filename(self, filename):
@@ -50,6 +48,17 @@ class SPAR(QueryDataset):
             'ind_label': ind_label,
             'unique_identifier': unique_identifier,
         }
+    def get_subject(self):
+        # this is not the subject of the file name but the subject for splitting or shuffling the data:
+        # aka shuffled based on
+        # SPAR filenames: [Subject]_[Exercise]_[left-right hand]_[repetition].csv
+        # returning the index of the subject in the filename
+        return [0, 1, 2]
+    
+    def get_ind_label(self):
+        # returning the index of the label in the filename
+        return [1, 2]
+
 
     def get_dataset_name(self):
         return self.DATASET_NAME
