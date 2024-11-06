@@ -25,6 +25,7 @@ from loss_fn import (
     iou_time_series,
 )
 from methods import EX, UNet
+from utilities import model_exception_handler
 from utils_metrics import visualize_softmax
 
 
@@ -177,7 +178,6 @@ def test(db, net, epoch, args, wandb_r=None):
     return qry_losses, qry_accs
 
 
-
 def main(args):
     # Initialize datasets
     train_dataset, test_dataset = get_dataset(args)
@@ -220,9 +220,12 @@ def main(args):
 
     # Define the model architecture
     model = get_model(args)
-    
+
     model.to(args.device)  # Move model to specified device
-    print("trainnable parameters: ", sum(p.numel() for p in model.parameters() if p.requires_grad))
+    print(
+        "trainnable parameters: ",
+        sum(p.numel() for p in model.parameters() if p.requires_grad),
+    )
     # Initialize meta optimizer
     args.meta_opt = torch.optim.Adam(model.parameters(), lr=args.lr)
     if not args.nowandb:
@@ -231,8 +234,12 @@ def main(args):
             config=vars(args),
         )
         run.name = args.model + "-" + run.name
+        model_path = "saved_model/" + run.name + ".pth"
     else:
         run = None
+        model_path = "saved_model/" + args.model + ".pth"
+    model_exception_handler(model_path)
+
     # Training loop
     loss = np.inf
     for epoch in range(args.n_epochs):
@@ -241,10 +248,10 @@ def main(args):
         qry_loss, qry_acc = test(iter(test_loader), model, epoch, args, run)
         if qry_loss < loss:
             loss = qry_loss
-            torch.save(model.state_dict(), "saved_model/" + run.name + ".pth")
+            torch.save(model.state_dict(), model_path)
     if not args.nowandb:
         artifact = wandb.Artifact("model", type="model")
-        artifact.add_file("saved_model/" + run.name + ".pth")
+        artifact.add_file(model_path)
         run.log_artifact(artifact)
 
         run.finish()

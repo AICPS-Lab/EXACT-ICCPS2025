@@ -2,9 +2,10 @@
 **.DS_Store
 .DS_Store
 data/OpportunityUCIDataset/loco_2.npy
-data/OpportunityUCIDataset/loco_2_mask.npy
+# data/OpportunityUCIDataset/loco_2_mask.npy
 *.png
 data/physiq/physiq_permute_all.npy
 /data/WEAR/inertial
 /wandb
 /save_model
+**/.vscode/**

@@ -1,5 +1,8 @@
+import atexit
 import os
 import random
+import signal
+import sys
 from matplotlib import pyplot as plt
 import numpy as np
 from sklearn.discriminant_analysis import StandardScaler
@@ -370,3 +373,26 @@ def generate_nonexercise(max_length=50):
     start = np.random.choice(indices)
     end = start + np.random.randint(max_length // 5, max_length)
     return inp[start:end, :]
+
+
+def model_exception_handler(model_path):
+    # Function to delete the model if it exists
+    def delete_model():
+        if os.path.exists(model_path):
+            os.remove(model_path)
+            printc("Model deleted due to interruption or exception.")
+
+    # Register the delete_model function to run on program exit
+    atexit.register(delete_model)
+
+    # Signal handler for SIGINT (Ctrl+C)
+    def signal_handler(sig, frame):
+        printc("KeyboardInterrupt received, deleting model...")
+        delete_model()
+        sys.exit(0)
+    # Register the signal handler
+    signal.signal(signal.SIGINT, signal_handler)
+    return
+
+
+
