@@ -10,13 +10,11 @@ from .QueryDataset import QueryDataset
 import os
 import argparse
 
-DEFAULT_INFO = "data is a dictionary with keys as subject and values as list of data files, label is a dictionary with keys as subject and values as list of labels, label_to_exer_rom is a list of tuples with each tuple as (exercise, rom)"
+DEFAULT_INFO = "data is a dictionary with keys as subject and values as list of data files, label is a dictionary with keys as subject and values as list of labels, label_to_exer_hand is a list of tuples with each tuple as (exercise, hand)"
 
 
-class PhysiQ(QueryDataset):
-    # TODO: for testing we should also have per subject fsl cross validation basically
-
-    DATASET_NAME = "physiq"
+class SPAR(QueryDataset):
+    DATASET_NAME = "spar"
 
     def __init__(
         self,
@@ -28,51 +26,37 @@ class PhysiQ(QueryDataset):
         args=None,
         transforms=None,
     ):
-        super(PhysiQ, self).__init__(
+        super(SPAR, self).__init__(
             root, split, window_size, window_step, bg_fg, args, transforms
         )
 
     def _process_data(self):
-        folders = [
-            "segment_sessions_one_repetition_data_E1",
-            "segment_sessions_one_repetition_data_E2",
-            "segment_sessions_one_repetition_data_E3",
-            "segment_sessions_one_repetition_data_E4",
-        ]
-        data_folder = os.path.join(self.root, self.DATASET_NAME)
-        # physiq dataset 4 exercises and each contains variation (rom), each variation will be one class
+        data_folder = os.path.join(self.root, "spar", "spar_dataset")
         data = []
         subject = []
         subjLabel_to_data = {}
         unique_indices = []
-        for folder in folders:
-            dirs = os.path.join(data_folder, folder)
-            # walk through the directory
-            # print(dirs)
-            for root, _, files in os.walk(dirs):
-                for file in files:
-                    # file is csv:
-                    if file.endswith(".csv"):
-                        data.append(os.path.join(root, file))
-                        subject.append(file.split("_")[0])
-                        ind_label = (
-                            file.split("_")[1],
-                            file.split("_")[3],
-                        )  # unique label (exercise, rom)
-                        unique_identifier = (
-                            file.split("_")[0],
-                            file.split("_")[1],
-                            file.split("_")[3],
-                        ) # unique identifier (subject, exercise, rom)
-                        if unique_identifier not in subjLabel_to_data:
-                            subjLabel_to_data[unique_identifier] = []
-                        subjLabel_to_data[unique_identifier].append(
-                            os.path.join(root, file)
-                        )
-                        if ind_label not in unique_indices:
-                            unique_indices.append(ind_label)
-        # print("subject: ", subject)
-        # print("Indices: ", unique_indices)
+        for file in os.listdir(data_folder):
+            if file.endswith(".csv"):
+                data.append(os.path.join(data_folder, file))
+                subject.append(file.split("_")[0])
+                ind_label = (
+                    file.split("_")[1],
+                    file.split("_")[2],
+                )  # unique label (exercise, left-right hand)
+                unique_identifier = (
+                    file.split("_")[0],
+                    file.split("_")[1],
+                    file.split("_")[2],
+                )
+                if unique_identifier not in subjLabel_to_data:
+                    subjLabel_to_data[unique_identifier] = []
+                subjLabel_to_data[unique_identifier].append(
+                    os.path.join(data_folder, file)
+                )
+                if ind_label not in unique_indices:
+                    unique_indices.append(ind_label)
+
         seed(self.args.dataset_seed)
         train = {}
         test = {}
@@ -80,11 +64,9 @@ class PhysiQ(QueryDataset):
         train_label = {}
         test_data = {}
         test_label = {}
-
         for k, v in subjLabel_to_data.items():
-            # randomly sample 20 percent of the data for testing:
             random_indices = random.sample(range(len(v)), int(0.2 * len(v)))
-            subj = (k[0], k[1])  # NOTE: k[0]
+            subj = (k[0], k[1])
             ind_label = (k[1], k[2])
             if subj not in train_data:
                 train_data[subj] = []
@@ -113,12 +95,12 @@ class PhysiQ(QueryDataset):
             )
         train["data"] = train_data
         train["label"] = train_label
-        train["label_to_exer_rom"] = unique_indices
+        train["label_to_exer_hand"] = unique_indices
         train["info"] = DEFAULT_INFO
 
         test["data"] = test_data
         test["label"] = test_label
-        test["label_to_exer_rom"] = unique_indices
+        test["label_to_exer_hand"] = unique_indices
         test["info"] = DEFAULT_INFO
         np.save(
             os.path.join(self.root, self.DATASET_NAME, "train_data.npy"),
@@ -134,27 +116,18 @@ class PhysiQ(QueryDataset):
 
         return
 
-    @staticmethod
-    def add_args(parser):
-        return parser
-
-    def load_data(self, split):
-        data = np.load(
-            os.path.join(self.root, self.DATASET_NAME, f"{split}_data.npy"),
-            allow_pickle=True,
-        ).item()
-        return data
+        # print(train["data"].keys())
 
     def concanetate_data(self):
-        # TODO: CROSS VALIDATIon
         seed(self.args.dataset_seed)
         data = self.data["data"]
         label = self.data["label"]
-        label_to_exer_rom = self.data["label_to_exer_rom"]
+        label_to_exer_hand = self.data["label_to_exer_hand"]
         exercise_label = []
-        for i in range(len(label_to_exer_rom)):
-            if label_to_exer_rom[i][0] not in exercise_label:
-                exercise_label.append(label_to_exer_rom[i][0])
+        for i in range(len(label_to_exer_hand)):
+            if label_to_exer_hand[i][0] not in exercise_label:
+                exercise_label.append(label_to_exer_hand[i][0])
+        exercise_label = sorted(exercise_label)
         res_data = []
         res_label = []
         res_exer_label = []
@@ -163,22 +136,18 @@ class PhysiQ(QueryDataset):
             dense_label = []
             k_label = label[k]
             if self.args.shuffle == "random":
+                # bc there isnt a variation we cant shuffle on hand but only on the id:
                 combined = list(zip(v, k_label))
-                random.shuffle(combined)
-            else:
-                combined = list(zip(v, k_label))
-
+            else:  # sorted
+                v = sort_filename(v, order=-1)
+                combined = list(zip(v, k_label))  # zip the data and the label
             for ind, (filename, original_label) in enumerate(combined):
                 df_np = pd.read_csv(filename).to_numpy()[
                     :, 1:7
                 ]  # (T, 6), 1 repetition
                 file.append(df_np)
 
-                if self.bg_fg is not None:
-                    raise NotImplementedError
-                    # dense_label.append([1 if original_label == self.bg_fg else 0] * df_np.shape[0])
-                else:
-                    dense_label.append([original_label] * df_np.shape[0])
+                dense_label.append([original_label] * df_np.shape[0])
 
                 if self.args.add_side_noise:
                     noise = self.generate_noise(df_np, self.args.noise_type)
@@ -188,10 +157,7 @@ class PhysiQ(QueryDataset):
             dense_label = np.concatenate(dense_label, axis=0)
 
             if self.args.add_side_noise:
-                dense_label = (
-                    dense_label + 1
-                )  # from [-1, 0, 1, 2, 3 ...] to [0, 1, 2, 3, 4 ...]
-
+                dense_label = dense_label + 1
             sfile, sdense_label = self.sw(
                 torch.tensor(file), torch.tensor(dense_label)
             )
@@ -199,7 +165,7 @@ class PhysiQ(QueryDataset):
             res_label.append(sdense_label)
             res_exer_label.append(
                 torch.tensor(
-                    [exercise_label.index(label_to_exer_rom[original_label][0])]
+                    [exercise_label.index(label_to_exer_hand[original_label][0])]
                     * sfile.shape[0]
                 )
             )
@@ -210,22 +176,14 @@ class PhysiQ(QueryDataset):
 
         return res_data, res_label, res_exer_label
 
-
     def if_npy_exists(self, split):
         return os.path.exists(
             os.path.join(self.root, self.DATASET_NAME, f"{split}_data.npy")
         )
 
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, idx):
-        if self.transforms is not None:
-            return (
-                self.transforms(self.data[idx]),
-                self.label[idx],
-                self.res_exer_label[idx],
-            )
-        # print(self.data[idx].shape, self.transforms(self.data[idx]).shape)
-
-        return self.data[idx], self.label[idx], self.res_exer_label[idx]
+    def load_data(self, split):
+        data = np.load(
+            os.path.join(self.root, self.DATASET_NAME, f"{split}_data.npy"),
+            allow_pickle=True,
+        ).item()
+        return data

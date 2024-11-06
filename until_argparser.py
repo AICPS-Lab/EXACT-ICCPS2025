@@ -99,6 +99,33 @@ def get_args():
         default="physiq",
         help="Dataset to use for training",
     )
+    
+    """Add dataset-specific arguments to the parser."""
+    parser.add_argument(
+        "--shuffle",
+        type=str,
+        default="random",
+        help="Shuffle the data on each subject",
+    )
+    parser.add_argument(
+        "--dataset_seed",
+        type=int,
+        default=42,
+        help="Seed for shuffling the data",
+    )
+    parser.add_argument(
+        "--add_side_noise",
+        help="Add random noise to the data on each side",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--noise_type",
+        type=str,
+        default="white",
+        help="Type of noise to add to the data",
+    )
+    
+    
     parser.add_argument(
         "--in_channels",
         type=int,
@@ -177,12 +204,6 @@ def get_args():
         "--n_epochs", type=int, default=100, help="Number of training epochs"
     )
     parser.add_argument(
-        "--n_train_iter",
-        type=int,
-        default=1000,
-        help="Number of training iterations per epoch",
-    )
-    parser.add_argument(
         "--device",
         type=str,
         default="cuda",
@@ -194,15 +215,15 @@ def get_args():
         default=4,
         help="Interval for logging training metrics",
     )
-    parser.add_argument(
-        "--nowandb",
-        action="store_true",
-    )
+    
     # WandB parameters
     parser.add_argument(
         "--wandb_project", type=str, default="EXACT", help="WandB project name"
     )
-
+    parser.add_argument(
+            "--nowandb",
+            action="store_true",
+        )
     parser.add_argument(
         "-m",
         "--model",

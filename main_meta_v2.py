@@ -86,7 +86,7 @@ def train(db, net, epoch, args, wandb_run=None):
 
         qry_losses = sum(qry_losses) / task_num
         qry_accs = 100.0 * sum(qry_accs) / task_num
-        i = epoch + float(batch_idx) / args.n_train_iter
+        i = epoch + float(batch_idx) / args.n_tasks
         iter_time = time.time() - start_time
 
         if batch_idx % args.log_interval == 0:
@@ -115,7 +115,7 @@ def test(db, net, epoch, args, wandb_r=None):
 
     net.to(args.device)
     net.train()
-    n_test_iter = args.n_train_iter
+    n_test_iter = args.n_tasks
 
     qry_losses = []
     qry_accs = []

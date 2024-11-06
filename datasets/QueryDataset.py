@@ -1,6 +1,7 @@
 from torch.utils.data import Dataset
 
 from utilities import sliding_windows
+from utilities import *
 
 
 class QueryDataset(Dataset):
@@ -58,3 +59,58 @@ class QueryDataset(Dataset):
 
     def __getitem__(self, idx):
         return self.data[idx], self.label[idx], self.res_exer_label[idx]
+
+    def generate_noise(
+        self,
+        noise,
+        noise_type,
+        max_length=50,
+        reference_length=10,
+        mu=0,
+        sigma=0.05,
+    ):
+        """
+        Generate noise with given shape
+        The length of the noise can vary by selecting a random length up to max_length.
+
+        Parameters:
+            noise (array): Base noise array to take reference values from.
+            max_length (int): Maximum possible length of the generated noise.
+            reference_length (int): Number of rows used to calculate the baseline min and max.
+            mu (float): Mean for white noise.
+            sigma (float): Standard deviation for white noise.
+        """
+        # Define the shape of the new noise array with a random length up to max_length
+        noise_shape = (
+            np.random.randint(
+                max_length // 5, max_length + 1
+            ),  # Random length between 1 and max_length
+            noise.shape[1],
+        )
+
+        # Generate noise based on the selected noise type
+        if noise_type == "white":
+            # Generate white noise with normal distribution
+            noise = np.random.normal(mu, sigma, noise_shape)
+        elif noise_type == "static":
+            # Generate static pause noise using the last reference_length rows
+            noise = static_pause(noise, reference_length, noise_shape)
+        elif noise_type == "idle":
+            noise = idle_movement(noise, reference_length, noise_shape)
+        elif noise_type == "sudden":
+            noise = generate_sudden_change(noise, max_length)  # max_length
+        elif noise_type == "nonexercise":
+            noise = generate_nonexercise(max_length)
+        elif noise_type == "all":
+            # randomly pick one:
+            noise_type = random.choice(
+                ["static", "idle", "sudden", "nonexercise"]
+            )
+            noise = self.generate_noise(
+                noise, noise_type, max_length, reference_length, mu, sigma
+            )
+        else:
+            raise NotImplementedError(
+                f"Noise type {noise_type} is not implemented"
+            )
+        return noise

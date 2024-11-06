@@ -96,6 +96,15 @@ class sliding_windows(torch.nn.Module):
             1, round((total_length - (self.width - self.step)) / self.step)
         )
 
+def sort_filename(files, order=-1):
+    """
+    Sort the filenames in the list in ascending order.
+    """
+    first_order = order
+    # return the file order expected to be 0, 1, 2, 3; but not 0, 10, 11, 12, 2, 3 following by all the other things:
+    return sorted(files, key=lambda x: ("_".join(x.split(".")[0].split("_")[0:first_order]),
+                                        int(x.split(".")[0].split("/")[-1].split("_")[first_order])))
+
 
 def printc(*args, color="red"):
     colors = {
@@ -347,3 +356,18 @@ def generate_sudden_change(noise, noise_length):
         peak_intensity=0.3,
     )
     return imu_noise_segment
+
+
+def generate_nonexercise(max_length=50):
+    
+    pickle_filename = './datasets/OpportunityUCIDataset/loco_2_mask.npy'
+    data = np.load(pickle_filename, allow_pickle=True)
+    data = data.item()
+    inp = data['inputs']/ 9.98
+    labels = data['labels']
+    #randomly select a segment of size max_length only from labels 0, 1, 2,3 (not 4 as iti is lying down)
+    indices = np.where(labels < 4)[0]
+    start = np.random.choice(indices)
+    end = start + np.random.randint(max_length // 5, max_length)
+    print(labels[start:end])
+    return inp[start:end, :]

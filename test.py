@@ -1,4 +1,5 @@
 from matplotlib import pyplot as plt
+from datasets.SPAR import SPAR
 from datasets.DenseLabelTaskSampler import DenseLabelTaskSampler
 from datasets.PhysiQ import PhysiQ
 from torch.utils.data import Dataset, DataLoader
@@ -39,7 +40,16 @@ if __name__ == "__main__":
     # seed(42)
     args = get_args()  # Get arguments from the argparse
 
-    dataset = PhysiQ(
+    # dataset = PhysiQ(
+    #     root="data",
+    #     split="train",
+    #     window_size=1000,
+    #     bg_fg=None,
+    #     args=args,
+    #     transforms=IMUAugmentation(rotation_chance=0),
+    # )
+    
+    dataset = SPAR(
         root="data",
         split="train",
         window_size=1000,
@@ -68,14 +78,7 @@ if __name__ == "__main__":
         pin_memory=True,
         collate_fn=train_sampler.episodic_collate_fn,
     )
-    # support_images, support_labels, query_images, query_labels, true_class_ids = next(iter(train_loader))
-    # print(
-    #     support_images.shape,
-    #     support_labels.shape,
-    #     query_images.shape,
-    #     query_labels.shape,
-    #     true_class_ids,
-    # )
+
     for (
         support_images,
         support_labels,
