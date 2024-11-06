@@ -76,7 +76,7 @@ class MultiHeadSelfAttention1D(nn.Module):
 class EX(nn.Module):
     @staticmethod
     def add_args(parser):
-        parser.add_argument("--embed_dim", type=int, default=64)
+        parser.add_argument("--embed_dim", type=int, default=32)
         parser.add_argument("--num_heads", type=int, default=4)
         return parser
 
