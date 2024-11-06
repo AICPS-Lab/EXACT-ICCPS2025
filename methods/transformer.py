@@ -12,12 +12,6 @@ class TransformerModel(nn.Module):
     
     @staticmethod
     def add_args(parser):
-        parser.add_argument(
-            "--num_classes",
-            type=int,
-            default=2,
-            help="Number of classes in the dataset")
-        parser.add_argument("--in_channels", type=int, default=6, help="Input channels for the model")
         parser.add_argument("--ninp", type=int, default=64, help="Input channels for the model")
         parser.add_argument("--num_heads", type=int, default=1, help="Number of heads in the transformer")
         parser.add_argument("--embed_dims", type=int, default=256, help="Embedding dimensions in the transformer")
@@ -29,7 +23,7 @@ class TransformerModel(nn.Module):
         
 
     def __init__(self, args):
-        num_classes = args.num_classes
+        num_classes = args.out_channels
         in_channels = args.in_channels
         ninp = args.ninp
         num_heads = args.num_heads
