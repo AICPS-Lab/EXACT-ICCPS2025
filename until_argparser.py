@@ -208,7 +208,7 @@ def get_args():
     parser.add_argument(
         "--window_size",
         type=int,
-        default=500,
+        default=250,
         help="Window size for the PhysiQ dataset",
     )
     parser.add_argument(
@@ -233,7 +233,7 @@ def get_args():
         help="Number of query examples per class",
     )
     parser.add_argument(
-        "--n_tasks", type=int, default=1000, help="Number of tasks for training"
+        "--n_tasks", type=int, default=250, help="Number of tasks for training"
     )
     parser.add_argument(
         "--threshold_ratio",

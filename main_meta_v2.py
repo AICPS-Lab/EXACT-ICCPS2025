@@ -244,10 +244,7 @@ def main(args):
             loss = qry_loss
             torch.save(model.state_dict(), model_path)
     if not args.nowandb:
-        artifact = wandb.Artifact("model", type="model")
-        artifact.add_file(model_path)
-        run.log_artifact(artifact)
-
+        log_model_artifact(run, model_path)
         run.finish()
     return
 
@@ -333,12 +330,15 @@ def main_loocv(args):
         
         # Save the model to wandb for each run
         if not args.nowandb:
-            artifact = wandb.Artifact("model", type="model")
-            artifact.add_file(model_path)
-            run.log_artifact(artifact)
+            log_model_artifact(run, model_path)
             run.finish()
-
     return
+
+def log_model_artifact(run, model_path):
+    artifact = wandb.Artifact(f"{run.name}", type="model")
+    artifact.add_file(model_path)
+    run.log_artifact(artifact)
+    
 
 if __name__ == "__main__":
     args = get_args()  # Get arguments from the argparse
