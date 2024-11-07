@@ -18,7 +18,7 @@ class TransformerModel(nn.Module):
         parser.add_argument("--num_heads", type=int, default=4, help="Number of heads in the transformer")
         parser.add_argument("--embed_dims", type=int, default=256, help="Embedding dimensions in the transformer")
         parser.add_argument("--num_layers", type=int, default=6, help="Number of layers in the transformer")
-        parser.add_argument("--dropout", type=float, default=0.1, help="Dropout in the transformer")
+        parser.add_argument("--dropout", type=float, default=0, help="Dropout in the transformer")
         parser.add_argument("--init_std", type=float, default=0.02, help="Initialization standard deviation")
         parser.add_argument("--activation", type=str, default='relu', help="Activation function in the transformer")
         return parser

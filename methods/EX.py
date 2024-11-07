@@ -130,16 +130,16 @@ class EX(nn.Module):
         e4 = self.mhsa(e4)                           # [B, embed_dim, S/8]
 
         # Decoder with Skip Connections
-        d4 = self.upconv4(e4)                        # [B, embed_dim, S/4]
-        d4 = torch.cat([d4, e3], dim=1)              # [B, embed_dim + embed_dim * 4, S/4]
+        d4 = self.upconv4(e4)                        # Upsample
+        d4 = self._crop_and_concat(d4, e3)           # Match size and concat with e3
         d4 = self.decoder4(d4)                       # [B, embed_dim * 4, S/4]
 
-        d3 = self.upconv3(d4)                        # [B, embed_dim * 4, S/2]
-        d3 = torch.cat([d3, e2], dim=1)              # [B, embed_dim * 4 + embed_dim * 2, S/2]
+        d3 = self.upconv3(d4)                        # Upsample
+        d3 = self._crop_and_concat(d3, e2)           # Match size and concat with e2
         d3 = self.decoder3(d3)                       # [B, embed_dim * 2, S/2]
 
-        d2 = self.upconv2(d3)                        # [B, embed_dim * 2, S]
-        d2 = torch.cat([d2, e1], dim=1)              # [B, embed_dim * 2 + embed_dim, S]
+        d2 = self.upconv2(d3)                        # Upsample
+        d2 = self._crop_and_concat(d2, e1)           # Match size and concat with e1
         d2 = self.decoder2(d2)                       # [B, embed_dim, S]
 
         # Final output layer
@@ -147,3 +147,13 @@ class EX(nn.Module):
         d1 = d1.permute(0, 2, 1)                     # [B, S, out_channels]
         return d1
 
+    def _crop_and_concat(self, upsampled, bypass):
+        # Crop or pad the upsampled tensor to match the size of the bypass tensor
+        diff = upsampled.size(-1) - bypass.size(-1)
+        if diff == 0:
+            return torch.cat([upsampled, bypass], dim=1)
+        elif diff > 0:
+            upsampled = upsampled[..., :bypass.size(-1)]
+        else:
+            upsampled = F.pad(upsampled, (0, -diff))
+        return torch.cat([upsampled, bypass], dim=1)

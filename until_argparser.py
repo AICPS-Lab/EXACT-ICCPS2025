@@ -72,7 +72,7 @@ def get_dataset(args, test_subject=None):
             window_step=args.window_step,
             bg_fg=None,
             args=args,
-            transforms=IMUAugmentation(rotation_chance=0),
+            transforms=IMUAugmentation(rotation_chance=args.rotation_chance),
             test_subject=test_subject,
         )
         test_dataset = PhysiQ(
@@ -92,7 +92,7 @@ def get_dataset(args, test_subject=None):
             window_step=args.window_step,
             bg_fg=None,
             args=args,
-            transforms=IMUAugmentation(rotation_chance=0),
+            transforms=IMUAugmentation(rotation_chance=args.rotation_chance),
             test_subject=test_subject,
         )
         test_dataset = SPAR(
@@ -112,7 +112,7 @@ def get_dataset(args, test_subject=None):
             window_step=args.window_step,
             bg_fg=None,
             args=args,
-            transforms=IMUAugmentation(rotation_chance=0),
+            transforms=IMUAugmentation(rotation_chance=args.rotation_chance),
             test_subject=test_subject,
         )
         test_dataset = MMFIT(
@@ -252,7 +252,12 @@ def get_args():
         action="store_true",
         help="Use pinned memory for DataLoader",
     )
-    
+    parser.add_argument(
+        "--rotation_chance",
+        type=float,
+        default=0,
+        help="Chance of rotating the data",
+    )
     parser.add_argument(
         "--loocv",
         action="store_true",
