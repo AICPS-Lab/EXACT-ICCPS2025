@@ -9,6 +9,7 @@ import random
 
 from datasets.Transforms import IMUAugmentation
 from until_argparser import get_args
+from utilities import model_exception_handler
 
 # start a new wandb run to track this script
 # wandb.init(

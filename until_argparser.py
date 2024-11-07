@@ -1,6 +1,8 @@
 import argparse
 
+from datasets.MMFIT import MMFIT
 from datasets.PhysiQ import PhysiQ
+from datasets.SPAR import SPAR
 from datasets.Transforms import IMUAugmentation
 from methods.EX import EX
 from methods.transformer import TransformerModel
@@ -72,6 +74,38 @@ def get_dataset(args):
             transforms=IMUAugmentation(rotation_chance=0),
         )
         test_dataset = PhysiQ(
+            root=args.data_root,
+            split="test",
+            window_size=args.window_size,
+            bg_fg=None,
+            args=args,
+        )
+    elif dataset == "spar":
+        train_dataset = SPAR(
+            root=args.data_root,
+            split="train",
+            window_size=args.window_size,
+            bg_fg=None,
+            args=args,
+            transforms=IMUAugmentation(rotation_chance=0),
+        )
+        test_dataset = SPAR(
+            root=args.data_root,
+            split="test",
+            window_size=args.window_size,
+            bg_fg=None,
+            args=args,
+        )
+    elif dataset == "mmfit":
+        train_dataset = MMFIT(
+            root=args.data_root,
+            split="train",
+            window_size=args.window_size,
+            bg_fg=None,
+            args=args,
+            transforms=IMUAugmentation(rotation_chance=0),
+        )
+        test_dataset = MMFIT(
             root=args.data_root,
             split="test",
             window_size=args.window_size,

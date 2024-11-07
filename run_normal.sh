@@ -1,8 +1,14 @@
-# run three different model: ex, transformer, and unet:
+#!/bin/bash
 
-python main_meta_v2.py --add_side_noise --model ex --seed 0
-python main_meta_v2.py --add_side_noise --model transformer --seed 0
-python main_meta_v2.py --add_side_noise --model unet --seed 0
+# Define datasets and models
+datasets=("physiq" "mmfit" "spar")
+models=("ex" "transformer" "unet")
 
-# make this sh file executable by running:
-# chmod +x run_normal.sh
+# Loop over seeds, datasets, and models
+for seed in {0..10}; do
+  for dataset in "${datasets[@]}"; do
+    for model in "${models[@]}"; do
+      python main_meta_v2.py --add_side_noise --dataset "$dataset" --model "$model" --seed "$seed"
+    done
+  done
+done
