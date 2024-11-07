@@ -93,7 +93,7 @@ def test_setup():
     dataset = MMFIT(
         root="data",
         split="train",
-        window_size=1000,
+        window_size=args.window_size,
         bg_fg=None,
         args=args,
         transforms=IMUAugmentation(rotation_chance=0),
