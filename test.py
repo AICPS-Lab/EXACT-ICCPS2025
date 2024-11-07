@@ -1,4 +1,5 @@
 from matplotlib import pyplot as plt
+from datasets.MMFIT import MMFIT
 from datasets.SPAR import SPAR
 from datasets.DenseLabelTaskSampler import DenseLabelTaskSampler
 from datasets.PhysiQ import PhysiQ
@@ -41,7 +42,7 @@ if __name__ == "__main__":
     args = get_args()  # Get arguments from the argparse
     args.add_side_noise = True
     print(args.loocv)
-    dataset = PhysiQ(
+    dataset = MMFIT(
         root="data",
         split="train",
         window_size=1000,
