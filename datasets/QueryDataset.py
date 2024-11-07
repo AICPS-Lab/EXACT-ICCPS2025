@@ -294,7 +294,7 @@ class QueryDataset(Dataset):
             res_label.append(sdense_label)
             res_exer_label.append(
                 torch.tensor(
-                    [exercise_labels.index(unique_indices[original_label][0])]
+                    [exercise_labels.index(unique_indices[original_label][0])] * sfile.shape[0]
                 )
             )
 

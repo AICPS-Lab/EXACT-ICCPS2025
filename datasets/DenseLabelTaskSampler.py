@@ -43,12 +43,13 @@ class DenseLabelTaskSampler(Sampler):
         # Build a dictionary mapping each label to a list of indices for dense labeling
         for item_idx, (input_data, label, exer_label) in enumerate(dataset):
             #NOTE: QUESTION should we consider in the label of variation or the label of the exercise?
-            valid_label = exer_label #self._get_label(label)
+            valid_label = int(exer_label) #self._get_label(label)
             if valid_label is not None:
                 if valid_label in self.items_per_label:
                     self.items_per_label[valid_label].append(item_idx)
                 else:
                     self.items_per_label[valid_label] = [item_idx]
+        self._check_dataset_size_fits_sampler_parameters()
 
     def __len__(self) -> int:
         return self.n_tasks
@@ -63,12 +64,11 @@ class DenseLabelTaskSampler(Sampler):
         for cur_task in range(self.n_tasks):
             # Randomly select one variation (target class) for this task
             target_label = random.choice(list(self.items_per_label.keys()))
-
             sampled_task_indices = torch.tensor(
                 np.random.choice(
                     self.items_per_label[target_label],
                     (self.n_shot + self.n_query) * self.batch_size,
-                    replace=True,
+                    replace=False,
                 )
             )
             self._cur_task = target_label
@@ -122,6 +122,42 @@ class DenseLabelTaskSampler(Sampler):
         else:
             return None  # Ignore this label
 
+    def _check_dataset_size_fits_sampler_parameters(self):
+        """
+        Check that the dataset size is compatible with the sampler parameters.
+        Raises:
+            ValueError: If the dataset does not have enough labels or enough samples per label.
+        """
+        self._check_dataset_has_enough_labels()
+        self._check_dataset_has_enough_items_per_label()
+
+    def _check_dataset_has_enough_labels(self):
+        """
+        Ensure that there are enough unique labels in the dataset.
+        Raises:
+            ValueError: If the number of valid labels is less than required.
+        """
+        # Currently, this sampler is designed for one-way tasks. 
+        # If you extend to multi-way, ensure n_way <= number of valid labels.
+        if len(self.items_per_label) == 0:
+            raise ValueError("No valid labels found in the dataset after applying threshold_ratio.")
+
+    def _check_dataset_has_enough_items_per_label(self):
+        """
+        Ensure that each label has enough samples to satisfy n_shot + n_query.
+        Raises:
+            ValueError: If any label does not have enough samples.
+        """
+        insufficient_labels = [
+            label for label, indices in self.items_per_label.items()
+            if len(indices) < self.n_shot + self.n_query
+        ]
+
+        if insufficient_labels:
+            raise ValueError(
+                f"The following labels do not have enough samples to satisfy n_shot + n_query "
+                f"({self.n_shot + self.n_query}): {insufficient_labels}"
+            )
 
 
 

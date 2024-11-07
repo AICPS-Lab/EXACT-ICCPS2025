@@ -90,7 +90,7 @@ def find_majority_label(arr):
     return results
 
 # Define the visualization function with subplots, including the label subplot
-def visualize_softmax(pred, label_data, data):
+def visualize_softmax(pred, label_data, data, dir=None):
     time = np.arange(pred.shape[1])
     labels = np.arange(pred.shape[0])
     # Create a figure with 3 subplots
@@ -105,7 +105,6 @@ def visualize_softmax(pred, label_data, data):
     # Labels plot
     colors = plt.cm.viridis(np.linspace(0, 1, pred.shape[0]))  # Get a colormap to use for the label lines
     for i in range(len(labels)):
-        print(time[label_data == i])
         axs[1].fill_between(time, 0, 1, label=f'Label {i}', color=colors[i], where=label_data == i, alpha=0.7)
     axs[1].set_title('Labels')
     axs[1].set_ylabel('Label Active')
@@ -127,9 +126,61 @@ def visualize_softmax(pred, label_data, data):
 
     plt.tight_layout()
     # plt.show()
-    # plt.savefig
-    plt.savefig('softmax_plot.png')
+    # plt.savefig\
+    if dir:
+        plt.savefig(dir)
+        plt.close()
 
+def fsl_visualize_softmax(pred, label_data, data, spt_data, spt_labels, dir=None):
+    time = np.arange(pred.shape[1])
+    labels = np.arange(pred.shape[0])
+    
+    # Create a figure with 5 subplots
+    fig, axs = plt.subplots(5, 1, figsize=(10, 12), sharex=True)
+    
+    # Support set data plot
+    axs[0].plot(time, spt_data, label='Support Set Data')
+    axs[0].set_title('Support Set Input Data')
+    axs[0].set_ylabel('Value')
+    axs[0].legend(loc='upper left')
+    
+    # Support set labels plot
+    colors = plt.cm.viridis(np.linspace(0, 1, pred.shape[0]))
+    for i in range(len(labels)):
+        axs[1].fill_between(time, 0, 1, label=f'Label {i}', color=colors[i], where=spt_labels == i, alpha=0.7)
+    axs[1].set_title('Support Set Labels')
+    axs[1].set_ylabel('Label Active')
+    axs[1].legend(loc='upper left')
+    
+    # Original data plot
+    axs[2].plot(time, data, label='Original Query Data')
+    axs[2].set_title('Original Input Data (Query Set)')
+    axs[2].set_ylabel('Value')
+    axs[2].legend(loc='upper left')
+
+    # Query labels plot
+    for i in range(len(labels)):
+        axs[3].fill_between(time, 0, 1, label=f'Label {i}', color=colors[i], where=label_data == i, alpha=0.7)
+    axs[3].set_title('Query Set Labels')
+    axs[3].set_ylabel('Label Active')
+    axs[3].legend(loc='upper left')
+    
+    # Softmax probabilities plot
+    start = np.zeros(pred.shape[1])
+    for i in range(pred.shape[0]):
+        axs[4].fill_between(time, start, start + pred[i, :], label=labels[i], alpha=0.7, color=colors[i])
+        start += pred[i, :]
+    axs[4].plot(time, start, color='black', lw=2, label='Total Confidence')
+    axs[4].set_title('Softmax Probabilities with Stacked Areas')
+    axs[4].set_xlabel('Time')
+    axs[4].set_ylabel('Confidence Score')
+    axs[4].set_ylim(0, 1.1)
+    axs[4].legend(loc='upper left')
+
+    plt.tight_layout()
+    if dir:
+        plt.savefig(dir)
+        plt.close()
 
 
 def eval_dense_label_to_classification(preds, labels):

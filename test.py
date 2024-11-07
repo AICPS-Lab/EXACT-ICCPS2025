@@ -90,10 +90,11 @@ def test_setup():
     args = get_args()  # Get arguments from the argparse
     args.add_side_noise = True
     print(args.loocv)
-    dataset = MMFIT(
+    dataset = PhysiQ(
         root="data",
         split="train",
         window_size=args.window_size,
+        window_step=args.window_step,
         bg_fg=None,
         args=args,
         transforms=IMUAugmentation(rotation_chance=0),
@@ -116,7 +117,7 @@ def test_setup():
         dataset,
         # n_way=1,
         n_shot=1,
-        batch_size=64,
+        batch_size=args.batch_size,
         n_query=1,
         n_tasks=5,
         threshold_ratio=0.25,
@@ -146,8 +147,14 @@ def test_setup():
         )
         # print(true_class_ids)
         # for i in range(8):
+        #subplot of support:
+        ax = plt.subplot(121)
         plt.plot(support_images[0, 0])
         plt.plot(support_labels[0, 0])
+        #subplot of query:
+        ax = plt.subplot(122)
+        plt.plot(query_images[0, 0])
+        plt.plot(query_labels[0, 0])
         plt.show()
 
 if __name__ == "__main__":

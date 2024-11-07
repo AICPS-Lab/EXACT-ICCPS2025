@@ -23,8 +23,8 @@ from loss_fn import (
     MetricsAccumulator,
 )
 from methods import EX, UNet
-from utilities import model_exception_handler, seed
-from utils_metrics import visualize_softmax
+from utilities import model_exception_handler, printc, seed
+from utils_metrics import fsl_visualize_softmax, visualize_softmax
 
 
 def train(db, net, epoch, args, wandb_run=None):
@@ -168,8 +168,8 @@ def test(db, net, epoch, args, wandb_r=None):
     if wandb_r is not None:
         # Log results
         wandb_r.log(res_dict)
+        log_visualization(epoch, wandb_r,net, fnet, inner_opt)
     return qry_losses, res_dict
-
 
 def main(args):
     # Initialize datasets
@@ -211,6 +211,9 @@ def main(args):
         collate_fn=test_sampler.episodic_collate_fn,
     )
 
+    # save 10 samples of data for visualization 
+    capture_test_dataset_samples(args, test_dataset, test_loader)
+    
     # Define the model architecture
     model = get_model(args)
 
@@ -292,7 +295,7 @@ def main_loocv(args):
             pin_memory=args.pin_memory,
             collate_fn=test_sampler.episodic_collate_fn,
         )
-
+        capture_test_dataset_samples(args, test_dataset, test_loader)
         # Define the model architecture
         model = get_model(args)
         model.to(args.device)
@@ -338,7 +341,62 @@ def log_model_artifact(run, model_path):
     artifact = wandb.Artifact(f"{run.name}", type="model")
     artifact.add_file(model_path)
     run.log_artifact(artifact)
-    
+
+def capture_test_dataset_samples(args, test_dataset, test_loader):
+    # if it exists already:
+    if os.path.exists(os.path.join(args.data_root, args.dataset, f"{args.model}_{args.dataset}_{str(args.loocv)}_{args.seed}.pt")):
+        printc("Saved 10 samples data already exists")
+        return
+    sample_data_in_test = []
+    for i in range(10):
+        x_spt, y_spt, x_qry, y_qry, _ = next(iter(test_loader))
+        sample_data_in_test.append((x_spt, y_spt, x_qry, y_qry))
+    # torch save
+    torch.save(sample_data_in_test, os.path.join(args.data_root, args.dataset, f"{args.model}_{args.dataset}_{str(args.loocv)}_{args.seed}.pt"))
+    printc("Saved 10 samples of data for visualization")
+
+def log_visualization(epoch, wandb_r, net, fnet, inner_opt):
+    # load 10 samples of data for visualization
+    sample_data_in_test = torch.load(os.path.join(args.data_root, args.dataset, f"{args.model}_{args.dataset}_{str(args.loocv)}_{args.seed}.pt"))
+    for image_idx, (x_spt, y_spt, x_qry, y_qry) in enumerate(sample_data_in_test):
+        # visualize the softmax output of the model
+        x_spt, y_spt = x_spt.to(args.device), y_spt.to(args.device)
+        x_qry, y_qry = x_qry.to(args.device), y_qry.to(args.device)
+        with higher.innerloop_ctx(
+                net, inner_opt, track_higher_grads=False
+            ) as (fnet, diffopt):
+                # Inner-loop adaptation
+                for _ in range(args.n_inner_iter):
+                    spt_logits = fnet(x_spt[:, 0])
+                    spt_loss = F.cross_entropy(spt_logits, y_spt[:, 0])
+                    diffopt.step(spt_loss)
+        
+        images = x_qry[:, 0]
+        qry_logits = fnet(images).detach()
+        labels = y_qry[:, 0]
+        softmaxed = F.softmax(qry_logits, dim=1)
+        fsl_visualize_softmax(
+            softmaxed[0].cpu().detach().numpy(),
+            labels[0].cpu().detach().numpy(),
+            images[0].cpu().detach().numpy(),
+            x_spt[0, 0].cpu().detach().numpy(),  # Support set data
+            y_spt[0, 0].cpu().detach().numpy(),  # Support set labels
+            dir=f"saved_figure/{wandb_r.name}_epoch_{epoch}_img_{image_idx}.png"
+        )
+        # log a visualization: 
+        # https://colab.research.google.com/github/wandb/examples/blob/master/colabs/wandb-log/Log_(Almost)_Anything_with_W%26B_Media.ipynb#scrollTo=hPqfetlsyXbg
+        wandb_r.log({f"img_{image_idx}": wandb.Image(f"saved_figure/{wandb_r.name}_epoch_{epoch}_img_{image_idx}.png")})
+        os.remove(f"saved_figure/{wandb_r.name}_epoch_{epoch}_img_{image_idx}.png")
+        
+    # images = x_qry[0]
+    # qry_logits = fnet(images).detach()
+    # labels = y_qry[0]
+    # softmaxed = F.softmax(qry_logits, dim=1)
+    # visualize_softmax(softmaxed[i].cpu().detach().numpy(), labels[i].cpu().detach().numpy(), images[i].cpu().detach().numpy(), dir=f"saved_figure/{wandb_r.name}_epoch_{epoch}.png")
+    #     # log a visualization: 
+    #     # https://colab.research.google.com/github/wandb/examples/blob/master/colabs/wandb-log/Log_(Almost)_Anything_with_W%26B_Media.ipynb#scrollTo=hPqfetlsyXbg
+    # wandb_r.log({"img": wandb.Image(f"saved_figure/{wandb_r.name}_epoch_{epoch}.png")})
+    # os.remove(f"saved_figure/{wandb_r.name}_epoch_{epoch}.png")
 
 if __name__ == "__main__":
     args = get_args()  # Get arguments from the argparse

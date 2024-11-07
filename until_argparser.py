@@ -214,7 +214,7 @@ def get_args():
     parser.add_argument(
         "--window_step",
         type=int,
-        default=50,
+        default=25,
         help="Window step for the PhysiQ dataset",
     )
     parser.add_argument(
