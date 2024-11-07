@@ -99,14 +99,23 @@ class sliding_windows(torch.nn.Module):
             1, round((total_length - (self.width - self.step)) / self.step)
         )
 
+
 def sort_filename(files, order=-1):
     """
-    Sort the filenames in the list in ascending order.
+    Sort the filenames in the list in ascending order, of the repetition number.
     """
     first_order = order
+
+    def get_order(x: str):
+        x_list = (
+            x.rstrip(".csv").split(os.path.sep)[-1].split("_")
+        )  # Split the filename
+        return tuple(
+            [".".join(x_list[:first_order]), int(x_list[first_order])]
+        )  # Return the first order and the integer value of the second order
+
     # return the file order expected to be 0, 1, 2, 3; but not 0, 10, 11, 12, 2, 3 following by all the other things:
-    return sorted(files, key=lambda x: ("_".join(x[0].split(".")[0].split("_")[0:first_order]),
-                                        int(x[0].split(".")[0].split("/")[-1].split("_")[first_order])))
+    return sorted(files, key=get_order)
 
 
 def printc(*args, color="red"):
@@ -232,7 +241,8 @@ def generate_patterned_imu_noise(
 
     # Generate directional trend
     directional_trend = (
-        directional_bias * np.linspace(0, 1, T).reshape(-1, 1)
+        directional_bias
+        * np.linspace(0, 1, T).reshape(-1, 1)
         * np.random.choice([-1, 1], size=(1, 3))
     )
 
@@ -295,7 +305,7 @@ def static_pause(data, reference_length, noise_shape):
         noise_type="static_pause",
         max_length=noise_shape[0],
         range_percentage=0.5,
-        peak_probability=0
+        peak_probability=0,
     )
 
     return imu_noise_segment
@@ -319,7 +329,8 @@ def idle_movement(noise, reference_length, noise_shape):
         noise_type="directional_shift",
         max_length=noise_shape[0],
         range_percentage=0.5,
-        peak_probability=0)
+        peak_probability=0,
+    )
 
     return imu_noise_segment
 
@@ -354,98 +365,108 @@ def generate_sudden_change(noise, noise_length):
         reference_length=5,
         noise_type="sudden_change",
         max_length=noise_length,
-        range_percentage=0.5, # rest position
-        peak_probability=.5,
+        range_percentage=0.5,  # rest position
+        peak_probability=0.5,
         peak_intensity=0.3,
     )
     return imu_noise_segment
+
+
 from scipy.spatial.transform import Slerp
+
+
 def interpolate_transition(data_start, data_end, num_steps):
     """
     Interpolates between two data points with quaternion slerp for orientation and
     linear interpolation for accelerometer data.
-    
+
     Parameters:
         data_start (array): Starting data point, shape (6,)
         data_end (array): Ending data point, shape (6,)
         num_steps (int): Number of interpolation steps.
-        
+
     Returns:
         array: Interpolated transition data, shape (num_steps, 6)
     """
     # Separate accelerometer and gyroscope/orientation data
     accel_start, gyro_start = data_start[:3], data_start[3:]
     accel_end, gyro_end = data_end[:3], data_end[3:]
-    
+
     # Linear interpolation for accelerometer
     accel_interp = np.linspace(accel_start, accel_end, num_steps)
-    
+
     # Quaternion interpolation for gyroscope/orientation (using slerp)
     rot_start = R.from_rotvec(gyro_start)
     rot_end = R.from_rotvec(gyro_end)
-    slerp = Slerp([0, 1], R.from_rotvec([gyro_start, gyro_end])) #NOTE: use slerp to interpolate between two rotations
+    slerp = Slerp(
+        [0, 1], R.from_rotvec([gyro_start, gyro_end])
+    )  # NOTE: use slerp to interpolate between two rotations
     rotations_interp = slerp(np.linspace(0, 1, num_steps))
     gyro_interp = rotations_interp.as_rotvec()
-    
+
     # Combine interpolated accelerometer and gyroscope data
     transition_data = np.hstack([accel_interp, gyro_interp])
     return transition_data
 
+
 def generate_nonexercise(max_length=50, interpolate_steps=10):
     """
     Generate a random non-exercise segment with smooth transitions.
-    
+
     Parameters:
         max_length (int): Maximum length of the non-exercise segment.
         interpolate_steps (int): Number of steps for smooth interpolation.
-        
+
     Returns:
         array: Generated non-exercise segment with smooth transitions, shape (variable, 6)
     """
     # Load the dataset
-    pickle_filename = './datasets/OpportunityUCIDataset/loco_2_mask.npy'
+    pickle_filename = "./datasets/OpportunityUCIDataset/loco_2_mask.npy"
     data = np.load(pickle_filename, allow_pickle=True).item()
-    inp = data['inputs'] / 9.98  # Normalize data
-    labels = data['labels']
-    
+    inp = data["inputs"] / 9.98  # Normalize data
+    labels = data["labels"]
+
     # Filter data indices for the target labels (0, 1, 2, 3)
     indices = np.where(labels < 4)[0]
-    
+
     # Initialize storage for the final segment
     generated_segment = []
     current_length = 0
-    
+
     while current_length < max_length:
         # Randomly select a starting point in the filtered data
         start = np.random.choice(indices)
         end = start + np.random.randint(max_length // 5, max_length // 2)
-        
+
         # Clip end index to avoid overflow
         end = min(end, len(inp))
-        
+
         # Extract the selected segment and check the length
         segment = inp[start:end, :]
         if len(segment) < 2:  # Skip if too short for interpolation
             continue
-        
+
         # Add the segment to the generated data
         generated_segment.append(segment)
         current_length += len(segment)
-        
+
         # Add interpolated transition if still within max length
         if current_length < max_length:
             # Create a transition between the end of this segment and the start of the next
             next_start = np.random.choice(indices)
-            next_segment = inp[next_start:next_start + 1, :]
+            next_segment = inp[next_start : next_start + 1, :]
             if len(next_segment) > 0:
-                transition_data = interpolate_transition(segment[-1], next_segment[0], interpolate_steps)
+                transition_data = interpolate_transition(
+                    segment[-1], next_segment[0], interpolate_steps
+                )
                 generated_segment.append(transition_data)
                 current_length += len(transition_data)
 
     # Concatenate all segments and transitions into a single array
-    generated_segment = np.vstack(generated_segment)[:max_length]  # Trim to max_length if necessary
+    generated_segment = np.vstack(generated_segment)[
+        :max_length
+    ]  # Trim to max_length if necessary
     return generated_segment
-
 
 
 def model_exception_handler(model_path):
@@ -463,9 +484,7 @@ def model_exception_handler(model_path):
         printc("KeyboardInterrupt received, deleting model...")
         delete_model()
         sys.exit(0)
+
     # Register the signal handler
     signal.signal(signal.SIGINT, signal_handler)
     return
-
-
-

@@ -225,8 +225,9 @@ def main(args):
         run = wandb.init(
             project=args.wandb_project,
             config=vars(args),
+            name= f"{args.model}-{args.dataset}-{str(args.seed)}"
         )
-        run.name = args.model + "-" + run.name
+        run.name = run.name
         model_path = "saved_model/" + run.name + ".pth"
     else:
         run = None
