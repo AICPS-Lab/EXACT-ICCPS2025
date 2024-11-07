@@ -69,6 +69,7 @@ def get_dataset(args, test_subject=None):
             root=args.data_root,
             split="train",
             window_size=args.window_size,
+            window_step=args.window_step,
             bg_fg=None,
             args=args,
             transforms=IMUAugmentation(rotation_chance=0),
@@ -78,6 +79,7 @@ def get_dataset(args, test_subject=None):
             root=args.data_root,
             split="test",
             window_size=args.window_size,
+            window_step=args.window_step,
             bg_fg=None,
             args=args,
             test_subject=test_subject,
@@ -87,6 +89,7 @@ def get_dataset(args, test_subject=None):
             root=args.data_root,
             split="train",
             window_size=args.window_size,
+            window_step=args.window_step,
             bg_fg=None,
             args=args,
             transforms=IMUAugmentation(rotation_chance=0),
@@ -96,6 +99,7 @@ def get_dataset(args, test_subject=None):
             root=args.data_root,
             split="test",
             window_size=args.window_size,
+            window_step=args.window_step,
             bg_fg=None,
             args=args,
             test_subject=test_subject,
@@ -105,6 +109,7 @@ def get_dataset(args, test_subject=None):
             root=args.data_root,
             split="train",
             window_size=args.window_size,
+            window_step=args.window_step,
             bg_fg=None,
             args=args,
             transforms=IMUAugmentation(rotation_chance=0),
@@ -114,6 +119,7 @@ def get_dataset(args, test_subject=None):
             root=args.data_root,
             split="test",
             window_size=args.window_size,
+            window_step=args.window_step,
             bg_fg=None,
             args=args,
             test_subject=test_subject,
@@ -202,8 +208,14 @@ def get_args():
     parser.add_argument(
         "--window_size",
         type=int,
-        default=200,
+        default=500,
         help="Window size for the PhysiQ dataset",
+    )
+    parser.add_argument(
+        "--window_step",
+        type=int,
+        default=50,
+        help="Window step for the PhysiQ dataset",
     )
     parser.add_argument(
         "--n_shot",
@@ -266,7 +278,7 @@ def get_args():
         help="Number of inner-loop iterations",
     )
     parser.add_argument(
-        "--n_epochs", type=int, default=100, help="Number of training epochs"
+        "--n_epochs", type=int, default=30, help="Number of training epochs"
     )
     parser.add_argument(
         "--device",

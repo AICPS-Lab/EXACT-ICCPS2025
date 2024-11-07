@@ -37,9 +37,56 @@ from utilities import model_exception_handler
 
 # # [optional] finish the wandb run, necessary in notebooks
 # wandb.finish()
-if __name__ == "__main__":
-    # test the dataset
-    # seed(42)
+
+def test_num_workers():
+    from argparse import Namespace
+    from time import time
+    import multiprocessing as mp
+    from torch.utils.data import Dataset, DataLoader
+    from datasets.DenseLabelTaskSampler import DenseLabelTaskSampler
+    from datasets.PhysiQ import PhysiQ
+    from datasets.Transforms import IMUAugmentation
+    from until_argparser import get_args
+
+    args = get_args()  # Get arguments from the argparse
+
+    print(args.loocv)
+    dataset = PhysiQ(
+        root="data",
+        split="train",
+        window_size=args.window_size,
+        bg_fg=None,
+        args=args,
+        transforms=IMUAugmentation(rotation_chance=0),
+    )
+
+    train_sampler = DenseLabelTaskSampler(
+        dataset,
+        # n_way=1,
+        n_shot=1,
+        batch_size=64,
+        n_query=1,
+        n_tasks=5,
+        threshold_ratio=0.25,
+        add_side_noise=args.add_side_noise,
+    )
+
+    for num_workers in range(0, mp.cpu_count(), 2):  
+        train_loader = DataLoader(
+            dataset,
+            batch_sampler=train_sampler,
+            num_workers=num_workers,
+            pin_memory=True,
+            collate_fn=train_sampler.episodic_collate_fn,
+        )
+        start = time()
+        for epoch in range(1, 3):
+            for i, data in enumerate(train_loader, 0):
+                pass
+        end = time()
+        print("Finish with:{} second, num_workers={}".format(end - start, num_workers))
+
+def test_setup():
     args = get_args()  # Get arguments from the argparse
     args.add_side_noise = True
     print(args.loocv)
@@ -102,3 +149,11 @@ if __name__ == "__main__":
         plt.plot(support_images[0, 0])
         plt.plot(support_labels[0, 0])
         plt.show()
+
+if __name__ == "__main__":
+    # test the dataset
+    # seed(42)
+    
+    # test_num_workers()
+    
+    test_setup()

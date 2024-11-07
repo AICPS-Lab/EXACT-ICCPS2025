@@ -255,7 +255,7 @@ def main_loocv(args):
     # Set up for each subject as a separate LOOCV iteration
     all_subjects = get_all_subjects(args)  # Define a function to get all subject IDs
 
-    for test_subject in range(1, all_subjects+1):
+    for test_subject in range(1, 5+1): # Iterate over first 10 subjects
         # Initialize datasets with the current subject as test
         train_dataset, test_dataset = get_dataset(args, test_subject)
         seed(args.seed)
