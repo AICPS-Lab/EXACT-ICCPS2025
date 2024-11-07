@@ -71,14 +71,14 @@ class QueryDataset(Dataset):
         Must be implemented by subclasses.
         """
         raise NotImplementedError
-    
+
     def get_subject(self):
         """
         Returns the index of the subject in the filename.
         Must be implemented by subclasses.
         """
         raise NotImplementedError
-    
+
     def get_ind_label(self):
         """
         Returns the index of the label in the filename.
@@ -336,11 +336,12 @@ class QueryDataset(Dataset):
             # Create splits and save them
             train_data = {}
             test_data = {}
+            
             for key, files in subjLabel_to_data.items():
-                subj = key[0]
-                ind_label = key[1:]
-                if subj == self.test_subject:
-                    if key not in test_data:
+                subj = tuple([key[i] for i in self.get_subject()])
+                ind_label = tuple([key[i] for i in self.get_ind_label()])
+                if  unique_test_subjects.index(subj[0]) == self.test_subject:
+                    if subj not in test_data:
                         test_data[key] = []
                     test_data[key].extend(files)
                 else:
@@ -360,23 +361,19 @@ class QueryDataset(Dataset):
             data_to_use = test_data
         else:
             raise ValueError("Invalid split")
-
         # Process data_to_use
         res_data = []
         res_label = []
         res_exer_label = []
         exercise_labels = sorted(set([label[0] for label in unique_indices]))
         for key, files in data_to_use.items():
-            subj, *rest = key
-            ind_label = rest
+            subj = tuple([key[i] for i in self.get_subject()])
+            ind_label = tuple([key[i] for i in self.get_ind_label()])
             original_label = unique_indices.index(tuple(ind_label))
             combined = [(f, original_label) for f in files]
 
             if self.args.shuffle == "random":
                 random.shuffle(combined)
-                for f, o in combined:
-                    print(f, 0)
-                input()
             elif self.args.shuffle == "sorted":
                 combined = sort_filename(combined)
             else:

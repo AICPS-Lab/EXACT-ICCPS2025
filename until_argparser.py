@@ -62,7 +62,7 @@ def get_model(args):
     return model
 
 
-def get_dataset(args):
+def get_dataset(args, test_subject=None):
     dataset = args.dataset.lower()
     if dataset == "physiq":
         train_dataset = PhysiQ(
@@ -72,6 +72,7 @@ def get_dataset(args):
             bg_fg=None,
             args=args,
             transforms=IMUAugmentation(rotation_chance=0),
+            test_subject=test_subject,
         )
         test_dataset = PhysiQ(
             root=args.data_root,
@@ -79,6 +80,7 @@ def get_dataset(args):
             window_size=args.window_size,
             bg_fg=None,
             args=args,
+            test_subject=test_subject,
         )
     elif dataset == "spar":
         train_dataset = SPAR(
@@ -88,6 +90,7 @@ def get_dataset(args):
             bg_fg=None,
             args=args,
             transforms=IMUAugmentation(rotation_chance=0),
+            test_subject=test_subject,
         )
         test_dataset = SPAR(
             root=args.data_root,
@@ -95,6 +98,7 @@ def get_dataset(args):
             window_size=args.window_size,
             bg_fg=None,
             args=args,
+            test_subject=test_subject,
         )
     elif dataset == "mmfit":
         train_dataset = MMFIT(
@@ -104,6 +108,7 @@ def get_dataset(args):
             bg_fg=None,
             args=args,
             transforms=IMUAugmentation(rotation_chance=0),
+            test_subject=test_subject,
         )
         test_dataset = MMFIT(
             root=args.data_root,
@@ -111,12 +116,25 @@ def get_dataset(args):
             window_size=args.window_size,
             bg_fg=None,
             args=args,
+            test_subject=test_subject,
         )
     else:
         raise ValueError("Dataset not supported")
     seed(args.seed)
     return train_dataset, test_dataset
 
+def get_all_subjects(args):
+    dataset = args.dataset.lower()
+    # base 1 indexing
+    if dataset == "physiq":
+        all_subjects = 31
+    elif dataset == "spar":
+        all_subjects = 21
+    elif dataset == "mmfit":
+        all_subjects = 20
+    else:
+        raise ValueError("Dataset not supported")
+    return all_subjects
 
 def get_args():
     parser = argparse.ArgumentParser(

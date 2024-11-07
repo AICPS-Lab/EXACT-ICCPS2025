@@ -28,7 +28,6 @@ from sklearn.metrics import (
     jaccard_score,
 )
 
-
 class MetricsAccumulator:
     def __init__(self, dir_name=None):
         self.dir_name = dir_name
@@ -193,8 +192,12 @@ class MetricsAccumulator:
             + 1e-7
         )
 
-        # ROC-AUC
-        roc_auc = roc_auc_score(self.all_y_true, self.all_y_scores)
+        # In the compute() method
+        if len(set(self.all_y_true)) > 1:
+            roc_auc = roc_auc_score(self.all_y_true, self.all_y_scores)
+        else:
+            roc_auc = float("nan")  # Set ROC-AUC to NaN if only one class is present
+
 
         # Covering Metric
         covering = self.total_intersection / (self.total_y_true + 1e-7)
@@ -212,6 +215,54 @@ class MetricsAccumulator:
         }
         return self._dict_format(metrics)
 
+def test_metrics_accumulator():
+    # Case 1: Both classes (0 and 1) are present in y_true
+    print("Test Case 1: Both classes present")
+    y_true_1 = torch.tensor([[1, 0, 1, 1, 0]])
+    logits_1 = torch.tensor([[[0.2, 0.8], [0.9, 0.1], [0.3, 0.7], [0.4, 0.6], [0.6, 0.4]]])
+    
+    accumulator_1 = MetricsAccumulator()
+    batch_metrics_1, _ = accumulator_1.update(y_true_1, logits_1)
+    computed_metrics_1 = accumulator_1.compute()
+    
+    print("Batch metrics:", batch_metrics_1)
+    print("Computed metrics:", computed_metrics_1)
+    print()
+
+    # Case 2: Only one class (1) present in y_true
+    print("Test Case 2: Only class 1 present")
+    y_true_2 = torch.tensor([[1, 1, 1, 1, 1]])
+    logits_2 = torch.tensor([[[0.2, 0.8], [0.3, 0.7], [0.1, 0.9], [0.4, 0.6], [0.3, 0.7]]])
+    
+    accumulator_2 = MetricsAccumulator()
+    batch_metrics_2, _ = accumulator_2.update(y_true_2, logits_2)
+    try:
+        computed_metrics_2 = accumulator_2.compute()
+    except ValueError as e:
+        computed_metrics_2 = str(e)
+    
+    print("Batch metrics:", batch_metrics_2)
+    print("Computed metrics:", computed_metrics_2)
+    print()
+
+    # Case 3: Only one class (0) present in y_true
+    print("Test Case 3: Only class 0 present")
+    y_true_3 = torch.tensor([[0, 0, 0, 0, 0]])
+    logits_3 = torch.tensor([[[0.7, 0.3], [0.8, 0.2], [0.9, 0.1], [0.85, 0.15], [0.75, 0.25]]])
+    
+    accumulator_3 = MetricsAccumulator()
+    batch_metrics_3, _ = accumulator_3.update(y_true_3, logits_3)
+    batch_metrics_3, _ = accumulator_3.update(y_true_3, logits_3)
+    batch_metrics_3, _ = accumulator_3.update(y_true_3, logits_3)
+    batch_metrics_3, _ = accumulator_3.update(y_true_2, logits_2)
+    try:
+        computed_metrics_3 = accumulator_3.compute()
+    except ValueError as e:
+        computed_metrics_3 = str(e)
+    
+    print("Batch metrics:", batch_metrics_3)
+    print("Computed metrics:", computed_metrics_3)
+    print()
 
 # Example usage with batched data:
 # Replace these tensors with your actual time series data
@@ -657,3 +708,5 @@ if __name__ == "__main__":
     average_metrics = metrics_accumulator.compute()
     for name, value in average_metrics.items():
         print(f"{name}: {value:.4f}")
+        
+    test_metrics_accumulator()

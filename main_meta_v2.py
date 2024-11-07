@@ -18,7 +18,7 @@ import wandb
 from datasets.DenseLabelTaskSampler import DenseLabelTaskSampler
 from torch.utils.data import DataLoader
 
-from until_argparser import get_args, get_dataset, get_model
+from until_argparser import get_all_subjects, get_args, get_dataset, get_model
 from loss_fn import (
     MetricsAccumulator,
 )
@@ -251,8 +251,99 @@ def main(args):
         run.finish()
     return
 
+def main_loocv(args):
+    # Set up for each subject as a separate LOOCV iteration
+    all_subjects = get_all_subjects(args)  # Define a function to get all subject IDs
+
+    for test_subject in range(1, all_subjects+1):
+        # Initialize datasets with the current subject as test
+        train_dataset, test_dataset = get_dataset(args, test_subject)
+        seed(args.seed)
+        
+        # Initialize samplers
+        train_sampler = DenseLabelTaskSampler(
+            train_dataset,
+            n_shot=args.n_shot,
+            batch_size=args.batch_size,
+            n_query=args.n_query,
+            n_tasks=args.n_tasks,
+            threshold_ratio=args.threshold_ratio,
+            add_side_noise=args.add_side_noise,
+        )
+        test_sampler = DenseLabelTaskSampler(
+            test_dataset,
+            n_shot=args.n_shot,
+            batch_size=args.batch_size,
+            n_query=args.n_query,
+            n_tasks=args.n_tasks,
+            threshold_ratio=args.threshold_ratio,
+            add_side_noise=args.add_side_noise,
+        )
+
+        # Initialize DataLoader
+        train_loader = DataLoader(
+            train_dataset,
+            batch_sampler=train_sampler,
+            num_workers=args.num_workers,
+            pin_memory=args.pin_memory,
+            collate_fn=train_sampler.episodic_collate_fn,
+        )
+        test_loader = DataLoader(
+            test_dataset,
+            batch_sampler=test_sampler,
+            num_workers=args.num_workers,
+            pin_memory=args.pin_memory,
+            collate_fn=test_sampler.episodic_collate_fn,
+        )
+
+        # Define the model architecture
+        model = get_model(args)
+        model.to(args.device)
+
+        print(
+            "trainable parameters: ",
+            sum(p.numel() for p in model.parameters() if p.requires_grad),
+        )
+
+        # Initialize meta optimizer
+        args.meta_opt = torch.optim.Adam(model.parameters(), lr=args.lr)
+
+        # Run a unique wandb session for each test subject
+        if not args.nowandb:
+            run = wandb.init(
+                project=args.wandb_project,
+                config=vars(args),
+                name=f"{args.model}-{args.dataset}-{args.seed}-subject-{test_subject}",
+            )
+            model_path = f"saved_model/{run.name}.pth"
+        else:
+            run = None
+            model_path = f"saved_model/{args.model}_subject_{test_subject}.pth"
+        
+        model_exception_handler(model_path)
+
+        # Training loop
+        loss = np.inf
+        for epoch in range(args.n_epochs):
+            train(iter(train_loader), model, epoch, args, run)
+            qry_loss, qry_acc = test(iter(test_loader), model, epoch, args, run)
+            if qry_loss < loss:
+                loss = qry_loss
+                torch.save(model.state_dict(), model_path)
+        
+        # Save the model to wandb for each run
+        if not args.nowandb:
+            artifact = wandb.Artifact("model", type="model")
+            artifact.add_file(model_path)
+            run.log_artifact(artifact)
+            run.finish()
+
+    return
 
 if __name__ == "__main__":
     args = get_args()  # Get arguments from the argparse
     args.wandb_group = "experiment-" + wandb.util.generate_id()
-    main(args)
+    if args.loocv:
+        main_loocv(args)
+    else:
+        main(args)
