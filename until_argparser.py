@@ -6,7 +6,8 @@ from datasets.SPAR import SPAR
 from datasets.Transforms import IMUAugmentation
 from methods.EX import EX
 from methods.transformer import TransformerModel
-from methods.unet import EXACT_UNet, UNet
+from methods.unet import UNet
+from methods.EXACT import EXACT_UNet
 import torch.nn as nn
 
 from utilities import seed
@@ -16,7 +17,7 @@ def get_model_args(args, preliminary_args):
     model = preliminary_args.model.lower()
     if model == "unet":
         args = UNet.add_args(args)
-    elif model == "exact_unet":
+    elif model == "exact":
         args = EXACT_UNet.add_args(args)
     elif model == "transformer":
         args = TransformerModel.add_args(args)
@@ -37,7 +38,7 @@ def get_model(args):
     args.model = args.model.lower()
     if args.model == "unet":
         model = UNet
-    elif args.model == "exact_unet":
+    elif args.model == "exact":
         model = EXACT_UNet
     elif args.model == "transformer":
         model = TransformerModel
@@ -129,6 +130,7 @@ def get_dataset(args, test_subject=None):
     seed(args.seed)
     return train_dataset, test_dataset
 
+
 def get_all_subjects(args):
     dataset = args.dataset.lower()
     # base 1 indexing
@@ -141,6 +143,7 @@ def get_all_subjects(args):
     else:
         raise ValueError("Dataset not supported")
     return all_subjects
+
 
 def get_args():
     parser = argparse.ArgumentParser(
