@@ -139,13 +139,13 @@ def test(db, net, epoch, args, wandb_r=None):
                 # Inner-loop adaptation
                 for _ in range(args.n_inner_iter):
                     spt_logits = fnet(x_spt[i])
-                    spt_loss = F.cross_entropy(spt_logits, y_spt[i])
+                    spt_loss = F.cross_entropy(spt_logits, y_spt[i].long())
                     diffopt.step(spt_loss)
 
                 # Compute the query loss and accuracy
                 qry_logits = fnet(x_qry[i]).detach()
                 qry_loss = F.cross_entropy(
-                    qry_logits, y_qry[i], reduction="none"
+                    qry_logits, y_qry[i].long(), reduction="none"
                 )
                 qry_losses.append(qry_loss.detach())
                 string_score, score = compute_metrics.update(
@@ -368,7 +368,7 @@ def log_visualization(epoch, wandb_r, net, fnet, inner_opt):
                 # Inner-loop adaptation
                 for _ in range(args.n_inner_iter):
                     spt_logits = fnet(x_spt[:, 0])
-                    spt_loss = F.cross_entropy(spt_logits, y_spt[:, 0])
+                    spt_loss = F.cross_entropy(spt_logits, y_spt[:, 0].long())
                     diffopt.step(spt_loss)
         
         images = x_qry[:, 0]

@@ -48,7 +48,7 @@ class QueryDataset(Dataset):
             self._process_loocv_data()
 
         self.data_dict = self.load_data()
-        self.data, self.label, self.res_exer_label = self.concatenate_data()
+        self.data, self.label, self.res_exer_label, self.res_var_label = self.concatenate_data()
 
     def get_dataset_name(self):
         """
@@ -265,9 +265,11 @@ class QueryDataset(Dataset):
         label = self.data_dict["label"]
         unique_indices = self.data_dict["unique_indices"]
         exercise_labels = sorted(set([label[0] for label in unique_indices]))
+
         res_data = []
         res_label = []
         res_exer_label = []
+        res_var_label = []
         for k, v in data.items():
             file = []
             dense_label = []
@@ -308,11 +310,19 @@ class QueryDataset(Dataset):
                     * sfile.shape[0]
                 )
             )
+            res_var_label.append(
+                torch.tensor([original_label] * sfile.shape[0]))
+            # res_var_label.append(
+            #     torch.tensor(
+            #         [unique_indices[original_label][1]] * sfile.shape[0]
+            #     )
+            # )
 
         res_data = torch.cat(res_data, axis=0)
         res_label = torch.cat(res_label, axis=0)
         res_exer_label = torch.cat(res_exer_label, axis=0)
-        return res_data, res_label, res_exer_label
+        res_var_label = torch.cat(res_var_label, axis=0)
+        return res_data, res_label, res_exer_label, res_var_label
 
     def _loocv_concatenate_data(self):
         data_dict = self.data_dict
@@ -434,8 +444,9 @@ class QueryDataset(Dataset):
                 self.transforms(self.data[idx]),
                 self.label[idx],
                 self.res_exer_label[idx],
+                self.res_var_label[idx],
             )
-        return self.data[idx], self.label[idx], self.res_exer_label[idx]
+        return self.data[idx], self.label[idx], self.res_exer_label[idx], self.res_var_label[idx]
 
     def generate_noise(
         self,

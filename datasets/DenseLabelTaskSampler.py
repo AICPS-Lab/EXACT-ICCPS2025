@@ -44,9 +44,14 @@ class DenseLabelTaskSampler(Sampler):
         self.add_side_noise = add_side_noise
 
         # Build a dictionary mapping each label to a list of indices for dense labeling
-        for item_idx, (input_data, label, exer_label) in enumerate(dataset):
+        for item_idx, (input_data, label, exer_label, var_label) in enumerate(dataset):
             # NOTE: QUESTION should we consider in the label of variation or the label of the exercise?
-            valid_label = int(exer_label)  # self._get_label(label)
+            #NOTE: VERSION 1
+            # valid_label = self._classify_label(label)
+            #NOTE: VERSION 2
+            # valid_label = int(exer_label) # self._get_label(label)
+            #NOTE: VERSION 3
+            valid_label = int(var_label) #exer_label # self._get_label(label)
             if valid_label is not None:
                 if valid_label in self.items_per_label:
                     self.items_per_label[valid_label].append(item_idx)
@@ -78,7 +83,7 @@ class DenseLabelTaskSampler(Sampler):
             yield sampled_task_indices.tolist()
 
     def episodic_collate_fn(
-        self, input_data: List[Tuple[Tensor, Tensor]]
+        self, input_data: List[Tuple[Tensor, Tensor, Tensor, Tensor]]
     ) -> Tuple[Tensor, Tensor, Tensor, Tensor, List[int]]:
         """
         Collate function for episodic data loaders in dense labeling problems.
@@ -120,15 +125,19 @@ class DenseLabelTaskSampler(Sampler):
         if self.add_side_noise:
             # if it has side noise, label 0 is the side noise, and other label is original label +1:
             # so if the label is not 0, its 1 (1 as >0)
-            
+            #NOTE: VERSION 2
             # based on the _cur_task randomly select from data correspondence to make the label 1 or 0
-            lis = self.dataset.data_correspondence()[self._cur_task]
-            randomlist = random.sample(lis, random.randint(1, len(lis)))
-            randomlist = torch.tensor(randomlist)
-            query_labels = torch.isin(query_labels, randomlist).to(torch.long)
-            support_labels = torch.isin(support_labels, randomlist).to(torch.long)
+            # lis = self.dataset.data_correspondence()[self._cur_task]
+            # randomlist = random.sample(lis, random.randint(1, len(lis)))
+            # randomlist = torch.tensor(randomlist)
+            # query_labels = torch.isin(query_labels, randomlist).to(torch.long)
+            # support_labels = torch.isin(support_labels, randomlist).to(torch.long)
+            #NOTE: VERSION 1
             # query_labels = torch.where(query_labels > 0, 1, 0)
             # support_labels = torch.where(support_labels > 0, 1, 0)
+            #NOTE: VERSION 3
+            query_labels = torch.where(query_labels == self._cur_task, 1, 0)
+            support_labels = torch.where(support_labels == self._cur_task, 1, 0)
             
         else:
             # Adjust labels to binary based on the current target variation
