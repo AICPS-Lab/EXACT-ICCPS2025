@@ -19,7 +19,7 @@ class PhysiQ(QueryDataset):
         bg_fg=None,
         args=None,
         transforms=None,
-        test_subject: int =None,
+        test_subject: int = None,
     ):
         super(PhysiQ, self).__init__(
             root=root,
@@ -34,7 +34,7 @@ class PhysiQ(QueryDataset):
 
     def parse_filename(self, filename):
         # PhysiQ filenames: [S1]_[E1]_[left-right hand]_[variation (range of motion)]_[stability]_[repetition_id].csv
-        parts = filename.rstrip('.csv').split('_')
+        parts = filename.rstrip(".csv").split("_")
         if len(parts) < 6:
             return None  # Filename does not match expected pattern
         subj = parts[0]
@@ -43,11 +43,11 @@ class PhysiQ(QueryDataset):
         ind_label = (exer, rom)
         unique_identifier = (subj, exer, rom)
         return {
-            'subject': subj,
-            'ind_label': ind_label,
-            'unique_identifier': unique_identifier,
+            "subject": subj,
+            "ind_label": ind_label,
+            "unique_identifier": unique_identifier,
         }
-        
+
     def get_subject(self):
         # this is not the subject of the file name but the subject for splitting or shuffling the data:
         # PhysiQ filenames: [S1]_[E1]_[left-right hand]_[variation (range of motion)]_[stability]_[repetition_id].csv
@@ -70,6 +70,25 @@ class PhysiQ(QueryDataset):
             "segment_sessions_one_repetition_data_E3",
             "segment_sessions_one_repetition_data_E4",
         ]
-        return [os.path.join(self.root, self.DATASET_NAME, folder) for folder in folders]
+        return [
+            os.path.join(self.root, self.DATASET_NAME, folder)
+            for folder in folders
+        ]
+
+    def data_correspondence(self):
+        # 6 exercises, 1 hands, 5 variations for 0, 2 and 3 variation for 1, 3
+        dic = {
+            0: [0, 1, 2, 3, 4],
+            1: [5, 6, 7],
+            2: [8, 9, 10, 11, 12],
+            3: [
+                13,
+                14,
+                15,
+            ],
+        }
+        if self.args.add_side_noise:
+            dic = {k: [v[i] + 1] for k, v in dic.items() for i in range(len(v))}
+        return dic
 
     # Implement any dataset-specific methods if needed.

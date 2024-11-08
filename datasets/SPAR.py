@@ -35,7 +35,7 @@ class SPAR(QueryDataset):
 
     def parse_filename(self, filename):
         # SPAR filenames: [Subject]_[Exercise]_[left-right hand]_[repetition].csv
-        parts = filename.rstrip('.csv').split('_')
+        parts = filename.rstrip(".csv").split("_")
         if len(parts) < 4:
             return None  # Filename does not match expected pattern
         subj = parts[0]
@@ -44,21 +44,21 @@ class SPAR(QueryDataset):
         ind_label = (exer, hand)
         unique_identifier = (subj, exer, hand)
         return {
-            'subject': subj,
-            'ind_label': ind_label,
-            'unique_identifier': unique_identifier,
+            "subject": subj,
+            "ind_label": ind_label,
+            "unique_identifier": unique_identifier,
         }
+
     def get_subject(self):
         # this is not the subject of the file name but the subject for splitting or shuffling the data:
         # aka shuffled based on
         # SPAR filenames: [Subject]_[Exercise]_[left-right hand]_[repetition].csv
         # returning the index of the subject in the filename
         return [0, 1, 2]
-    
+
     def get_ind_label(self):
         # returning the index of the label in the filename
         return [1, 2]
-
 
     def get_dataset_name(self):
         return self.DATASET_NAME
@@ -66,4 +66,16 @@ class SPAR(QueryDataset):
     def default_data_folders(self):
         return [os.path.join(self.root, "spar", "spar_dataset")]
 
-    
+    def data_correspondence(self):
+        # 6 exercises, 2 hands
+        dic = {
+            0: [0, 1],
+            1: [2, 3],
+            2: [4, 5],
+            3: [6, 7],
+            4: [8, 9],
+            5: [10, 11],
+        }
+        if self.args.add_side_noise:
+            dic = {k: [v[i] + 1] for k, v in dic.items() for i in range(len(v))}
+        return dic

@@ -110,6 +110,9 @@ class QueryDataset(Dataset):
 
                         if ind_label not in unique_indices:
                             unique_indices.append(ind_label)
+        unique_indices = sorted(
+            unique_indices, key=lambda x: (int(x[0][1:]), x[1])
+        )
 
         # Proceed with splitting data into train/test and saving
         seed(self.args.dataset_seed)
@@ -204,7 +207,9 @@ class QueryDataset(Dataset):
 
                         if ind_label not in unique_indices:
                             unique_indices.append(ind_label)
-
+        unique_indices = sorted(
+            unique_indices, key=lambda x: (int(x[0][1:]), x[1])
+        )
         # Save the processed data
         loocv_data = {
             "subjLabel_to_data": subjLabel_to_data,
@@ -255,6 +260,8 @@ class QueryDataset(Dataset):
         label = self.data_dict["label"]
         unique_indices = self.data_dict["unique_indices"]
         exercise_labels = sorted(set([label[0] for label in unique_indices]))
+        print(unique_indices)
+        print(exercise_labels)
         res_data = []
         res_label = []
         res_exer_label = []
@@ -294,14 +301,14 @@ class QueryDataset(Dataset):
             res_label.append(sdense_label)
             res_exer_label.append(
                 torch.tensor(
-                    [exercise_labels.index(unique_indices[original_label][0])] * sfile.shape[0]
+                    [exercise_labels.index(unique_indices[original_label][0])]
+                    * sfile.shape[0]
                 )
             )
 
         res_data = torch.cat(res_data, axis=0)
         res_label = torch.cat(res_label, axis=0)
         res_exer_label = torch.cat(res_exer_label, axis=0)
-
         return res_data, res_label, res_exer_label
 
     def _loocv_concatenate_data(self):
@@ -336,11 +343,11 @@ class QueryDataset(Dataset):
             # Create splits and save them
             train_data = {}
             test_data = {}
-            
+
             for key, files in subjLabel_to_data.items():
                 subj = tuple([key[i] for i in self.get_subject()])
                 ind_label = tuple([key[i] for i in self.get_ind_label()])
-                if  unique_test_subjects.index(subj[0]) == self.test_subject:
+                if unique_test_subjects.index(subj[0]) == self.test_subject:
                     if subj not in test_data:
                         test_data[key] = []
                     test_data[key].extend(files)

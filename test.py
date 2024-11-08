@@ -90,7 +90,7 @@ def test_setup():
     args = get_args()  # Get arguments from the argparse
     args.add_side_noise = True
     print(args.loocv)
-    dataset = PhysiQ(
+    dataset = SPAR(
         root="data",
         split="train",
         window_size=args.window_size,
