@@ -243,8 +243,8 @@ class DenseLabelTaskSampler(Sampler):
             # randomlist = torch.tensor(randomlist)
             # print(self._cur_task)
             
-            query_labels = torch.isin(query_labels, torch.tensor(self._cur_task)).to(torch.long)
             support_labels = torch.isin(support_labels, torch.tensor(self._cur_task)).to(torch.long)
+            query_labels = torch.isin(query_labels, torch.tensor(self._cur_task)).to(torch.long)
             #NOTE: VERSION 1
             # query_labels = torch.where(query_labels > 0, 1, 0)
             # support_labels = torch.where(support_labels > 0, 1, 0)

@@ -227,7 +227,7 @@ def get_args():
         help="Number of support examples per class",
     )
     parser.add_argument(
-        "--batch_size", type=int, default=32, help="Batch size for training"
+        "--batch_size", type=int, default=8, help="Batch size for training"
     )
     parser.add_argument(
         "--n_query",

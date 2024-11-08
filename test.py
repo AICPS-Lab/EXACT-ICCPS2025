@@ -137,24 +137,25 @@ def test_setup():
         query_labels,
         true_class_ids,
     ) in train_loader:
-        print(
-            support_images.shape,
-            support_labels.shape,
-            query_images.shape,
-            query_labels.shape,
-            true_class_ids,
-        )
-        # print(true_class_ids)
-        # for i in range(8):
-        #subplot of support:
-        ax = plt.subplot(121)
-        plt.plot(support_images[0, 0])
-        plt.plot(support_labels[0, 0])
-        #subplot of query:
-        ax = plt.subplot(122)
-        plt.plot(query_images[0, 0])
-        plt.plot(query_labels[0, 0])
-        plt.show()
+        pass
+        # print(
+        #     support_images.shape,
+        #     support_labels.shape,
+        #     query_images.shape,
+        #     query_labels.shape,
+        #     true_class_ids,
+        # )
+        # # print(true_class_ids)
+        # # for i in range(8):
+        # #subplot of support:
+        # ax = plt.subplot(121)
+        # plt.plot(support_images[0, 0])
+        # plt.plot(support_labels[0, 0])
+        # #subplot of query:
+        # ax = plt.subplot(122)
+        # plt.plot(query_images[0, 0])
+        # plt.plot(query_labels[0, 0])
+        # plt.show()
 
 if __name__ == "__main__":
     # test the dataset
