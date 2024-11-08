@@ -241,7 +241,7 @@ class DenseLabelTaskSampler(Sampler):
             # based on the _cur_task randomly select from data correspondence to make the label 1 or 0
             
             # randomlist = torch.tensor(randomlist)
-            print(self._cur_task)
+            # print(self._cur_task)
             
             query_labels = torch.isin(query_labels, torch.tensor(self._cur_task)).to(torch.long)
             support_labels = torch.isin(support_labels, torch.tensor(self._cur_task)).to(torch.long)
