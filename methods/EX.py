@@ -127,7 +127,7 @@ class EX(nn.Module):
         e4 = self.encoder4(self.pool(e3))            # [B, embed_dim, S/8]
 
         # Self-Attention in Bottleneck
-        e4 = self.mhsa(e4)                           # [B, embed_dim, S/8]
+        # e4 = self.mhsa(e4)                           # [B, embed_dim, S/8]
 
         # Decoder with Skip Connections
         d4 = self.upconv4(e4)                        # Upsample
