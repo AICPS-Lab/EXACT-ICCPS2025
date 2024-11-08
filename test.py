@@ -90,7 +90,7 @@ def test_setup():
     args = get_args()  # Get arguments from the argparse
     args.add_side_noise = True
     print(args.loocv)
-    dataset = SPAR(
+    dataset = PhysiQ(
         root="data",
         split="train",
         window_size=args.window_size,
@@ -115,10 +115,10 @@ def test_setup():
     train_sampler = DenseLabelTaskSampler(
         dataset,
         # n_way=1,
-        n_shot=1,
+        n_shot=args.n_shot,
         batch_size=args.batch_size,
-        n_query=1,
-        n_tasks=5,
+        n_query=args.n_query,
+        n_tasks=args.n_tasks,
         threshold_ratio=0.25,
         add_side_noise=args.add_side_noise,
     )
@@ -147,14 +147,14 @@ def test_setup():
         # print(true_class_ids)
         # for i in range(8):
         #subplot of support:
-        # ax = plt.subplot(121)
-        # plt.plot(support_images[0, 0])
-        # plt.plot(support_labels[0, 0])
-        # #subplot of query:
-        # ax = plt.subplot(122)
-        # plt.plot(query_images[0, 0])
-        # plt.plot(query_labels[0, 0])
-        # plt.show()
+        ax = plt.subplot(121)
+        plt.plot(support_images[0, 0])
+        plt.plot(support_labels[0, 0])
+        #subplot of query:
+        ax = plt.subplot(122)
+        plt.plot(query_images[0, 0])
+        plt.plot(query_labels[0, 0])
+        plt.show()
 
 if __name__ == "__main__":
     # test the dataset

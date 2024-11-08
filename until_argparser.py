@@ -223,7 +223,7 @@ def get_args():
     parser.add_argument(
         "--n_shot",
         type=int,
-        default=1,
+        default=5,
         help="Number of support examples per class",
     )
     parser.add_argument(
@@ -232,7 +232,7 @@ def get_args():
     parser.add_argument(
         "--n_query",
         type=int,
-        default=1,
+        default=5,
         help="Number of query examples per class",
     )
     parser.add_argument(

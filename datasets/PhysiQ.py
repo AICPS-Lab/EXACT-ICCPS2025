@@ -88,7 +88,9 @@ class PhysiQ(QueryDataset):
             ],
         }
         if self.args.add_side_noise:
-            dic = {k: [v[i] + 1] for k, v in dic.items() for i in range(len(v))}
+            for k, v in dic.items():
+                for i in range(len(v)):
+                    v[i] += 1
         return dic
 
     # Implement any dataset-specific methods if needed.
