@@ -5,6 +5,9 @@ from torch import Tensor
 from torch.utils.data import Sampler, Dataset
 from typing import Dict, Iterator, List, Tuple, Union
 
+from datasets import QueryDataset
+
+
 class DenseLabelTaskSampler(Sampler):
     """
     Samples batches for one-way few-shot tasks, focusing on one variation of the exercise per iteration.
@@ -12,7 +15,7 @@ class DenseLabelTaskSampler(Sampler):
 
     def __init__(
         self,
-        dataset: Dataset,
+        dataset: QueryDataset,
         n_shot: int,
         batch_size: int,
         n_query: int,
@@ -42,8 +45,8 @@ class DenseLabelTaskSampler(Sampler):
 
         # Build a dictionary mapping each label to a list of indices for dense labeling
         for item_idx, (input_data, label, exer_label) in enumerate(dataset):
-            #NOTE: QUESTION should we consider in the label of variation or the label of the exercise?
-            valid_label = int(exer_label) #self._get_label(label)
+            # NOTE: QUESTION should we consider in the label of variation or the label of the exercise?
+            valid_label = int(exer_label)  # self._get_label(label)
             if valid_label is not None:
                 if valid_label in self.items_per_label:
                     self.items_per_label[valid_label].append(item_idx)
@@ -84,29 +87,61 @@ class DenseLabelTaskSampler(Sampler):
         all_labels = torch.cat([x[1].unsqueeze(0) for x in input_data])
 
         all_images = all_images.reshape(
-            (1, self.n_shot + self.n_query, self.batch_size, *all_images.shape[1:])
+            (
+                1,
+                self.n_shot + self.n_query,
+                self.batch_size,
+                *all_images.shape[1:],
+            )
         )
         all_labels = all_labels.reshape(
-            (1, self.n_shot + self.n_query, self.batch_size, *all_labels.shape[1:])
+            (
+                1,
+                self.n_shot + self.n_query,
+                self.batch_size,
+                *all_labels.shape[1:],
+            )
         )
 
         # Separate support and query sets
-        support_images = all_images[:, :self.n_shot].reshape((-1, *all_images.shape[2:]))
-        query_images = all_images[:, self.n_shot:].reshape((-1, *all_images.shape[2:]))
+        support_images = all_images[:, : self.n_shot].reshape(
+            (-1, *all_images.shape[2:])
+        )
+        query_images = all_images[:, self.n_shot :].reshape(
+            (-1, *all_images.shape[2:])
+        )
 
-        support_labels = all_labels[:, :self.n_shot].reshape((-1, *all_labels.shape[2:]))
-        query_labels = all_labels[:, self.n_shot:].reshape((-1, *all_labels.shape[2:]))
+        support_labels = all_labels[:, : self.n_shot].reshape(
+            (-1, *all_labels.shape[2:])
+        )
+        query_labels = all_labels[:, self.n_shot :].reshape(
+            (-1, *all_labels.shape[2:])
+        )
         if self.add_side_noise:
             # if it has side noise, label 0 is the side noise, and other label is original label +1:
             # so if the label is not 0, its 1 (1 as >0)
-            query_labels = torch.where(query_labels > 0, 1, 0)
-            support_labels = torch.where(support_labels > 0, 1, 0)
+            
+            # based on the _cur_task randomly select from data correspondence to make the label 1 or 0
+            lis = self.dataset.data_correspondence()[self._cur_task]
+            randomlist = random.sample(lis, random.randint(1, len(lis)))
+            randomlist = torch.tensor(randomlist)
+            query_labels = torch.isin(query_labels, randomlist).to(torch.int)
+            support_labels = torch.isin(support_labels, randomlist).to(torch.int)
+            # query_labels = torch.where(query_labels > 0, 1, 0)
+            # support_labels = torch.where(support_labels > 0, 1, 0)
+            
         else:
             # Adjust labels to binary based on the current target variation
             query_labels = torch.where(query_labels == self._cur_task, 1, 0)
             support_labels = torch.where(support_labels == self._cur_task, 1, 0)
 
-        return support_images, support_labels, query_images, query_labels, [self._cur_task]
+        return (
+            support_images,
+            support_labels,
+            query_images,
+            query_labels,
+            [self._cur_task],
+        )
 
     def _get_label(self, label: Tensor) -> int:
         return label.mode().values.item()
@@ -137,10 +172,12 @@ class DenseLabelTaskSampler(Sampler):
         Raises:
             ValueError: If the number of valid labels is less than required.
         """
-        # Currently, this sampler is designed for one-way tasks. 
+        # Currently, this sampler is designed for one-way tasks.
         # If you extend to multi-way, ensure n_way <= number of valid labels.
         if len(self.items_per_label) == 0:
-            raise ValueError("No valid labels found in the dataset after applying threshold_ratio.")
+            raise ValueError(
+                "No valid labels found in the dataset after applying threshold_ratio."
+            )
 
     def _check_dataset_has_enough_items_per_label(self):
         """
@@ -149,7 +186,8 @@ class DenseLabelTaskSampler(Sampler):
             ValueError: If any label does not have enough samples.
         """
         insufficient_labels = [
-            label for label, indices in self.items_per_label.items()
+            label
+            for label, indices in self.items_per_label.items()
             if len(indices) < self.n_shot + self.n_query
         ]
 
@@ -160,10 +198,7 @@ class DenseLabelTaskSampler(Sampler):
             )
 
 
-
-
-
-#TODO: SIWOO: another one for 0 and 1 
+# TODO: SIWOO: another one for 0 and 1
 
 # class DenseLabelTaskSampler(Sampler):
 #     """

@@ -85,7 +85,12 @@ class QueryDataset(Dataset):
         Must be implemented by subclasses.
         """
         raise NotImplementedError
-
+    def data_correspondence(self):
+        """
+        exercise label to variation label correspondence, variation can be rom, hand or other.
+        Must be implemented by subclasses.
+        """
+        raise NotImplementedError
     def _process_data(self):
         data_folders = self.default_data_folders()
         subjLabel_to_data = {}
@@ -260,8 +265,6 @@ class QueryDataset(Dataset):
         label = self.data_dict["label"]
         unique_indices = self.data_dict["unique_indices"]
         exercise_labels = sorted(set([label[0] for label in unique_indices]))
-        print(unique_indices)
-        print(exercise_labels)
         res_data = []
         res_label = []
         res_exer_label = []
