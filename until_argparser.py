@@ -258,7 +258,7 @@ def get_args():
     parser.add_argument(
         "--rotation_chance",
         type=float,
-        default=0,
+        default=.25,
         help="Chance of rotating the data",
     )
     parser.add_argument(

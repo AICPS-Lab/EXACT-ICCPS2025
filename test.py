@@ -51,13 +51,13 @@ def test_num_workers():
     args = get_args()  # Get arguments from the argparse
 
     print(args.loocv)
-    dataset = PhysiQ(
+    dataset = SPAR(
         root="data",
         split="train",
         window_size=args.window_size,
         bg_fg=None,
         args=args,
-        transforms=IMUAugmentation(rotation_chance=0),
+        transforms=IMUAugmentation(rotation_chance=args.rotation_chance),
     )
 
     train_sampler = DenseLabelTaskSampler(
@@ -97,8 +97,7 @@ def test_setup():
         window_step=args.window_step,
         bg_fg=None,
         args=args,
-        transforms=IMUAugmentation(rotation_chance=0),
-        test_subject=1,
+        transforms=IMUAugmentation(rotation_chance=args.rotation_chance),
     )
     
     # dataset = SPAR(

@@ -68,14 +68,10 @@ class MMFIT(QueryDataset):
 
     def data_correspondence(self):
         dic = {
-            0: [0, 1, 2, 3, 4],
-            1: [5, 6, 7],
-            2: [8, 9, 10, 11, 12],
-            3: [
-                13,
-                14,
-                15,
-            ],
+            0: [0],
+            1: [1],
+            2: [2],
+
         }
         if self.args.add_side_noise:
             dic = {k: [v[i] + 1] for k, v in dic.items() for i in range(len(v))}
