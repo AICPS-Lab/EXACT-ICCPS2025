@@ -1,8 +1,42 @@
 from matplotlib import pyplot as plt
 import numpy as np
 import torch
+import torch.nn.functional as F
 
+def compute_kl_loss(outputs):
+    """
+    Computes the KL divergence loss between the predicted label distributions
+    at consecutive time steps to encourage smooth labeling.
 
+    Args:
+        outputs (torch.Tensor): The raw output logits from the model.
+                                Shape: (batch_size, sequence_length, num_classes)
+
+    Returns:
+        kl_loss (torch.Tensor): The computed KL divergence loss (scalar).
+    """
+    # Compute predicted probabilities and log probabilities
+    p_t = F.softmax(outputs, dim=-1)         # Shape: (batch_size, sequence_length, num_classes)
+    log_p_t = F.log_softmax(outputs, dim=-1) # Shape: (batch_size, sequence_length, num_classes)
+    # Shift the probabilities and log probabilities to get p_{t+1} and log_p_{t+1}
+    p_t_next = p_t[:, 1:, :]         # Exclude the first time step
+    log_p_t_next = log_p_t[:, 1:, :] # Exclude the first time step
+
+    # Current time step probabilities (exclude the last time step)
+    p_t_current = p_t[:, :-1, :]
+    # No need to compute log_p_t_current for KL divergence since it's not used in F.kl_div
+
+    # Compute KL divergence between consecutive time steps
+    # KL divergence D_{KL}(p_{t+1} || p_t) for each time step and batch
+    kl_div = F.kl_div(log_p_t_next, p_t_current, reduction='batchmean', log_target=True)  # Shape: (batch_size, sequence_length - 1, num_classes)
+    # print(kl_div)
+    # Sum over classes
+    # kl_div = kl_div.sum(-1)  # Shape: (batch_size, sequence_length - 1)
+
+    # # # Mean over batches and time steps
+    # kl_loss = kl_div.mean()
+
+    return kl_div
 def mean_iou_time_series(pred, gt, num_classes=7):
     """
     Calculate the Mean Intersection over Union (mIoU) for time series data.

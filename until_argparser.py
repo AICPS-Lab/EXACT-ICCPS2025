@@ -5,6 +5,9 @@ from datasets.PhysiQ import PhysiQ
 from datasets.SPAR import SPAR
 from datasets.Transforms import IMUAugmentation
 from methods.EX import EX
+from methods.EX2 import EX2
+from methods.EXACT2 import EXACT_UNet2
+from methods.EXACT3 import LSTMUNet
 from methods.transformer import TransformerModel
 from methods.unet import UNet
 from methods.EXACT import EXACT_UNet
@@ -23,6 +26,12 @@ def get_model_args(args, preliminary_args):
         args = TransformerModel.add_args(args)
     elif model == "ex":
         args = EX.add_args(args)
+    elif model == "exact2":
+        args = EXACT_UNet2.add_args(args)
+    elif model == "ex2":
+        args = EX2.add_args(args)
+    elif model == "exact3":
+        args = LSTMUNet.add_args(args)
     return args
 
 
@@ -44,12 +53,18 @@ def get_model(args):
         model = TransformerModel
     elif args.model == "ex":
         model = EX
+    elif args.model == "exact2":
+        model = EXACT_UNet2
+    elif args.model == "ex2":
+        model = EX2
+    elif args.model == "exact3":
+        model = LSTMUNet
     else:
         raise ValueError("Model not supported")
 
-    class UNet_wrapper(nn.Module):
+    class model_wrapper(nn.Module):
         def __init__(self):
-            super(UNet_wrapper, self).__init__()
+            super(model_wrapper, self).__init__()
             self.net = model(args)
 
         def forward(self, x):
@@ -59,7 +74,7 @@ def get_model(args):
             return x.squeeze(1)
 
     # Initialize model
-    model = UNet_wrapper().float()
+    model = model_wrapper().float()
     return model
 
 
@@ -258,7 +273,7 @@ def get_args():
     parser.add_argument(
         "--rotation_chance",
         type=float,
-        default=.25,
+        default=0,
         help="Chance of rotating the data",
     )
     parser.add_argument(
@@ -309,6 +324,10 @@ def get_args():
         "--nowandb",
         action="store_true",
     )
+    parser.add_argument(
+        "--fomaml",
+        action="store_true",
+    )   
     parser.add_argument(
         "-m",
         "--model",

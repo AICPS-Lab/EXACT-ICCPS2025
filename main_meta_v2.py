@@ -24,7 +24,7 @@ from loss_fn import (
 )
 from methods import EX, UNet
 from utilities import model_exception_handler, printc, seed
-from utils_metrics import fsl_visualize_softmax, visualize_softmax
+from utils_metrics import compute_kl_loss, fsl_visualize_softmax, visualize_softmax
 
 
 def train(db, net, epoch, args, wandb_run=None):
@@ -36,6 +36,7 @@ def train(db, net, epoch, args, wandb_run=None):
     compute_metrics = MetricsAccumulator(dir_name="train")
 
     for batch_idx in range(args.n_tasks):
+        net.zero_grad()
         start_time = time.time()
 
         # Sample a batch of support and query images and labels
@@ -57,13 +58,18 @@ def train(db, net, epoch, args, wandb_run=None):
         for i in range(task_num):
             # utilize the sec-derivative gradient information for the inner loop
             with higher.innerloop_ctx(
-                net, inner_opt, copy_initial_weights=False
+                net, inner_opt, copy_initial_weights=False, track_higher_grads=True
             ) as (fnet, diffopt):
                 # Inner-loop adaptation
                 for _ in range(args.n_inner_iter):
                     spt_logits = fnet(x_spt[i])
                     spt_loss = F.cross_entropy(spt_logits, y_spt[i].long())
-                    diffopt.step(spt_loss)
+                    # diffopt.step(spt_loss)
+                    # diffopt.step(spt_loss, grad_callback=lambda grads: [g.detach() for g in grads])
+                    if args.fomaml:
+                        diffopt.step(spt_loss, grad_callback=lambda grads: [g.detach() if g is not None else None for g in grads])
+                    else:
+                        diffopt.step(spt_loss)
 
                 # Compute the loss and accuracy on the query set
                 qry_logits = fnet(x_qry[i])
@@ -134,7 +140,7 @@ def test(db, net, epoch, args, wandb_r=None):
 
         for i in range(task_num):
             with higher.innerloop_ctx(
-                net, inner_opt, track_higher_grads=False
+                net, inner_opt, track_higher_grads=True
             ) as (fnet, diffopt):
                 # Inner-loop adaptation
                 for _ in range(args.n_inner_iter):
@@ -168,7 +174,7 @@ def test(db, net, epoch, args, wandb_r=None):
     if wandb_r is not None:
         # Log results
         wandb_r.log(res_dict)
-        log_visualization(epoch, wandb_r,net, fnet, inner_opt)
+        log_visualization(epoch, wandb_r,net, fnet, inner_opt, args)
     return qry_losses, res_dict
 
 def main(args):
@@ -218,10 +224,7 @@ def main(args):
     model = get_model(args)
 
     model.to(args.device)  # Move model to specified device
-    print(
-        "trainnable parameters: ",
-        sum(p.numel() for p in model.parameters() if p.requires_grad),
-    )
+    
     # Initialize meta optimizer
     args.meta_opt = torch.optim.Adam(model.parameters(), lr=args.lr)
     if not args.nowandb:
@@ -335,6 +338,7 @@ def main_loocv(args):
         if not args.nowandb:
             log_model_artifact(run, model_path)
             run.finish()
+        
     return
 
 def log_model_artifact(run, model_path):
@@ -355,7 +359,7 @@ def capture_test_dataset_samples(args, test_dataset, test_loader):
     torch.save(sample_data_in_test, os.path.join(args.data_root, args.dataset, f"{args.model}_{args.dataset}_{str(args.loocv)}_{args.seed}.pt"))
     printc("Saved 10 samples of data for visualization")
 
-def log_visualization(epoch, wandb_r, net, fnet, inner_opt):
+def log_visualization(epoch, wandb_r, net, fnet, inner_opt, args):
     # load 10 samples of data for visualization
     sample_data_in_test = torch.load(os.path.join(args.data_root, args.dataset, f"{args.model}_{args.dataset}_{str(args.loocv)}_{args.seed}.pt"))
     for image_idx, (x_spt, y_spt, x_qry, y_qry) in enumerate(sample_data_in_test):
@@ -363,14 +367,16 @@ def log_visualization(epoch, wandb_r, net, fnet, inner_opt):
         x_spt, y_spt = x_spt.to(args.device), y_spt.to(args.device)
         x_qry, y_qry = x_qry.to(args.device), y_qry.to(args.device)
         with higher.innerloop_ctx(
-                net, inner_opt, track_higher_grads=False
+                net, inner_opt, track_higher_grads=True
             ) as (fnet, diffopt):
                 # Inner-loop adaptation
                 for _ in range(args.n_inner_iter):
                     spt_logits = fnet(x_spt[:, 0])
                     spt_loss = F.cross_entropy(spt_logits, y_spt[:, 0].long())
-                    diffopt.step(spt_loss)
-        
+                    if args.fomaml:
+                        diffopt.step(spt_loss, grad_callback=lambda grads: [g.detach() if g is not None else None for g in grads])
+                    else:
+                        diffopt.step(spt_loss)
         images = x_qry[:, 0]
         qry_logits = fnet(images).detach()
         labels = y_qry[:, 0]
