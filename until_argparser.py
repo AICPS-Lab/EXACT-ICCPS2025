@@ -8,6 +8,7 @@ from methods.EX import EX
 from methods.EX2 import EX2
 from methods.EXACT2 import EXACT_UNet2
 from methods.EXACT3 import LSTMUNet
+from methods.segmenter import Segmenter
 from methods.transformer import TransformerModel
 from methods.unet import UNet
 from methods.EXACT import EXACT_UNet
@@ -32,6 +33,8 @@ def get_model_args(args, preliminary_args):
         args = EX2.add_args(args)
     elif model == "exact3":
         args = LSTMUNet.add_args(args)
+    elif model == "segmenter":
+        args = Segmenter.add_args(args)
     return args
 
 
@@ -59,6 +62,8 @@ def get_model(args):
         model = EX2
     elif args.model == "exact3":
         model = LSTMUNet
+    elif args.model == "segmenter":
+        model = Segmenter
     else:
         raise ValueError("Model not supported")
 

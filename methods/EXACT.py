@@ -1,7 +1,11 @@
-# import math
-# import torch
-# import torch.nn as nn
-# import torch.nn.functional as F
+
+
+import math
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+
 
 # class UpConv(nn.Module):
 #     def __init__(self, in_channels, out_channels):
@@ -61,68 +65,68 @@
 #         res = torch.cat(res, dim=1)
 #         return self.conv1d(res)
 
-# class GaussianPositionalEncoding(nn.Module):
-#     def __init__(self, time_steps: int, d_model: int, num_gaussians: int = 6, learnable: bool = True):
-#         """
-#         Gaussian Positional Encoding.
+class GaussianPositionalEncoding(nn.Module):
+    def __init__(self, time_steps: int, d_model: int, num_gaussians: int = 6, learnable: bool = True):
+        """
+        Gaussian Positional Encoding.
 
-#         Args:
-#             time_steps (int): Number of time steps in the sequence.
-#             d_model (int): Dimension of the model (number of channels).
-#             num_gaussians (int): Number of Gaussian functions to use.
-#             learnable (bool): If True, the Gaussian parameters are learnable.
-#         """
-#         super(GaussianPositionalEncoding, self).__init__()
-#         self.time_steps = time_steps
-#         self.d_model = d_model
-#         self.num_gaussians = num_gaussians
+        Args:
+            time_steps (int): Number of time steps in the sequence.
+            d_model (int): Dimension of the model (number of channels).
+            num_gaussians (int): Number of Gaussian functions to use.
+            learnable (bool): If True, the Gaussian parameters are learnable.
+        """
+        super(GaussianPositionalEncoding, self).__init__()
+        self.time_steps = time_steps
+        self.d_model = d_model
+        self.num_gaussians = num_gaussians
 
-#         # Initialize Gaussian parameters
-#         mu = torch.linspace(0, time_steps - 1, steps=num_gaussians).unsqueeze(1)  # [num_gaussians, 1]
-#         sigma = (time_steps / num_gaussians) * torch.ones(num_gaussians, 1)  # [num_gaussians, 1]
+        # Initialize Gaussian parameters
+        mu = torch.linspace(0, time_steps - 1, steps=num_gaussians).unsqueeze(1)  # [num_gaussians, 1]
+        sigma = (time_steps / num_gaussians) * torch.ones(num_gaussians, 1)  # [num_gaussians, 1]
 
-#         if learnable:
-#             self.mu = nn.Parameter(mu)  # [num_gaussians, 1]
-#             self.sigma = nn.Parameter(sigma)  # [num_gaussians, 1]
-#         else:
-#             self.register_buffer('mu', mu)
-#             self.register_buffer('sigma', sigma)
+        if learnable:
+            self.mu = nn.Parameter(mu)  # [num_gaussians, 1]
+            self.sigma = nn.Parameter(sigma)  # [num_gaussians, 1]
+        else:
+            self.register_buffer('mu', mu)
+            self.register_buffer('sigma', sigma)
 
-#         # Linear layer to map Gaussian outputs to d_model dimensions
-#         self.linear = nn.Linear(num_gaussians, d_model, bias=False)
+        # Linear layer to map Gaussian outputs to d_model dimensions
+        self.linear = nn.Linear(num_gaussians, d_model, bias=False)
 
-#     def forward(self, x: torch.Tensor):
-#         """
-#         Forward pass for Gaussian Positional Encoding.
+    def forward(self, x: torch.Tensor):
+        """
+        Forward pass for Gaussian Positional Encoding.
 
-#         Args:
-#             x (torch.Tensor): Input tensor of shape [Batch, C, T]
+        Args:
+            x (torch.Tensor): Input tensor of shape [Batch, C, T]
 
-#         Returns:
-#             torch.Tensor: Tensor with Gaussian positional embeddings added, shape [Batch, C, T]
-#         """
-#         B, C, T = x.shape
-#         device = x.device
+        Returns:
+            torch.Tensor: Tensor with Gaussian positional embeddings added, shape [Batch, C, T]
+        """
+        B, C, T = x.shape
+        device = x.device
 
-#         # Create a tensor of time steps
-#         t = torch.arange(0, T, device=device).float().unsqueeze(0)  # [1, T]
+        # Create a tensor of time steps
+        t = torch.arange(0, T, device=device).float().unsqueeze(0)  # [1, T]
 
-#         # Compute Gaussian functions
-#         exponent = -((t.unsqueeze(0) - self.mu.unsqueeze(1)) ** 2) / (2 * (self.sigma.unsqueeze(1) ** 2))  # [num_gaussians, T]
-#         gaussians = torch.exp(exponent)  # [num_gaussians, T]
+        # Compute Gaussian functions
+        exponent = -((t.unsqueeze(0) - self.mu.unsqueeze(1)) ** 2) / (2 * (self.sigma.unsqueeze(1) ** 2))  # [num_gaussians, T]
+        gaussians = torch.exp(exponent)  # [num_gaussians, T]
 
-#         # Transpose to [T, num_gaussians] for linear layer
-#         gaussians = gaussians.transpose(0, 1) 
-#         gaussians = gaussians.permute(0, 2, 1) 
-#         # Apply linear layer to map to [T, d_model]
-#         embedding = self.linear(gaussians)  
-#         # Transpose back to [d_model, T] and add batch dimension
-#         embedding = embedding.permute(0, 2, 1)
-#         # Add the Gaussian embedding to the input
-#         # print(embedding.shape, x.shape)
-#         x = x + embedding  # Broadcasting over batch dimension
+        # Transpose to [T, num_gaussians] for linear layer
+        gaussians = gaussians.transpose(0, 1) 
+        gaussians = gaussians.permute(0, 2, 1) 
+        # Apply linear layer to map to [T, d_model]
+        embedding = self.linear(gaussians)  
+        # Transpose back to [d_model, T] and add batch dimension
+        embedding = embedding.permute(0, 2, 1)
+        # Add the Gaussian embedding to the input
+        # print(embedding.shape, x.shape)
+        x = x + embedding  # Broadcasting over batch dimension
 
-#         return x
+        return x
 
 # class EXACT_UNet(nn.Module):
 #     @staticmethod
@@ -233,13 +237,6 @@
 
 
 
-
-
-
-import math
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
 
 
 class UpConv(nn.Module):
@@ -392,6 +389,9 @@ class EXACT_UNet(nn.Module):
         self.tpe = TemporalPositionalEncoding(
             time_steps=window_size, d_model=self.scale_init
         )
+        # self.gpe = GaussianPositionalEncoding(
+        #     time_steps=window_size, d_model=self.scale_init, num_gaussians=1, learnable=False
+        # )
 
         # ASPP Block
         self.aspp = ASPP(self.scale_init, self.scale_init, aspp_dilations)
@@ -425,7 +425,7 @@ class EXACT_UNet(nn.Module):
 
         # Temporal and Positional Encoding
         x = self.tpe(x)           # [Batch, Channels=64, Time]
-
+        # x = self.gpe(x)           # [Batch, Channels=64, Time]
         # ASPP Block
         x = self.aspp(x)          # [Batch, Channels=64, Time]
 

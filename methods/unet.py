@@ -57,7 +57,7 @@ class UNet(nn.Module):
         self.conv3 = ConvBlock(64, 128)
         self.up1 = UpConv(128, 64)
         self.up2 = UpConv(64, 32)
-        self.final_conv = nn.Conv1d(64, out_channels, kernel_size=1)
+        self.final_conv = nn.Conv1d(32, out_channels, kernel_size=1)
 
     def forward(self, x):
         x = x.permute(0, 2, 1)

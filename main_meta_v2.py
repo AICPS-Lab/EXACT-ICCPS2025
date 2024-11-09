@@ -347,7 +347,7 @@ def log_model_artifact(run, model_path):
 
 def capture_test_dataset_samples(args, test_dataset, test_loader):
     # if it exists already:
-    if os.path.exists(os.path.join(args.data_root, args.dataset, f"{args.model}_{args.dataset}_{str(args.loocv)}_{args.seed}.pt")):
+    if os.path.exists(os.path.join(args.data_root, args.dataset, f"{args.dataset}_{str(args.loocv)}_{args.seed}.pt")):
         printc("Saved 10 samples data already exists")
         return
     sample_data_in_test = []
@@ -355,12 +355,12 @@ def capture_test_dataset_samples(args, test_dataset, test_loader):
         x_spt, y_spt, x_qry, y_qry, _ = next(iter(test_loader))
         sample_data_in_test.append((x_spt, y_spt, x_qry, y_qry))
     # torch save
-    torch.save(sample_data_in_test, os.path.join(args.data_root, args.dataset, f"{args.model}_{args.dataset}_{str(args.loocv)}_{args.seed}.pt"))
+    torch.save(sample_data_in_test, os.path.join(args.data_root, args.dataset, f"{args.dataset}_{str(args.loocv)}_{args.seed}.pt"))
     printc("Saved 10 samples of data for visualization")
 
 def log_visualization(epoch, wandb_r, net, fnet, inner_opt, args):
     # load 10 samples of data for visualization
-    sample_data_in_test = torch.load(os.path.join(args.data_root, args.dataset, f"{args.model}_{args.dataset}_{str(args.loocv)}_{args.seed}.pt"))
+    sample_data_in_test = torch.load(os.path.join(args.data_root, args.dataset, f"{args.dataset}_{str(args.loocv)}_{args.seed}.pt"))
     for image_idx, (x_spt, y_spt, x_qry, y_qry) in enumerate(sample_data_in_test):
         # visualize the softmax output of the model
         x_spt, y_spt = x_spt.to(args.device), y_spt.to(args.device)

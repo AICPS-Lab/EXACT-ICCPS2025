@@ -9,21 +9,39 @@ from utilities import printc
 
 
 class Segmenter(nn.Module):
-    def __init__(self, in_channels=6, num_layers=2, num_heads=4, embed_dims=128, num_classes=7, **kwargs):
+    @staticmethod
+    def add_args(parser):
+        parser.add_argument('--num_layers', type=int, default=2)
+        parser.add_argument('--num_heads', type=int, default=4)
+        parser.add_argument('--embed_dims', type=int, default=128)
+        parser.add_argument('--num_classes', type=int, default=7)
+        parser.add_argument('--mlp_ratio', type=int, default=4)
+        parser.add_argument('--dropout', type=float, default=0.5)
+        return parser
+    
+    def __init__(self, args, **kwargs):
         super(Segmenter, self).__init__(**kwargs)
+        self.num_layers = args.num_layers
+        self.num_heads = args.num_heads
+        self.embed_dims = args.embed_dims
+        self.num_classes = args.out_channels
+        self.in_channels = args.in_channels
+        self.mlp_ratio = args.mlp_ratio
+        self.dropout = args.dropout
+        self.args = args
 
         # Fixed parameters for simplicity
         mlp_ratio = 4
         # norm_cfg = dict(type='LN')
         # act_cfg = dict(type='GELU')
         self.init_std = 0.02
-        self.num_classes = num_classes
+        self.num_classes = self.num_classes
         self.layers = nn.ModuleList()
-        for _ in range(num_layers):
+        for _ in range(self.num_layers):
             layer = nn.TransformerEncoderLayer(
-                d_model=embed_dims,
-                nhead=num_heads,
-                dim_feedforward=mlp_ratio * embed_dims,
+                d_model=self.embed_dims,
+                nhead=self.num_heads,
+                dim_feedforward=mlp_ratio * self.embed_dims,
                 dropout=0.5,
                 activation=F.gelu,
                 layer_norm_eps=1e-05,
@@ -33,12 +51,12 @@ class Segmenter(nn.Module):
             )
             self.layers.append(layer)
 
-        self.dec_proj = nn.Linear(in_channels, embed_dims)
-        self.cls_emb = nn.Parameter(torch.randn(1, self.num_classes, embed_dims))
-        self.patch_proj = nn.Linear(embed_dims, embed_dims, bias=False)
-        self.classes_proj = nn.Linear(embed_dims, embed_dims, bias=False)
-        self.att_norm = nn.LayerNorm(embed_dims)
-        self.decoder_norm = nn.LayerNorm(embed_dims)
+        self.dec_proj = nn.Linear(self.in_channels, self.embed_dims)
+        self.cls_emb = nn.Parameter(torch.randn(1, self.num_classes, self.embed_dims))
+        self.patch_proj = nn.Linear(self.embed_dims, self.embed_dims, bias=False)
+        self.classes_proj = nn.Linear(self.embed_dims, self.embed_dims, bias=False)
+        self.att_norm = nn.LayerNorm(self.embed_dims)
+        self.decoder_norm = nn.LayerNorm(self.embed_dims)
         self.mask_norm = nn.LayerNorm(self.num_classes)
         self.init_weights()
     def init_weights(self):
