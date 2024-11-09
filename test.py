@@ -1,3 +1,5 @@
+import cProfile
+import pstats
 from matplotlib import pyplot as plt
 from datasets.MMFIT import MMFIT
 from datasets.SPAR import SPAR
@@ -51,10 +53,11 @@ def test_num_workers():
     args = get_args()  # Get arguments from the argparse
 
     print(args.loocv)
-    dataset = SPAR(
+    dataset = PhysiQ(
         root="data",
         split="train",
         window_size=args.window_size,
+        window_step=args.window_step,
         bg_fg=None,
         args=args,
         transforms=IMUAugmentation(rotation_chance=args.rotation_chance),
@@ -163,4 +166,7 @@ if __name__ == "__main__":
     
     # test_num_workers()
     
-    test_setup()
+    cProfile.run('test_setup()', 'stat')
+    p = pstats.Stats('stat')
+    
+    p.sort_stats('cumulative').print_stats(10)
