@@ -24,7 +24,7 @@ from loss_fn import (
 )
 from methods import EX, UNet
 from utilities import model_exception_handler, printc, seed
-from utils_metrics import compute_kl_loss, fsl_visualize_softmax, visualize_softmax
+from utils_metrics import  fsl_visualize_softmax, visualize_softmax
 
 
 def train(db, net, epoch, args, wandb_run=None):
@@ -36,7 +36,6 @@ def train(db, net, epoch, args, wandb_run=None):
     compute_metrics = MetricsAccumulator(dir_name="train")
 
     for batch_idx in range(args.n_tasks):
-        net.zero_grad()
         start_time = time.time()
 
         # Sample a batch of support and query images and labels
@@ -140,7 +139,7 @@ def test(db, net, epoch, args, wandb_r=None):
 
         for i in range(task_num):
             with higher.innerloop_ctx(
-                net, inner_opt, track_higher_grads=True
+                net, inner_opt, track_higher_grads=False
             ) as (fnet, diffopt):
                 # Inner-loop adaptation
                 for _ in range(args.n_inner_iter):
@@ -367,7 +366,7 @@ def log_visualization(epoch, wandb_r, net, fnet, inner_opt, args):
         x_spt, y_spt = x_spt.to(args.device), y_spt.to(args.device)
         x_qry, y_qry = x_qry.to(args.device), y_qry.to(args.device)
         with higher.innerloop_ctx(
-                net, inner_opt, track_higher_grads=True
+                net, inner_opt, track_higher_grads=False
             ) as (fnet, diffopt):
                 # Inner-loop adaptation
                 for _ in range(args.n_inner_iter):

@@ -50,13 +50,13 @@ class UNet(nn.Module):
         in_channels = args.in_channels
         out_channels = args.out_channels
         super(UNet, self).__init__()
-        self.conv1 = ConvBlock(in_channels, 64)
+        self.conv1 = ConvBlock(in_channels, 32)
         self.pool1 = nn.MaxPool1d(kernel_size=2, stride=2)
-        self.conv2 = ConvBlock(64, 128)
+        self.conv2 = ConvBlock(32, 64)
         self.pool2 = nn.MaxPool1d(kernel_size=2, stride=2)
-        self.conv3 = ConvBlock(128, 256)
-        self.up1 = UpConv(256, 128)
-        self.up2 = UpConv(128, 64)
+        self.conv3 = ConvBlock(64, 128)
+        self.up1 = UpConv(128, 64)
+        self.up2 = UpConv(64, 32)
         self.final_conv = nn.Conv1d(64, out_channels, kernel_size=1)
 
     def forward(self, x):

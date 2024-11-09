@@ -54,6 +54,8 @@ class MetricsAccumulator:
         self.total_samples = 0
 
     def update(self, y_true, logits) -> Tuple[str, dict]:
+        if torch.isnan(logits).any():
+            print("NaNs detected in logits")
         # Ensure inputs are torch tensors
         if not torch.is_tensor(y_true):
             y_true = torch.tensor(y_true)
@@ -130,11 +132,14 @@ class MetricsAccumulator:
             + 1e-7
         )
         covering = intersection / (y_true_flat.sum().item() + 1e-7)
-        roc_auc = (
-            roc_auc_score(y_true_np, y_scores_flat)
-            if len(set(y_true_np)) > 1
-            else float("nan")
-        )  # Avoid ROC-AUC error if single class
+        try:
+            roc_auc = (
+                roc_auc_score(y_true_np, y_scores_flat)
+                if len(set(y_true_np)) > 1
+                else float("nan")
+            )  # Avoid ROC-AUC error if single class  
+        except ValueError:
+            print(np.isnan(y_true_np).any(), np.isnan(y_scores_flat).any())
 
         # Create a summary string of current batch metrics
         batch_metrics = (
