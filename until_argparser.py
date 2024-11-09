@@ -8,6 +8,7 @@ from methods.EX import EX
 from methods.EX2 import EX2
 from methods.EXACT2 import EXACT_UNet2
 from methods.EXACT3 import LSTMUNet
+from methods.cnn import CNN
 from methods.segmenter import Segmenter
 from methods.transformer import TransformerModel
 from methods.unet import UNet
@@ -35,6 +36,8 @@ def get_model_args(args, preliminary_args):
         args = LSTMUNet.add_args(args)
     elif model == "segmenter":
         args = Segmenter.add_args(args)
+    elif model == "cnn":
+        args = CNN.add_args(args)
     return args
 
 
@@ -64,6 +67,8 @@ def get_model(args):
         model = LSTMUNet
     elif args.model == "segmenter":
         model = Segmenter
+    elif args.model == "cnn":
+        model = CNN
     else:
         raise ValueError("Model not supported")
 
@@ -340,6 +345,8 @@ def get_args():
         default="unet",
         help="Model to use for training",
     )
+    
+    
     preliminary_parser = argparse.ArgumentParser(add_help=False)
     preliminary_parser.add_argument(
         "--dataset", type=str, default="physiq", help="Specify the dataset"
