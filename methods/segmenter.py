@@ -7,6 +7,8 @@ from torch.nn.modules.transformer import TransformerEncoder, TransformerEncoderL
 
 from utilities import printc
 
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 class Segmenter(nn.Module):
     @staticmethod
@@ -76,10 +78,12 @@ class Segmenter(nn.Module):
         x = self.dec_proj(x)
         cls_emb = self.cls_emb.expand(x.size(0), -1, -1)
         x = torch.cat((x, cls_emb), 1)
-        for layer in self.layers: 
-            # layer norm:
-            x = self.att_norm(x)
-            x = layer(x)
+        with torch.backends.cuda.sdp_kernel(enable_flash=False, enable_mem_efficient=False):
+            for layer in self.layers: 
+                # layer norm:
+                x = self.att_norm(x)
+                
+                x = layer(x)
         x = self.decoder_norm(x)
 
         patches = self.patch_proj(x[:, :-self.num_classes]) # shape 128, 75, 64 (B, Time_length, embedding)
