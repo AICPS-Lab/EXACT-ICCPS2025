@@ -161,10 +161,13 @@ def get_all_subjects(args):
     # base 1 indexing
     if dataset == "physiq":
         all_subjects = 31
+        return [[1, 2, 3, 9, 10, 25, 7], [3, 5, 15, 17, 24, 12], [6, 7, 14, 19, 31, 2, 7], [1, 4, 10, 26, 30, 5, 3], [6, 16, 19, 21, 23,14, 26]]
     elif dataset == "spar":
         all_subjects = 21
+        return [[1,3,5], [2,4,6], [7,8,9], [10,11,12], [13,14,15]]
     elif dataset == "mmfit":
         all_subjects = 20
+        return [[1,3,5], [2,4,6], [7,8,9], [10,11,12], [13,14,15]]
     else:
         raise ValueError("Dataset not supported")
     return all_subjects
@@ -193,7 +196,7 @@ def get_args():
     parser.add_argument(
         "--shuffle",
         type=str,
-        default="random",
+        default="random_variation",
         help="Shuffle the data on each subject",
     )
     parser.add_argument(

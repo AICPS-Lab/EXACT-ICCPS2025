@@ -49,6 +49,9 @@ class SPAR(QueryDataset):
             "unique_identifier": unique_identifier,
         }
 
+    def get_variation(self):
+        return 2
+    
     def get_subject(self):
         # this is not the subject of the file name but the subject for splitting or shuffling the data:
         # aka shuffled based on

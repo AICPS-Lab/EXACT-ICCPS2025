@@ -47,7 +47,8 @@ class MMFIT(QueryDataset):
             'ind_label': ind_label,
             'unique_identifier': unique_identifier,
         }
-
+    def get_variation(self):
+        return None
     def get_subject(self):
         # this is not the subject of the file name but the subject for splitting or shuffling the data:
         # aka shuffled based on
@@ -59,6 +60,7 @@ class MMFIT(QueryDataset):
         # returning the index of the label in the filename
         # this needs to match to the ind_label in the parse_filename
         return [1, 2]
+    
 
     def get_dataset_name(self):
         return self.DATASET_NAME

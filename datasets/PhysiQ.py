@@ -47,6 +47,9 @@ class PhysiQ(QueryDataset):
             "ind_label": ind_label,
             "unique_identifier": unique_identifier,
         }
+        
+    def get_variation(self):
+        return 3
 
     def get_subject(self):
         # this is not the subject of the file name but the subject for splitting or shuffling the data:
@@ -57,7 +60,7 @@ class PhysiQ(QueryDataset):
     def get_ind_label(self):
         # PhysiQ filenames: [S1]_[E1]_[left-right hand]_[variation (range of motion)]_[stability]_[repetition_id].csv
         # returning the index of the label in the filename
-        return [1, 2]
+        return [1, 2] # from the tuple: (subj, exer, rom)
 
     def get_dataset_name(self):
         return self.DATASET_NAME

@@ -6,6 +6,11 @@ import torch
 from torch.utils.data import Dataset
 from utilities import *
 
+def test_data_splitting(train, test):
+        # Ensure no overlapping subjects
+        train_subjects = set(train.keys())
+        test_subjects = set(test.keys())
+        assert train_subjects.isdisjoint(test_subjects), "Overlap detected between train and test subjects"
 
 class QueryDataset(Dataset):
     def __init__(
@@ -17,7 +22,7 @@ class QueryDataset(Dataset):
         bg_fg=None,
         args=None,
         transforms=None,
-        test_subject: int = None,
+        test_subject: list = None,
     ):
         assert split in [
             "train",
@@ -27,8 +32,8 @@ class QueryDataset(Dataset):
             args.loocv and test_subject is None
         ), "Test subject must be specified for LOOCV"
         assert (
-            isinstance(test_subject, int) or test_subject is None
-        ), "Test subject must be an integer if specified"
+            isinstance(test_subject, list) or test_subject is None
+        ), "Test subject must be a list if specified"
         self.root = root
         self.bg_fg = bg_fg
         self.split = split
@@ -41,7 +46,7 @@ class QueryDataset(Dataset):
         self.DATASET_NAME = self.get_dataset_name()
 
         self.sw = sliding_windows(window_size, window_step)
-
+        # self.sw_loocv = sliding_windows(window_size, window_step//4)
         if not self.if_npy_exists():
             self._process_data()
         if self.loocv and not self.if_npy_exists(loocv=True):
@@ -79,6 +84,13 @@ class QueryDataset(Dataset):
         """
         raise NotImplementedError
 
+    def get_variation(self):
+        """
+        Returns the index of the variation in the filename.
+        Must be implemented by subclasses.
+        """
+        raise NotImplementedError
+    
     def get_ind_label(self):
         """
         Returns the index of the label in the filename.
@@ -188,7 +200,7 @@ class QueryDataset(Dataset):
         if os.path.exists(loocv_data_path):
             print("LOOCV data already processed. Skipping processing.")
             return  # Data already processed
-
+        
         data_folders = self.default_data_folders()
         subjLabel_to_data = {}
         unique_indices = []
@@ -275,8 +287,7 @@ class QueryDataset(Dataset):
             dense_label = []
             k_label = label[k]
             combined = list(zip(v, k_label))
-
-            if self.args.shuffle == "random":
+            if self.args.shuffle == "random" or self.args.shuffle == "random_variation":
                 random.shuffle(combined)
             elif self.args.shuffle == "sorted":
                 combined = sort_filename(combined)
@@ -324,6 +335,12 @@ class QueryDataset(Dataset):
         res_var_label = torch.cat(res_var_label, axis=0)
         return res_data, res_label, res_exer_label, res_var_label
 
+
+    def test_subject_filename(self):
+        return '_'.join([str(i) for i in self.test_subject])
+    
+    
+    
     def _loocv_concatenate_data(self):
         data_dict = self.data_dict
         subjLabel_to_data = data_dict["subjLabel_to_data"]
@@ -335,15 +352,14 @@ class QueryDataset(Dataset):
             set([key[0] for key in subjLabel_to_data.keys()]),
             key=lambda x: int(x[1::]),
         )
-
-        if self.test_subject not in range(1, len(unique_test_subjects) + 1):
+        if all([i not in range(1, len(unique_test_subjects) + 1) for i in self.test_subject]):
             raise ValueError(
                 f"Test subject {self.test_subject} not found in dataset {unique_test_subjects}."
             )
 
         # Directory to save splits for reproducibility
         split_dir = os.path.join(
-            self.root, self.DATASET_NAME, "loocv_splits", str(self.test_subject)
+            self.root, self.DATASET_NAME, "loocv_splits", self.test_subject_filename()
         )
         train_split_file = os.path.join(split_dir, "train_data.npy")
         test_split_file = os.path.join(split_dir, "test_data.npy")
@@ -360,7 +376,7 @@ class QueryDataset(Dataset):
             for key, files in subjLabel_to_data.items():
                 subj = tuple([key[i] for i in self.get_subject()])
                 ind_label = tuple([key[i] for i in self.get_ind_label()])
-                if unique_test_subjects.index(subj[0]) == self.test_subject:
+                if unique_test_subjects.index(subj[0]) in self.test_subject:
                     if subj not in test_data:
                         test_data[key] = []
                     test_data[key].extend(files)
@@ -373,26 +389,57 @@ class QueryDataset(Dataset):
             # Save splits
             np.save(train_split_file, train_data, allow_pickle=True)
             np.save(test_split_file, test_data, allow_pickle=True)
-
+        # print("LOOCV splits saved at:", train_data.keys())
+        # print(test_data.keys())
         # Select data based on the split
+        test_data_splitting(train_data, test_data)
         if self.split == "train":
             data_to_use = train_data
         elif self.split == "test":
             data_to_use = test_data
         else:
             raise ValueError("Invalid split")
+        
         # Process data_to_use
         res_data = []
         res_label = []
         res_exer_label = []
+        res_var_label = []
         exercise_labels = sorted(set([label[0] for label in unique_indices]))
+        
+        if self.args.shuffle == "random_variation":
+            new_data_to_use = {}
+            for key, files in data_to_use.items():
+                subj = tuple([key[i] for i in self.get_subject()])
+                if subj not in new_data_to_use:
+                    new_data_to_use[subj] = []
+                new_data_to_use[subj].extend(files)
+            data_to_use = new_data_to_use
+                
+            
+        
         for key, files in data_to_use.items():
-            subj = tuple([key[i] for i in self.get_subject()])
-            ind_label = tuple([key[i] for i in self.get_ind_label()])
-            original_label = unique_indices.index(tuple(ind_label))
-            combined = [(f, original_label) for f in files]
+            #NOTE VERSION 2:
+            
+            combined = []
+            for filename in files:
+                ind = self.get_variation()
+                if ind is None:
+                    combined.append((filename, unique_indices.index(tuple([key[i] for i in self.get_ind_label()]))))
+                    
+                else:
+                    variation = filename.rstrip(".csv").split("/")[-1].split("_")[self.get_variation()]
+                    combined.append((filename, unique_indices.index((key[1],variation))))
+                    
+            # print(combined)
+            #NOTE VERSION 1:
+            # subj = tuple([key[i] for i in self.get_subject()])
+            # ind_label = tuple([key[i] for i in self.get_ind_label()]) 
+            
+            # original_label = unique_indices.index(tuple(ind_label))
+            # combined = [(f, original_label) for f in files]
 
-            if self.args.shuffle == "random":
+            if self.args.shuffle == "random" or self.args.shuffle == "random_variation":
                 random.shuffle(combined)
             elif self.args.shuffle == "sorted":
                 combined = sort_filename(combined)
@@ -423,17 +470,28 @@ class QueryDataset(Dataset):
             )
             res_data.append(sfile)
             res_label.append(sdense_label)
+            #NOTE VERSION 1:
+            # res_exer_label.append(
+            #     torch.tensor(
+            #         [exercise_labels.index(ind_label[0])] * sfile.shape[0]
+            #     )
+            # )
+            #NOTE VERSION 2:
             res_exer_label.append(
                 torch.tensor(
-                    [exercise_labels.index(ind_label[0])] * sfile.shape[0]
+                    [exercise_labels.index(key[1])] * sfile.shape[0]
                 )
             )
+            res_var_label.append(
+                torch.tensor([original_label] * sfile.shape[0]))
+            
 
         res_data = torch.cat(res_data, axis=0)
         res_label = torch.cat(res_label, axis=0)
         res_exer_label = torch.cat(res_exer_label, axis=0)
-
-        return res_data, res_label, res_exer_label
+        res_var_label = torch.cat(res_var_label, axis=0)
+        print(res_data.shape, res_label.shape, res_exer_label.shape, res_var_label.shape)
+        return res_data, res_label, res_exer_label, res_var_label
 
     def __len__(self):
         return len(self.data)

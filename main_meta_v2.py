@@ -257,7 +257,7 @@ def main_loocv(args):
     # Set up for each subject as a separate LOOCV iteration
     all_subjects = get_all_subjects(args)  # Define a function to get all subject IDs
 
-    for test_subject in range(1, 5+1): # Iterate over first 10 subjects
+    for test_subject in all_subjects: # Iterate over first 10 subjects
         # Initialize datasets with the current subject as test
         train_dataset, test_dataset = get_dataset(args, test_subject)
         seed(args.seed)
@@ -315,12 +315,12 @@ def main_loocv(args):
             run = wandb.init(
                 project=args.wandb_project,
                 config=vars(args),
-                name=f"{args.model}-{args.dataset}-{args.seed}-subject-{test_subject}",
+                name=f"{args.model}-{args.dataset}-{args.seed}-subject-{test_dataset.test_subject_filename()}",
             )
             model_path = f"saved_model/{run.name}.pth"
         else:
             run = None
-            model_path = f"saved_model/{args.model}_subject_{test_subject}.pth"
+            model_path = f"saved_model/{args.model}_subject_{test_dataset.test_subject_filename()}.pth"
         
         model_exception_handler(model_path)
 

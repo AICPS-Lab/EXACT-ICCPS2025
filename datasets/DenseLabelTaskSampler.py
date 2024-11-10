@@ -63,63 +63,6 @@ class DenseLabelTaskSampler(Sampler):
     def __len__(self) -> int:
         return self.n_tasks
 
- 
-    def sample_indices(self):
-        for cur_task in range(self.n_tasks):
-            # Step 1: Randomly select one key from items_per_label
-            rand_key = random.choice(list(self.items_per_label.keys()))
-            
-            # Step 2: Randomly select multiple variations (rand_vars) based on n_shot
-            possible_vars = self.dataset.data_correspondence()[rand_key]
-            num_vars = min(len(possible_vars), self.n_shot)
-            rand_vars = random.sample(possible_vars, num_vars)
-            
-            # Step 3: Define the total number of samples needed
-            total_samples = (self.n_shot + self.n_query) * self.batch_size
-            
-            # Step 4: Retrieve all candidate indices for the selected key
-            candidate_indices = self.items_per_label[rand_key]
-            
-            # Step 5: Randomize the candidate list
-            randomed_candidate = random.sample(candidate_indices, len(candidate_indices))
-            
-            # Step 6: Initialize a list to store filtered indices
-            filtered_indices = []
-            
-            # Step 7: Iterate through randomized candidates and filter based on dense label criteria
-            for idx in randomed_candidate:
-                dense_labels = self.dataset[idx][1]
-                
-                # Ensure dense_labels is a Tensor
-                if not isinstance(dense_labels, torch.Tensor):
-                    dense_labels = torch.tensor(dense_labels)
-                
-                # Count occurrences of any rand_var in dense_labels
-                # This assumes rand_vars are scalar values that can be directly compared
-                matches = torch.zeros_like(dense_labels, dtype=torch.bool)
-                for var in rand_vars:
-                    matches |= (dense_labels == var)
-                rand_var_count = matches.sum().item()
-                
-                # Check if at least 10% of the labels are rand_var
-                if rand_var_count >= 0.1 * dense_labels.numel():
-                    filtered_indices.append(idx)
-                    if len(filtered_indices) == total_samples:
-                        break
-            
-            # Step 8: Check if enough samples are available
-            if len(filtered_indices) < total_samples:
-                raise ValueError(
-                    f"Not enough samples with at least 10% of labels as {rand_vars}. "
-                    f"Required: {total_samples}, Available: {len(filtered_indices)}"
-                )
-            
-            # Step 9: Assign the current task's rand_vars
-            self._cur_task = rand_vars
-            
-            # Step 10: Yield the filtered indices for this task
-            yield filtered_indices
-
     def __iter__(self) -> Iterator[List[int]]:
         """
         Sample items for one variation of the exercise per task.
