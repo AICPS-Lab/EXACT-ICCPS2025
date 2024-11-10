@@ -49,7 +49,7 @@ class PhysiQ(QueryDataset):
         }
         
     def get_variation(self):
-        return 3
+        return 3 # based on the file name, the indices of split('_')
 
     def get_subject(self):
         # this is not the subject of the file name but the subject for splitting or shuffling the data:

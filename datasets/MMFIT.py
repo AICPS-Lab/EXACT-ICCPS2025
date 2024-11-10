@@ -48,8 +48,8 @@ class MMFIT(QueryDataset):
             'unique_identifier': unique_identifier,
         }
     def get_variation(self):
-        return None
-    def get_subject(self):
+        return 2 # based on the file name, the indices of split('_')
+    def get_subject(self): 
         # this is not the subject of the file name but the subject for splitting or shuffling the data:
         # aka shuffled based on
         # MMFIT filenames: [Subject]_[Exercise]_[left-right hand]_[repetition].csv

@@ -420,16 +420,11 @@ class QueryDataset(Dataset):
         
         for key, files in data_to_use.items():
             #NOTE VERSION 2:
-            
             combined = []
             for filename in files:
                 ind = self.get_variation()
-                if ind is None:
-                    combined.append((filename, unique_indices.index(tuple([key[i] for i in self.get_ind_label()]))))
-                    
-                else:
-                    variation = filename.rstrip(".csv").split("/")[-1].split("_")[self.get_variation()]
-                    combined.append((filename, unique_indices.index((key[1],variation))))
+                variation = filename.rstrip(".csv").split("/")[-1].split("_")[self.get_variation()]
+                combined.append((filename, unique_indices.index((key[1],variation))))
                     
             # print(combined)
             #NOTE VERSION 1:
