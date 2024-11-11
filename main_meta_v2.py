@@ -33,7 +33,7 @@ def train(db, net, epoch, args, wandb_run=None):
     # Move the model to the specified device
     net.to(args.device)
     net.train()
-    compute_metrics = MetricsAccumulator(dir_name="train")
+    compute_metrics = MetricsAccumulator(dir_name="train", n_classes=args.out_channels)
 
     for batch_idx in range(args.n_tasks):
         start_time = time.time()
@@ -119,7 +119,7 @@ def test(db, net, epoch, args, wandb_r=None):
     net.train()
     n_test_iter = args.n_tasks
 
-    compute_metrics = MetricsAccumulator(dir_name="test")
+    compute_metrics = MetricsAccumulator(dir_name="test", n_classes=args.out_channels)
 
     qry_losses = []
 
@@ -189,6 +189,7 @@ def main(args):
         n_tasks=args.n_tasks,
         threshold_ratio=args.threshold_ratio,
         add_side_noise=args.add_side_noise,
+        args=args
     )
     test_sampler = DenseLabelTaskSampler(
         test_dataset,
@@ -198,6 +199,7 @@ def main(args):
         n_tasks=args.n_tasks,
         threshold_ratio=args.threshold_ratio,
         add_side_noise=args.add_side_noise,
+        args=args
     )
 
     # Initialize DataLoader
@@ -271,6 +273,7 @@ def main_loocv(args):
             n_tasks=args.n_tasks,
             threshold_ratio=args.threshold_ratio,
             add_side_noise=args.add_side_noise,
+            args=args
         )
         test_sampler = DenseLabelTaskSampler(
             test_dataset,
@@ -280,6 +283,7 @@ def main_loocv(args):
             n_tasks=args.n_tasks,
             threshold_ratio=args.threshold_ratio,
             add_side_noise=args.add_side_noise,
+            args=args
         )
 
         # Initialize DataLoader

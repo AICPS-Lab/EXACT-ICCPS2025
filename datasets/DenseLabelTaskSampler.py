@@ -22,6 +22,7 @@ class DenseLabelTaskSampler(Sampler):
         n_tasks: int,
         threshold_ratio: float,
         add_side_noise: bool,
+        args=None,
     ):
         """
         Args:
@@ -36,22 +37,27 @@ class DenseLabelTaskSampler(Sampler):
         self.n_shot = n_shot
         self.batch_size = batch_size
         self.n_query = n_query
-        assert n_shot == n_query, "n_shot and n_query must be equal for this sampler."
+        assert (
+            n_shot == n_query
+        ), "n_shot and n_query must be equal for this sampler."
         self.n_tasks = n_tasks
         self.threshold_ratio = threshold_ratio
         self._cur_task = []
         self.dataset = dataset
         self.items_per_label: Dict[int, List[int]] = {}
         self.add_side_noise = add_side_noise
+        self.args = args
 
         # Build a dictionary mapping each label to a list of indices for dense labeling
-        for item_idx, (input_data, label, exer_label, var_label) in enumerate(dataset):
+        for item_idx, (input_data, label, exer_label, var_label) in enumerate(
+            dataset
+        ):
             # NOTE: QUESTION should we consider in the label of variation or the label of the exercise?
-            #NOTE: VERSION 1
+            # NOTE: VERSION 1
             # valid_label = self._classify_label(label)
-            #NOTE: VERSION 2
-            valid_label = int(exer_label) # self._get_label(label)
-            #NOTE: VERSION 3
+            # NOTE: VERSION 2
+            valid_label = int(exer_label)  # self._get_label(label)
+            # NOTE: VERSION 3
             # valid_label = int(var_label) #exer_label # self._get_label(label)
             if valid_label is not None:
                 if valid_label in self.items_per_label:
@@ -69,7 +75,7 @@ class DenseLabelTaskSampler(Sampler):
         Yields:
             A list of indices of length (batch_size * (n_shot + n_query)).
         """
-        
+
         # NOTE: VERSION 1:
         # for cur_task in range(self.n_tasks):
         #     # Randomly select one variation (target class) for this task
@@ -83,7 +89,7 @@ class DenseLabelTaskSampler(Sampler):
         #     )
         #     self._cur_task = target_label
         #     yield sampled_task_indices.tolist()
-         #NOTE: VERSION 2: 
+        # NOTE: VERSION 2:
         for cur_task in range(self.n_tasks):
             # Step 1: Randomly select one key from items_per_label
             rand_key = random.choice(list(self.items_per_label.keys()))
@@ -94,44 +100,48 @@ class DenseLabelTaskSampler(Sampler):
             rand_vars = random.sample(possible_vars, num_vars)
             # Step 3: Define the total number of samples needed
             total_samples = (self.n_shot + self.n_query) * self.batch_size
-            
+
             # Step 4: Retrieve all candidate indices for the selected key
             candidate_indices = self.items_per_label[rand_key]
-            
+
             # Step 5: Randomize the candidate list
-            randomed_candidate = random.sample(candidate_indices, len(candidate_indices))
-            
+            randomed_candidate = random.sample(
+                candidate_indices, len(candidate_indices)
+            )
+
             # Step 6: Initialize a list to store filtered indices
             filtered_indices = []
-            
+
             # Step 7: Iterate through randomized candidates and filter based on dense label criteria
             for idx in randomed_candidate:
                 dense_labels = self.dataset[idx][1]
-                
+
                 # Ensure dense_labels is a Tensor
                 if not isinstance(dense_labels, torch.Tensor):
                     dense_labels = torch.tensor(dense_labels)
-                
+
                 # Count occurrences of any rand_var in dense_labels
                 # This assumes rand_vars are scalar values that can be directly compared
                 matches = torch.zeros_like(dense_labels, dtype=torch.bool)
                 for var in rand_vars:
-                    matches |= (dense_labels == var)
+                    matches |= dense_labels == var
                 rand_var_count = matches.sum().item()
-                
+
                 # Check if at least 10% of the labels are rand_var
-                if rand_var_count >= 100: #0.1 * dense_labels.numel(): # frequnecy 50 and 2 sec
+                if (
+                    rand_var_count >= 100
+                ):  # 0.1 * dense_labels.numel(): # frequnecy 50 and 2 sec
                     filtered_indices.append(idx)
                     if len(filtered_indices) == total_samples:
                         break
-            
+
             # Step 8: Check if enough samples are available
             if len(filtered_indices) < total_samples:
                 raise ValueError(
                     f"Not enough samples with at least 10% of labels as {rand_vars}. "
                     f"Required: {total_samples}, Available: {len(filtered_indices)}"
                 )
-            
+
             # Step 9: Assign the current task's rand_vars
             self._cur_task = rand_vars
             # Step 10: Yield the filtered indices for this task
@@ -180,25 +190,56 @@ class DenseLabelTaskSampler(Sampler):
         if self.add_side_noise:
             # if it has side noise, label 0 is the side noise, and other label is original label +1:
             # so if the label is not 0, its 1 (1 as >0)
-            #NOTE: VERSION 2
+            # NOTE: VERSION 2
             # based on the _cur_task randomly select from data correspondence to make the label 1 or 0
-            
+
             # randomlist = torch.tensor(randomlist)
             # print(self._cur_task)
-            
-            support_labels = torch.isin(support_labels, torch.tensor(self._cur_task)).to(torch.long)
-            query_labels = torch.isin(query_labels, torch.tensor(self._cur_task)).to(torch.long)
-            #NOTE: VERSION 1
+            if self.args.fine_split:
+                assert (
+                    self.args.out_channels == 3
+                ), "Fine split is only available for 3 channels, but you have {}".format(
+                    self.args.out_channels
+                )
+                # if it is in cur_task 1, if not (and originally 0) is 0, all other is 2
+                support_labels_temp = torch.isin(
+                    support_labels, torch.tensor(self._cur_task)
+                ).to(torch.long)
+                support_labels = torch.where(
+                    (support_labels_temp == 0) & (support_labels == 0),
+                    2,
+                    support_labels_temp,
+                )
+
+                query_labels_temp = torch.isin(
+                    query_labels, torch.tensor(self._cur_task)
+                ).to(torch.long)
+                query_labels = torch.where(
+                    (query_labels_temp == 0) & (query_labels == 0),
+                    2,
+                    query_labels_temp,
+                )
+            else:
+                support_labels = torch.isin(
+                    support_labels, torch.tensor(self._cur_task)
+                ).to(torch.long)
+                query_labels = torch.isin(
+                    query_labels, torch.tensor(self._cur_task)
+                ).to(torch.long)
+            # NOTE: VERSION 1
             # query_labels = torch.where(query_labels > 0, 1, 0)
             # support_labels = torch.where(support_labels > 0, 1, 0)
-            #NOTE: VERSION 3
+            # NOTE: VERSION 3
             # query_labels = torch.where(query_labels == self._cur_task, 1, 0)
             # support_labels = torch.where(support_labels == self._cur_task, 1, 0)
-            
+
         else:
             # Adjust labels to binary based on the current target variation
-            query_labels = torch.where(query_labels == self._cur_task, 1, 0)
-            support_labels = torch.where(support_labels == self._cur_task, 1, 0)
+            raise NotImplementedError(
+                "Binary label adjustment is not implemented yet."
+            )
+            # query_labels = torch.where(query_labels == self._cur_task, 1, 0)
+            # support_labels = torch.where(support_labels == self._cur_task, 1, 0)
 
         return (
             support_images,

@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Counter, Tuple
 from matplotlib import pyplot as plt
 import numpy as np
 import torch
@@ -9,46 +9,38 @@ from torch import nn
 
 import torch
 import torch.nn.functional as F
+import numpy as np
 from sklearn.metrics import (
     confusion_matrix,
     roc_auc_score,
-    balanced_accuracy_score,
     precision_score,
     recall_score,
     f1_score,
-    jaccard_score,
 )
-
-import torch
-import torch.nn.functional as F
-from sklearn.metrics import (
-    confusion_matrix,
-    roc_auc_score,
-    balanced_accuracy_score,
-    jaccard_score,
-)
+from sklearn.preprocessing import label_binarize
+from typing import Tuple
+from collections import Counter
 
 class MetricsAccumulator:
-    def __init__(self, dir_name=None):
+    def __init__(self, dir_name=None, n_classes=3):
         self.dir_name = dir_name
+        self.n_classes = n_classes
         self.reset()
 
     def reset(self):
         # Accumulators for counts
-        self.total_tp = 0  # True positives
-        self.total_fp = 0  # False positives
-        self.total_fn = 0  # False negatives
-        self.total_tn = 0  # True negatives
+        self.class_tp = np.zeros(self.n_classes)
+        self.class_fp = np.zeros(self.n_classes)
+        self.class_fn = np.zeros(self.n_classes)
+        self.class_tn = np.zeros(self.n_classes)
 
         # Accumulators for ROC-AUC
         self.all_y_true = []
-        self.all_y_scores = []
+        self.all_y_probs = []  # Accumulator for probabilities
 
         # For Dice and IoU
-        self.total_intersection = 0
-        self.total_union = 0
-        self.total_y_true = 0
-        self.total_y_pred = 0
+        self.class_intersection = np.zeros(self.n_classes)
+        self.class_union = np.zeros(self.n_classes)
 
         # Total number of samples
         self.total_samples = 0
@@ -66,7 +58,7 @@ class MetricsAccumulator:
         assert (
             len(y_true.size()) == 2
         ), f"y_true size: {y_true.size()} is not compatible"
-        if logits.size()[-1] != 2:
+        if logits.size()[-1] != self.n_classes:
             logits = logits.permute(0, 2, 1)
 
         if y_true.size() == logits.size()[:-1]:
@@ -85,77 +77,94 @@ class MetricsAccumulator:
         # Flatten tensors for batch processing
         y_true_flat = y_true.view(-1)
         y_pred_flat = y_pred.view(-1)
-        y_scores_flat = (
-            probs[:, :, 1].contiguous().view(-1).detach().cpu().numpy()
-        )  # Probabilities for the positive class
+        probs_flat = probs.view(-1, self.n_classes)
 
         y_true_np = y_true_flat.detach().cpu().numpy()
         y_pred_np = y_pred_flat.detach().cpu().numpy()
+        probs_np = probs_flat.detach().cpu().numpy()
 
         # Accumulate counts
-        tn, fp, fn, tp = confusion_matrix(
-            y_true_np, y_pred_np, labels=[0, 1]
-        ).ravel()
-        self.total_tp += tp
-        self.total_fp += fp
-        self.total_fn += fn
-        self.total_tn += tn
+        cm = confusion_matrix(y_true_np, y_pred_np, labels=range(self.n_classes))
+        self.class_tp += np.diag(cm)
+        self.class_fp += cm.sum(axis=0) - np.diag(cm)
+        self.class_fn += cm.sum(axis=1) - np.diag(cm)
+        self.class_tn += cm.sum() - (self.class_fp + self.class_fn + self.class_tp)
 
         # Accumulate predictions and labels for ROC-AUC
         self.all_y_true.extend(y_true_np)
-        self.all_y_scores.extend(y_scores_flat)
+        self.all_y_probs.append(probs_np)  # Accumulate probabilities
 
         # Accumulate for Dice and IoU
-        intersection = (y_true_flat * y_pred_flat).sum().item()
-        union = y_true_flat.sum().item() + y_pred_flat.sum().item()
-        self.total_intersection += intersection
-        self.total_union += union
+        for class_idx in range(self.n_classes):
+            y_true_class = (y_true_flat == class_idx).float()
+            y_pred_class = (y_pred_flat == class_idx).float()
 
-        self.total_y_true += y_true_flat.sum().item()
-        self.total_y_pred += y_pred_flat.sum().item()
+            intersection = (y_true_class * y_pred_class).sum().item()
+            union = y_true_class.sum().item() + y_pred_class.sum().item()
+
+            self.class_intersection[class_idx] += intersection
+            self.class_union[class_idx] += union
 
         # Update total samples
         self.total_samples += y_true_flat.numel()
 
         # Compute batch-specific metrics for immediate reporting
-        precision = tp / (tp + fp + 1e-7)
-        recall = tp / (tp + fn + 1e-7)
-        specificity = tn / (tn + fp + 1e-7)
-        f1 = 2 * precision * recall / (precision + recall + 1e-7)
-        dice = (2 * intersection) / (
-            y_true_flat.sum().item() + y_pred_flat.sum().item() + 1e-7
+        precision = precision_score(
+            y_true_np, y_pred_np, average='macro', zero_division=0
         )
-        iou = intersection / (
-            y_true_flat.sum().item()
-            + y_pred_flat.sum().item()
-            - intersection
-            + 1e-7
+        recall = recall_score(
+            y_true_np, y_pred_np, average='macro', zero_division=0
         )
-        covering = intersection / (y_true_flat.sum().item() + 1e-7)
-        try:
-            roc_auc = (
-                roc_auc_score(y_true_np, y_scores_flat)
-                if len(set(y_true_np)) > 1
-                else float("nan")
-            )  # Avoid ROC-AUC error if single class  
-        except ValueError:
-            print(np.isnan(y_true_np).any(), np.isnan(y_scores_flat).any())
+        f1 = f1_score(
+            y_true_np, y_pred_np, average='macro', zero_division=0
+        )
+
+        # Dice and IoU
+        dice_scores = (2 * self.class_intersection) / (self.class_union + 1e-7)
+        mean_dice = np.mean(dice_scores)
+        iou_scores = self.class_intersection / (
+            self.class_union - self.class_intersection + 1e-7
+        )
+        mean_iou = np.mean(iou_scores)
+
+        # ROC-AUC
+        if self.n_classes == 2:
+            y_scores = probs_np[:, 1]  # Probabilities for the positive class
+            y_true_binary = y_true_np
+            if len(np.unique(y_true_binary)) == 2:
+                try:
+                    roc_auc = roc_auc_score(y_true_binary, y_scores)
+                except ValueError:
+                    roc_auc = float('nan')
+            else:
+                roc_auc = float('nan')
+        else:
+            y_true_binarized = label_binarize(
+                y_true_np, classes=range(self.n_classes)
+            )
+            if len(np.unique(y_true_np)) >= 2:
+                try:
+                    roc_auc = roc_auc_score(
+                        y_true_binarized, probs_np, multi_class='ovr'
+                    )
+                except ValueError:
+                    roc_auc = float("nan")
+            else:
+                roc_auc = float("nan")
 
         # Create a summary string of current batch metrics
         batch_metrics = (
             f"Prec: {precision:.2f}, Rec: {recall:.2f}, "
-            f"Spec: {specificity:.2f}, F1: {f1:.2f}, Dice: {dice:.2f}, "
-            f"IoU: {iou:.2f}, ROC-AUC: {roc_auc:.2f}, Cover: {covering:.2f}"
+            f"F1: {f1:.2f}, Dice: {mean_dice:.2f}, "
+            f"IoU: {mean_iou:.2f}, ROC-AUC: {roc_auc:.2f}"
         )
         batch_dict = {
             "Precision": precision,
             "Recall": recall,
-            "Specificity": specificity,
             "F1-Score": f1,
-            "Dice Score": dice,
-            "IoU": iou,
+            "Dice Score": mean_dice,
+            "IoU": mean_iou,
             "ROC-AUC": roc_auc,
-            "Covering Metric": covering,
         }
 
         # Return the string summary and the dict of the results
@@ -173,50 +182,58 @@ class MetricsAccumulator:
         if self.total_samples == 0:
             raise ValueError("No data to compute metrics. Call update() first.")
 
-        # Precision, Recall, Specificity
-        precision = self.total_tp / (self.total_tp + self.total_fp + 1e-7)
-        recall = self.total_tp / (self.total_tp + self.total_fn + 1e-7)
-        specificity = self.total_tn / (self.total_tn + self.total_fp + 1e-7)
-
-        # F1-Score
+        # Precision, Recall, F1-Score
+        precision = np.mean(
+            self.class_tp / (self.class_tp + self.class_fp + 1e-7)
+        )
+        recall = np.mean(
+            self.class_tp / (self.class_tp + self.class_fn + 1e-7)
+        )
         f1 = 2 * precision * recall / (precision + recall + 1e-7)
 
-        # Balanced Accuracy
-        balanced_acc = (recall + specificity) / 2
-
-        # Dice Score
-        dice = (2 * self.total_intersection) / (
-            self.total_y_true + self.total_y_pred + 1e-7
+        # Dice Score and IoU
+        dice_scores = (2 * self.class_intersection) / (self.class_union + 1e-7)
+        mean_dice = np.mean(dice_scores)
+        iou_scores = self.class_intersection / (
+            self.class_union - self.class_intersection + 1e-7
         )
+        mean_iou = np.mean(iou_scores)
 
-        # IoU
-        iou = self.total_intersection / (
-            self.total_y_true
-            + self.total_y_pred
-            - self.total_intersection
-            + 1e-7
-        )
+        # ROC-AUC
+        all_y_true_np = np.array(self.all_y_true)
+        all_y_probs_np = np.vstack(self.all_y_probs)
 
-        # In the compute() method
-        if len(set(self.all_y_true)) > 1:
-            roc_auc = roc_auc_score(self.all_y_true, self.all_y_scores)
+        if self.n_classes == 2:
+            y_scores = all_y_probs_np[:, 1]  # Probabilities for the positive class
+            y_true_binary = all_y_true_np
+            if len(np.unique(y_true_binary)) == 2:
+                try:
+                    roc_auc = roc_auc_score(y_true_binary, y_scores)
+                except ValueError:
+                    roc_auc = float('nan')
+            else:
+                roc_auc = float('nan')
         else:
-            roc_auc = float("nan")  # Set ROC-AUC to NaN if only one class is present
-
-
-        # Covering Metric
-        covering = self.total_intersection / (self.total_y_true + 1e-7)
+            y_true_binarized = label_binarize(
+                all_y_true_np, classes=range(self.n_classes)
+            )
+            if len(np.unique(all_y_true_np)) >= 2:
+                try:
+                    roc_auc = roc_auc_score(
+                        y_true_binarized, all_y_probs_np, multi_class='ovr'
+                    )
+                except ValueError:
+                    roc_auc = float("nan")
+            else:
+                roc_auc = float("nan")
 
         metrics = {
-            "Dice Score": dice,
-            "IoU": iou,
+            "Dice Score": mean_dice,
+            "IoU": mean_iou,
             "Precision": precision,
             "Recall": recall,
             "F1-Score": f1,
-            "Specificity": specificity,
-            "Balanced Accuracy": balanced_acc,
             "ROC-AUC": roc_auc,
-            "Covering Metric": covering,
         }
         return self._dict_format(metrics)
 
