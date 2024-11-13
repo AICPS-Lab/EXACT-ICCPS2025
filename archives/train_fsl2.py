@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 import torch
 from train_dense_labeling import get_model
 from utilities import printc
-from utils_loader import get_dataloaders
+from archives.utils_loader import get_dataloaders
 from torch.optim.lr_scheduler import MultiStepLR
 
 from utils_metrics import mean_iou
