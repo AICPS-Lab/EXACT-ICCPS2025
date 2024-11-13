@@ -3,28 +3,23 @@ import os
 import time
 import typing
 
-import pandas as pd
-import numpy as np
+import higher
 import matplotlib.pyplot as plt
-
+import numpy as np
+import pandas as pd
 import torch
-from torch import nn
 import torch.nn.functional as F
 import torch.optim as optim
-
-import higher
-import wandb
-
-from datasets.DenseLabelTaskSampler import DenseLabelTaskSampler
+from torch import nn
 from torch.utils.data import DataLoader
 
-from until_argparser import get_all_subjects, get_args, get_dataset, get_model
-from loss_fn import (
-    MetricsAccumulator,
-)
+import wandb
+from datasets.DenseLabelTaskSampler import DenseLabelTaskSampler
+from loss_fn import MetricsAccumulator
 from methods import EX, UNet
+from until_argparser import get_all_subjects, get_args, get_dataset, get_model
 from utilities import model_exception_handler, printc, seed
-from utils_metrics import  fsl_visualize_softmax, visualize_softmax
+from utils_metrics import fsl_visualize_softmax, visualize_softmax
 
 
 def train(db, net, epoch, args, wandb_run=None):
