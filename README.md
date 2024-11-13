@@ -87,6 +87,9 @@ For a complete list of options, please refer to the `get_args` function in the m
 - **CNN**: Simple Convolutional Neural Network for dense labeling tasks.
 
 ## Supported Datasets
+Please go to data folder to download the datasets.
+<!-- a hyperlink to that readme -->
+- **[dataset README](./data/README.md)**
 
 - **PhysiQ**: Dataset with IMU data used for exercise and physical activity monitoring.
 - **SPAR**: Another IMU-based dataset.
