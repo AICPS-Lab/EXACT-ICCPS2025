@@ -1,5 +1,6 @@
 import yaml
 
+
 class Config(object):  
     """Simple dict wrapper that adds a thin API allowing for slash-based retrieval of
     nested elements, e.g. cfg.get_config("meta/dataset_name")

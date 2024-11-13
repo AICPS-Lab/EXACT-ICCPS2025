@@ -1,10 +1,13 @@
 # QueryDataset.py
 import os
 import random
+
 import numpy as np
 import torch
 from torch.utils.data import Dataset
+
 from utilities import *
+
 
 def test_data_splitting(train, test):
         # Ensure no overlapping subjects

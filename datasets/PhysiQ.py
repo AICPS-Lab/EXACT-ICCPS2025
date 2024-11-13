@@ -2,9 +2,11 @@ DEFAULT_INFO = "data is a dictionary with keys as subject and values as list of 
 
 # PhysiQ.py
 import os
-from .QueryDataset import QueryDataset
+
 import pandas as pd
 import torch
+
+from .QueryDataset import QueryDataset
 
 
 class PhysiQ(QueryDataset):

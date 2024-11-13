@@ -5,12 +5,14 @@ Created on Fri Jun 26 23:09:38 2020
 @author: Jieyun Hu
 """
 
+import math
+
+import h5py
+import numpy as np
+import pandas as pd
 # This file is for PAMAP2 data processing
 from matplotlib import pyplot as plt
-import pandas as pd
-import numpy as np
-import math
-import h5py
+
 activities = {1: 'stand',
               2: 'walk',
               4: 'sit',

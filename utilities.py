@@ -3,11 +3,12 @@ import os
 import random
 import signal
 import sys
-from matplotlib import pyplot as plt
+
 import numpy as np
-from sklearn.discriminant_analysis import StandardScaler
-import torch
 import pandas as pd
+import torch
+from matplotlib import pyplot as plt
+from sklearn.discriminant_analysis import StandardScaler
 
 
 def seed(sd=0, cudnn=False, deterministic=False):

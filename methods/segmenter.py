@@ -1,13 +1,14 @@
+import warnings
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import ModuleList
-
-from torch.nn.modules.transformer import TransformerEncoder, TransformerEncoderLayer
+from torch.nn.modules.transformer import (TransformerEncoder,
+                                          TransformerEncoderLayer)
 
 from utilities import printc
 
-import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 class Segmenter(nn.Module):

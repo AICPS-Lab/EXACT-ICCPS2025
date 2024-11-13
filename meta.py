@@ -1,14 +1,14 @@
-import  torch
-from    torch import nn
-from    torch import optim
-from    torch.nn import functional as F
-from    torch.utils.data import TensorDataset, DataLoader
-from    torch import optim
-import  numpy as np
+from copy import deepcopy
 
-from    learner import Learner
-from    copy import deepcopy
-from    loss_fn import *
+import numpy as np
+import torch
+from learner import Learner
+from torch import nn, optim
+from torch.nn import functional as F
+from torch.utils.data import DataLoader, TensorDataset
+
+from loss_fn import *
+
 
 def correct_fn(logits_q, y_qry_i):
     # [setsz]

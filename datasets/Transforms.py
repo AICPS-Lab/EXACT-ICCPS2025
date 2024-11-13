@@ -1,7 +1,8 @@
+import random
+
 import numpy as np
 import torch
 from scipy.interpolate import CubicSpline
-import random
 from scipy.spatial.transform import Rotation as R
 
 

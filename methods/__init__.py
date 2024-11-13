@@ -1,9 +1,9 @@
+from .crnn import *
+from .embedding import TemporalPositionalEmbedding
+from .lstm import *
+from .models import CNNModel
 from .segmenter import *
 from .transformer import *
-from .lstm import *
-from .crnn import *
 from .unet import UNet
-from .embedding import TemporalPositionalEmbedding
-from .models import CNNModel
 
 # __init__ file

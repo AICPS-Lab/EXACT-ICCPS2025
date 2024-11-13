@@ -1,12 +1,14 @@
-import torch
-import torch.nn as nn
-import torch.optim as optim
-from torch.utils.data import DataLoader
-import torch
-from torch.nn.modules.transformer import TransformerEncoder, TransformerEncoderLayer
-import torch.nn.functional as F
 # # suppress the warning of FutureWarning
 import warnings
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+from torch.nn.modules.transformer import (TransformerEncoder,
+                                          TransformerEncoderLayer)
+from torch.utils.data import DataLoader
+
 warnings.simplefilter(action='ignore', category=FutureWarning)
 # from utilities import printc
 class TransformerModel(nn.Module):

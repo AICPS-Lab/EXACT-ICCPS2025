@@ -1,9 +1,11 @@
 DEFAULT_INFO = "data is a dictionary with keys as subject and values as list of data files, label is a dictionary with keys as subject and values as list of labels, label_to_exer_hand is a list of tuples with each tuple as (exercise, hand)"
 # SPAR.py
 import os
-from .QueryDataset import QueryDataset
+
 import pandas as pd
 import torch
+
+from .QueryDataset import QueryDataset
 
 
 class SPAR(QueryDataset):

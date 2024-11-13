@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader
-import torch
-import torch.nn.functional as F
+
 
 class LSTM(nn.Module):
     def __init__(self, num_classes=5, in_channels=6, embed_dims=64, num_layers=2, dropout=0.1, init_std=.02):

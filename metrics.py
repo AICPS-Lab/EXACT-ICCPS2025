@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def find_transitions(label, window_size, step_size, dense_label=False):
     if dense_label:
         # in the sliding windows, with step size, we need to find if theres a transition in the windows:

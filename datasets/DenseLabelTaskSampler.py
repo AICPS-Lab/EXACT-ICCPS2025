@@ -1,9 +1,10 @@
 import random
+from typing import Dict, Iterator, List, Tuple, Union
+
 import numpy as np
 import torch
 from torch import Tensor
-from torch.utils.data import Sampler, Dataset
-from typing import Dict, Iterator, List, Tuple, Union
+from torch.utils.data import Dataset, Sampler
 
 from datasets import QueryDataset
 

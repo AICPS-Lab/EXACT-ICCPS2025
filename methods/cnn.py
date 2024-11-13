@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 class CNN(nn.Module):
     """
     1D CNN model for time series segmentation tasks, with a sequence of convolutional

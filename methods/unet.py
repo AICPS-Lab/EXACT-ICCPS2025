@@ -1,6 +1,5 @@
 import math
-import torch
-import torch.nn as nn
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -134,6 +133,8 @@ class UNet_encoder(nn.Module):
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+
 class TemporalPositionalEncoding(nn.Module):
     def __init__(self, time_steps: int, d_model: int):
         super(TemporalPositionalEncoding, self).__init__()

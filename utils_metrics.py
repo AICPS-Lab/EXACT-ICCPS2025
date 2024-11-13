@@ -1,7 +1,8 @@
-from matplotlib import pyplot as plt
 import numpy as np
 import torch
 import torch.nn.functional as F
+from matplotlib import pyplot as plt
+
 
 def compute_kl_loss(outputs):
     """

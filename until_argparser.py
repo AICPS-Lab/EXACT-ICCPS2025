@@ -1,16 +1,16 @@
 import argparse
 
+import torch.nn as nn
+
 from datasets.MMFIT import MMFIT
 from datasets.PhysiQ import PhysiQ
 from datasets.SPAR import SPAR
 from datasets.Transforms import IMUAugmentation
-from methods.EX import EX
 from methods.cnn import CNN
+from methods.EX import EX
 from methods.segmenter import Segmenter
 from methods.transformer import TransformerModel
 from methods.unet import UNet
-import torch.nn as nn
-
 from utilities import seed
 
 
