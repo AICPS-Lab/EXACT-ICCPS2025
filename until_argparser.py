@@ -5,14 +5,10 @@ from datasets.PhysiQ import PhysiQ
 from datasets.SPAR import SPAR
 from datasets.Transforms import IMUAugmentation
 from methods.EX import EX
-from methods.EX2 import EX2
-from methods.EXACT2 import EXACT_UNet2
-from methods.EXACT3 import LSTMUNet
 from methods.cnn import CNN
 from methods.segmenter import Segmenter
 from methods.transformer import TransformerModel
 from methods.unet import UNet
-from methods.EXACT import EXACT_UNet
 import torch.nn as nn
 
 from utilities import seed
@@ -22,18 +18,10 @@ def get_model_args(args, preliminary_args):
     model = preliminary_args.model.lower()
     if model == "unet":
         args = UNet.add_args(args)
-    elif model == "exact":
-        args = EXACT_UNet.add_args(args)
     elif model == "transformer":
         args = TransformerModel.add_args(args)
     elif model == "ex":
         args = EX.add_args(args)
-    elif model == "exact2":
-        args = EXACT_UNet2.add_args(args)
-    elif model == "ex2":
-        args = EX2.add_args(args)
-    elif model == "exact3":
-        args = LSTMUNet.add_args(args)
     elif model == "segmenter":
         args = Segmenter.add_args(args)
     elif model == "cnn":
