@@ -41,18 +41,10 @@ def get_model(args):
     args.model = args.model.lower()
     if args.model == "unet":
         model = UNet
-    elif args.model == "exact":
-        model = EXACT_UNet
     elif args.model == "transformer":
         model = TransformerModel
     elif args.model == "ex":
         model = EX
-    elif args.model == "exact2":
-        model = EXACT_UNet2
-    elif args.model == "ex2":
-        model = EX2
-    elif args.model == "exact3":
-        model = LSTMUNet
     elif args.model == "segmenter":
         model = Segmenter
     elif args.model == "cnn":

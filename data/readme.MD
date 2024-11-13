@@ -1,4 +1,4 @@
-Store all the datasets here, actual csv file for example:
-
-
-# note the exercises label in physiq_copy in "datasets" vs. the one in "raw_datasets" are different and different from physiq in the same folder of "datasets"
+# Store all the datasets here, actual csv file for example:
+- [PhysiQ](https://doi.org/10.1145/3570349)
+- [MM-Fit](https://mmfit.github.io/)
+- [SPAR](https://github.com/dmbee/SPAR-dataset)

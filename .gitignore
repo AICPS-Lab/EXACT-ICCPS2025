@@ -3,7 +3,8 @@
 .DS_Store
 data/OpportunityUCIDataset/loco_2.npy
 # data/OpportunityUCIDataset/loco_2_mask.npy
-*.png
+# ignore png in data folder or any subfolder:
+data/**/*.png
 data/physiq/physiq_permute_all.npy
 /data/WEAR/inertial
 /wandb
