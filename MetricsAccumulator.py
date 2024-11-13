@@ -5,13 +5,8 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from matplotlib import pyplot as plt
-from sklearn.metrics import (
-    confusion_matrix,
-    f1_score,
-    precision_score,
-    recall_score,
-    roc_auc_score,
-)
+from sklearn.metrics import (confusion_matrix, f1_score, precision_score,
+                             recall_score, roc_auc_score)
 from sklearn.preprocessing import label_binarize
 from torch import nn
 from torch.nn import functional as F

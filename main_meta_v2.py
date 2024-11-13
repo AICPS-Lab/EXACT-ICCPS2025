@@ -15,7 +15,7 @@ from torch.utils.data import DataLoader
 
 import wandb
 from datasets.DenseLabelTaskSampler import DenseLabelTaskSampler
-from loss_fn import MetricsAccumulator
+from MetricsAccumulator import MetricsAccumulator
 from methods import EX, UNet
 from until_argparser import get_all_subjects, get_args, get_dataset, get_model
 from utilities import model_exception_handler, printc, seed
