@@ -10,3 +10,4 @@ data/physiq/physiq_permute_all.npy
 /wandb
 /save_model
 **/.vscode/**
+**/.ipynb_checkpoints/**
