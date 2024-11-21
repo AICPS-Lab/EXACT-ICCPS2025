@@ -113,6 +113,3 @@ python main.py --dataset mmfit --model segmenter --loocv
 ```
 
 
-
-
-This README provides an overview and should be updated as the codebase evolves. Let me know if you need further adjustments!
