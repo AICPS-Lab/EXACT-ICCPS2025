@@ -1,17 +1,15 @@
-# Use an official PyTorch image as base 2.1.0-cuda11.8-cudnn8-runtime
-FROM pytorch/pytorch:2.4.0-cuda11.8-cudnn9-runtime
+# Use a base image compatible with both Windows (AMD64) and Mac (ARM64)
+FROM --platform=$TARGETARCH pytorch/pytorch:2.4.0-cuda11.8-cudnn9-runtime
 
-# Set a working directory inside the container
+# Set the working directory inside the container
 WORKDIR /app
 
-# Copy your project files into the container
+# Copy all project files into the container
 COPY . /app
 
-# Install dependencies
+# Upgrade pip and install dependencies
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
-# Set the default command
+# Set the default command (change if needed)
 CMD ["bash"]
-
-
