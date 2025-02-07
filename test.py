@@ -84,6 +84,8 @@ if __name__ == "__main__":
     args.wandb_group = "experiment-" + wandb.util.generate_id()
     args.nowandb = True
     args.add_side_noise = True
+    # if cuda is available, use it
+    args.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # args.dataset ='mmfit'
     iou = []
     dice = []
@@ -96,5 +98,5 @@ if __name__ == "__main__":
         rocauc.append(res['test/ROC-AUC'])
     print("DICE | IOU | ROC-AUC")
     # with 3 decimal points
-    print(args.dataset, args.model, f"{np.mean(dice):.3f} \pm {np.std(dice):.4f} | {np.mean(iou):.4f} \pm {np.std(iou):.4f} | {np.mean(rocauc):.3f} \pm {np.std(rocauc):.4f}")
+    print(args.model, f"{np.mean(dice):.3f} ± {np.std(dice):.4f} | {np.mean(iou):.4f} ± {np.std(iou):.4f} | {np.mean(rocauc):.3f} ± {np.std(rocauc):.4f}")
     

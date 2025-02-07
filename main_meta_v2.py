@@ -355,7 +355,7 @@ def capture_test_dataset_samples(args, test_dataset, test_loader):
         sample_data_in_test.append((x_spt, y_spt, x_qry, y_qry))
     # torch save
     torch.save(sample_data_in_test, os.path.join(args.data_root, args.dataset, f"{args.dataset}_{str(args.loocv)}_{args.seed}.pt"))
-    printc("Saved 10 samples of data for visualization")
+    # printc("Saved 10 samples of data for visualization")
 
 def log_visualization(epoch, wandb_r, net, fnet, inner_opt, args):
     # load 10 samples of data for visualization
