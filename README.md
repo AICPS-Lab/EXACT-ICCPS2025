@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/921933978.svg)](https://doi.org/10.5281/zenodo.14834927)
+
 This work has been accepted at [ICCPS-2025](https://iccps.acm.org/2025/)! 
 
 # EXACT: A Meta-Learning Framework for Precise Exercise Segmentation in Physical Therapy
