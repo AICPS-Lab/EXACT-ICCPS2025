@@ -6,14 +6,9 @@ models=("transformer" "unet" "cnn" "ex" "segmenter")
 max_jobs=4  # Adjust based on your system's capacity
 
 # Loop over seeds, datasets, and models
-for seed in {43..46}; do
+for seed in {42..46}; do
   for dataset in "${datasets[@]}"; do
     for model in "${models[@]}"; do
-      # Skip if seed is 43 and model is transformer, unet, or cnn with dataset mmfit
-      if [[ "$seed" -eq 43 && "$dataset" == "mmfit" && ( "$model" == "transformer" || "$model" == "unet" || "$model" == "cnn" ) ]]; then
-        continue
-      fi
-
       # Run the command in the background
       python main_meta_v2.py --add_side_noise --dataset "$dataset" --model "$model" --seed "$seed" --n_epochs 200 &
 

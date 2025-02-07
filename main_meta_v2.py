@@ -154,8 +154,8 @@ def test(db, net, epoch, args, wandb_r=None):
 
     qry_losses = torch.cat(qry_losses).mean().item()
 
-    print(f"[Epoch {epoch + 1:.2f}] Test Loss: {qry_losses:.2f}", end=" | ")
-    print(string_score)
+    # print(f"[Epoch {epoch + 1:.2f}] Test Loss: {qry_losses:.2f}", end=" | ")
+    # print(string_score)
 
     res_dict = compute_metrics.compute()
     res_dict.update(
@@ -347,7 +347,7 @@ def log_model_artifact(run, model_path):
 def capture_test_dataset_samples(args, test_dataset, test_loader):
     # if it exists already:
     if os.path.exists(os.path.join(args.data_root, args.dataset, f"{args.dataset}_{str(args.loocv)}_{args.seed}.pt")):
-        printc("Saved 10 samples data already exists")
+        # printc("Saved 10 samples data already exists")
         return
     sample_data_in_test = []
     for i in range(10):
