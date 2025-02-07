@@ -112,4 +112,97 @@ Leave-One-Out Cross-Validation:
 python main.py --dataset mmfit --model segmenter --loocv
 ```
 
+## Docker Usage
 
+This section explains how to use **EXACT** via a Docker container. You can either **build the Docker image** yourself or **pull a prebuilt image** from Docker Hub.
+
+### 1. Pull the Docker Image
+If you just want to run EXACT without building from source, pull the image from Docker Hub:
+```bash
+docker pull wang584041187/exact:latest
+```
+  
+- **On a machine with NVIDIA GPU (for CUDA)**:
+  ```bash
+  docker run -it --rm --gpus all wang584041187/exact:latest
+  ```
+- **On a Mac M1/M2/M3 (ARM64)**:
+  ```bash
+  docker run -it --rm --platform=linux/arm64 wang584041187/exact:latest
+  ```
+- **On a CPU-only machine**:
+  ```bash
+  docker run -it --rm wang584041187/exact:latest
+  ```
+
+Once inside the container, you can run any of the commands you normally would in your local environment (e.g., `python main.py ...`).
+
+---
+
+### 2. (Optional) Build the Docker Image Locally
+If you’d prefer to build the Docker image using your latest code changes, do the following in the project directory:
+```bash
+docker build -t exact .
+```
+  
+Then, you can run:
+```bash
+docker run -it --rm --gpus all exact
+```
+(Adjust `--gpus all` or `--platform=linux/arm64` as needed.)
+
+---
+
+### 3. If You Do NOT Have W&B (Weights & Biases)
+If you **don’t** want to use **WandB** or don’t have an account, remove or comment out the relevant lines in any scripts (e.g., `train.sh`, `main.py`) that call `wandb`:
+```bash
+# wandb.init(project="EXACT")
+# wandb.log({...})
+```
+Or, when running your Python scripts, you can pass the `--nowandb` argument to disable WandB logging:
+```bash
+python main.py --dataset physiq --model unet --nowandb
+```
+This prevents WandB from initializing or tracking metrics.
+
+---
+
+### 4. Running the Training Script Inside Docker
+If you have a dedicated `.sh` script (e.g., `scripts/train.sh`):
+
+1. **Run** the script:
+   ```bash
+   bash run_normal.sh 
+   ```
+   or 
+   ```bash
+   bash run_loocv.sh 
+   ```
+   or if you want to check results only:
+   ```bash
+    bash repeat.sh 
+    ```
+
+3. If you **removed** WandB lines or used `--nowandb`, ensure the script does not call `wandb`.
+
+---
+
+### 5. Exiting the Container
+When you’re finished, type:
+```bash
+exit
+```
+to stop the container. If you used `--rm`, the container is automatically removed.
+
+---
+
+### 6. Additional Notes
+- **CUDA**: To verify CUDA is working, run:
+  ```bash
+  python -c "import torch; print(torch.cuda.is_available())"
+  ```
+  If it prints `True`, CUDA is enabled.
+- **Modifying Scripts**: If your `.sh` scripts were created on Windows, convert line endings to Unix (e.g., using `dos2unix`) to avoid the `^M` interpreter error.
+- **Updating the Image**: If you change code in this repo and want an updated Docker image, rebuild or push a new version to Docker Hub.
+
+With Docker, you can now replicate the environment quickly on any system—GPU or CPU—without worrying about local dependencies.
