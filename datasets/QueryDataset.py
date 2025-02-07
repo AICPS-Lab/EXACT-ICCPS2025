@@ -488,7 +488,7 @@ class QueryDataset(Dataset):
         res_label = torch.cat(res_label, axis=0)
         res_exer_label = torch.cat(res_exer_label, axis=0)
         res_var_label = torch.cat(res_var_label, axis=0)
-        print(res_data.shape, res_label.shape, res_exer_label.shape, res_var_label.shape)
+        # print(res_data.shape, res_label.shape, res_exer_label.shape, res_var_label.shape)
         return res_data, res_label, res_exer_label, res_var_label
 
     def __len__(self):
