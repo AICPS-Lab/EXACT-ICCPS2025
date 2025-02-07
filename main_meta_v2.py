@@ -15,7 +15,7 @@ from torch.utils.data import DataLoader
 
 import wandb
 from datasets.DenseLabelTaskSampler import DenseLabelTaskSampler
-from MetricsAccumulator import MetricsAccumulator
+from MetricsAccumulator import MetricsAccumulator, MetricsAccumulator_v2
 from methods import EX, UNet
 from until_argparser import get_all_subjects, get_args, get_dataset, get_model
 from utilities import model_exception_handler, printc, seed
@@ -114,6 +114,10 @@ def test(db, net, epoch, args, wandb_r=None):
     net.train()
     n_test_iter = args.n_tasks
 
+    
+    # if args.loocv:
+    #     compute_metrics = MetricsAccumulator_v2(dir_name="test", n_classes=args.out_channels)
+    # else:
     compute_metrics = MetricsAccumulator(dir_name="test", n_classes=args.out_channels)
 
     qry_losses = []
