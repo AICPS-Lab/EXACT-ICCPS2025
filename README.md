@@ -4,6 +4,8 @@ This work has been accepted at [ICCPS-2025](https://iccps.acm.org/2025/)!
 
 # EXACT: A Meta-Learning Framework for Precise Exercise Segmentation in Physical Therapy
 
+**Corresponding Author:** Hanchen David Wang
+
 This repository provides an implementation for meta-learning on dense labeling tasks using various deep learning models. The project includes customizable support for models and datasets, with augmentation, training, and evaluation configurations. It leverages the WandB logging framework for experiment tracking.
 
 
